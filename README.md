@@ -10,9 +10,23 @@ Bowshot is a small Mac app that builds the game **on your Mac, from your own gam
 
 **[Download Bowshot 0.1.0](https://github.com/LeoGeneret/Bowshot/releases/tag/v0.1.0)**
 
+## What's new in 0.1.0
+
+The first Bowshot release.
+
+- **Sharper picture:** MetalFX upscaling is on by default.
+- **Render scale slider:** choose how detailed the picture is, from light to sharp, and change it while you play (**⌘ =** / **⌘ −**).
+- **Performance HUD:** show or hide the frame rate and GPU time in game (**⌥ ⌘ P**).
+- **A friendlier builder:** a blue **Build My Local Game** button, a progress bar with the current step and the time left, and the full log folded under **Show build log**.
+- **Frame rate, display mode and upscaler** can be changed in the game's settings window.
+- **Fixes from the latest nxnative:** better lighting and terrain in Ocarina of Time, no more crash on the foliage on macOS 26.6, and a corrected shader map for update v131072.
+- **Safeguards:** a watchdog that stops the game if the graphics chip hangs, instead of freezing your Mac.
+
+**[Read the full changelog →](CHANGELOG.md)**
+
 ## Contents
 
-- [What you get](#what-you-get)
+- [What's new in 0.1.0](#whats-new-in-010)
 - [What you need](#what-you-need)
 - [Install, step by step](#install-step-by-step)
   1. [Download Bowshot](#1-download-bowshot)
@@ -25,13 +39,6 @@ Bowshot is a small Mac app that builds the game **on your Mac, from your own gam
 - [For developers](#for-developers)
 - [Credits](#credits)
 - [Licence and project identity](#licence-and-project-identity)
-
-## What you get
-
-- **MetalFX upscaling**, on by default, for a sharper picture.
-- A **Render scale** slider: pick how detailed the picture is, from lightest to sharpest. You can change it while you play.
-- A **Performance HUD** you can show or hide in game, to see the frame rate.
-- A builder window with a progress bar that tells you which step it is on and how long is left.
 
 ## What you need
 
@@ -190,10 +197,6 @@ bash scripts/bowshot_build.sh --build /path/to/your/game-folder
 | Build instructions and upstream acknowledgements | Translated game shader libraries, pipeline caches, saves and console keys |
 
 Run `python3 tools/check_content.py --staged` before staging changes. Ignore rules do not remove files already committed. This snapshot starts without upstream Git history; its origin and revision are in `UPSTREAM-REVISION`, [CREDITS.md](CREDITS.md) and [AUTHORS.md](AUTHORS.md).
-
-### What 0.1.0 contains
-
-The full list is in [CHANGELOG.md](CHANGELOG.md). In short: upstream nxnative main `8c94bd1e` (21 Nov 2026), pinned as `bowshot-0.1.0-nxnative-8c94bd1e`, with its Ocarina of Time lighting, terrain and stability fixes; MetalFX drawing the game's own upscaler networks (**Game's upscaler: Game's own** keeps Nintendo's network); the Render scale slider (50 % to 100 % of 1920×1080 in twelfths, Normal 1280×720 by default); ⌘= / ⌘− and ⌥⌘P in game; render targets released a few at a time and an optional Texture Memory Saver (kid-with-sword-remake L6.3 and L7); a GPU-hang watchdog and clamps on GPU-written dispatch counts and texel fetches; an optional microphone for the ocarina (upstream #1822).
 
 ### Known limitations
 
