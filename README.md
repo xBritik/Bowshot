@@ -13,6 +13,7 @@ Bowshot is a small Mac app that builds the game **on your Mac, from your own gam
 ## What's new in 0.1.1
 
 - **Performance record:** while you play, the game log gets a `perf:` line every 10 seconds with the average frame rate, the slowest 1 % of frames, the worst frame, and the GPU time. It is the data to attach to a performance report.
+- **A builder that shows it is alive:** the time each step has run, the prewarm count and time left, a sound when the build is done, and a build log you can copy with **⌘ C**.
 
 Everything from [0.1.0](CHANGELOG.md#010-21-nov-2026) (MetalFX upscaling, the Render scale slider, the Performance HUD, the friendlier builder) is still there.
 

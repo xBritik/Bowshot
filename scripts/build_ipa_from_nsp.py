@@ -304,6 +304,8 @@ class Progress:
 
 
 PROG = Progress()
+PREBUILD_COUNT = re.compile(r'pipeline prebuild: (?P<done>\d+) of (?P<total>\d+) prewarm lines(?:, (?P<bases>\d+) bases compiled)?')   # the host's prewarm progress line (nvn_mtl.m)
+PREBUILD_START = re.compile(r'pipeline prebuild: (?P<total>\d+) prewarm lines of ')   # its first line: how many lines it will build
 
 
 def progress_mode(want):   # auto: redraw in a terminal or in Spyder (IPython handles \r), plain lines when the output goes to a file or a pipe
@@ -2997,7 +2999,11 @@ def mac_prebake(py, repo, work, msl, g, host, pso, env, logs):
             if zero: renv['DM_PSO_PREBUILD_DEPTH'] = 'zero'
             if not g.table('pso_pairs.tsv').is_file() and (work / 'shader/pso_pairs.tsv').is_file(): renv['DM_PSO_PAIRS'] = str(work / 'shader/pso_pairs.tsv')
             for k in ('DM_WINDOW', 'DM_GPU_CAPTURE', 'MTL_CAPTURE_ENABLED', 'DM_SAVE', 'DM_PSO_USER', 'DM_PSO_PREBUILD_WARM'): renv.pop(k, None)   # the profile's list alone, not a player's
-            if run([host], logs / 'pso_prewarm_mac.log', env=renv, fatal=False) or not list(out.glob(f'{arch}-prewarm-*.mtl4a')):
+            def prebuild_line(line):   # the host logs "pipeline prebuild: 4887 of 8345 prewarm lines, 3428 bases compiled, ..." every 10 s: the stage's count, so a long run shows it is moving
+                m = PREBUILD_COUNT.search(line)
+                if m: PROG.set(done=int(m['done']), total=int(m['total']), unit='lines', note=f'{int(m["bases"]):,} bases compiled' if m['bases'] else '')
+                elif (m := PREBUILD_START.search(line)): PROG.set(done=0, total=int(m['total']), unit='lines')
+            if run([host], logs / 'pso_prewarm_mac.log', env=renv, on_line=prebuild_line, fatal=False) or not list(out.glob(f'{arch}-prewarm-*.mtl4a')):
                 shutil.rmtree(out, ignore_errors=True)
                 PROG.end('failed, the app is packed without them', warn=True)
                 say(f'[RED] prewarm pipelines: the host\'s prebuild tool failed (see {logs / "pso_prewarm_mac.log"}); the app is packed without them and builds them on its first start (--no-prebake skips this step)')

@@ -19,6 +19,10 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var appPart = false                                   // the second part has begun (bowshot_build.sh's bowshot_part event)
     var inner = (k: 0, n: 0, name: "")                    // the engine's own stage within the second part
     var appStart = Date()
+    var stepStart = Date()                                // when the step shown began: its elapsed time is on the step line, ticking every second
+    var detail = ""                                       // the step line's count part: " — 28 % — about 11 min left"
+    var ticker: Timer?
+    var lastBeat = Date()                                 // the last line the log got: a step that says nothing for a minute gets a "still running" line
     var process: Process?
     var output: URL?
     var pending = ""                 // the end of the output that has no newline yet: a line is coloured once it is whole
@@ -43,6 +47,12 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         appMenu.addItem(withTitle: "Quit Bowshot", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.submenu = appMenu
         menu.addItem(item)
+        // Edit menu: without it ⌘C and ⌘A have no menu item to reach the log (a text view only copies through the responder chain's copy:)
+        let editItem = NSMenuItem(); let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = editMenu
+        menu.addItem(editItem)
         NSApp.mainMenu = menu
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 840, height: 620), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "Bowshot — Local Game Builder"
@@ -50,6 +60,12 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.minSize = NSSize(width: 720, height: 560)
         let title = NSTextField(labelWithString: "Bowshot")
         title.font = .boldSystemFont(ofSize: 25)
+        let iconView = NSImageView(image: NSApp.applicationIconImage)   // Bowshot's bow and arrow (the bundle's AppIcon.icns)
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.widthAnchor.constraint(equalToConstant: 64).isActive = true
+        iconView.heightAnchor.constraint(equalToConstant: 64).isActive = true
+        let heading = NSStackView(views: [iconView, title]); heading.orientation = .horizontal; heading.alignment = .centerY; heading.spacing = 12
         let subtitle = NSTextField(wrappingLabelWithString: "A Mac builder powered by nxnative. No game, console keys, saves or game shaders are included. Your game is built locally and must stay private.")
         folder.placeholderString = "Your game folder stays outside the source repository"
         folder.isEditable = false
@@ -63,7 +79,7 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let buttons = NSStackView(views: [build, reveal]); buttons.orientation = .horizontal
         let scroll = NSScrollView()
         scroll.hasVerticalScroller = true
-        log.isEditable = false; log.isSelectable = true
+        log.isEditable = false; log.isSelectable = true; log.usesFindBar = true
         log.frame = NSRect(x: 0, y: 0, width: 780, height: 240)
         log.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         log.autoresizingMask = [.width]; log.isVerticallyResizable = true
@@ -78,7 +94,7 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         credits.font = .systemFont(ofSize: 11)
         let stack = NSStackView()
         stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 13
-        stack.setViews([title, subtitle, row, buttons, status, stepLabel, bar, logToggle, scroll], in: .top)
+        stack.setViews([heading, subtitle, row, buttons, status, stepLabel, bar, logToggle, scroll], in: .top)
         stack.setViews([credits], in: .bottom)   // the credits stay at the window's foot, the log folded or not
         stack.translatesAutoresizingMaskIntoConstraints = false
         let content = window.contentView!
@@ -169,33 +185,35 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let ev = e["ev"] as? String ?? ""
         switch ev {
         case "bowshot_part":   // the second part: one step of its own, after the first part's stages
-            appPart = true; appStart = Date()
+            appPart = true; appStart = Date(); newStep()
             stage = (firstStages + 1, firstStages + 1, e["name"] as? String ?? "Game app", "preparing")
             inner = (0, 0, "")
             bar.isIndeterminate = true; bar.startAnimation(nil); bar.isHidden = false; stepLabel.isHidden = false
-            stepLabel.stringValue = stepTitle()
+            refreshLabel()
             appendLine("[\(stage.k)/\(stage.n)] \(stage.name) …")
         case "stage":
             let k = e["k"] as? Int ?? 0, n = e["n"] as? Int ?? 0, name = e["name"] as? String ?? "", step = e["step"] as? String ?? ""
+            newStep()
             if appPart {
                 inner = (k, n, name); stage.step = step.isEmpty ? name : "\(name) · \(step)"
                 if n > 0 { bar.stopAnimation(nil); bar.isIndeterminate = false; bar.doubleValue = Double(k - 1) / Double(n) }
-                stepLabel.stringValue = stepTitle()
+                refreshLabel()
                 appendLine("[\(stage.k)/\(stage.n)] \(stage.name) · \(stage.step) …")
             } else {
                 firstStages = n
                 stage = (k, n + 1, name, step)   // + 1: the second part, still to come
                 bar.isIndeterminate = true; bar.startAnimation(nil); bar.isHidden = false; stepLabel.isHidden = false
-                stepLabel.stringValue = stepTitle()
+                refreshLabel()
                 appendLine("[\(stage.k)/\(stage.n)] \(stage.name)" + (stage.step.isEmpty ? "" : " · \(stage.step)") + " …")
             }
         case "step":
             let step = e["step"] as? String ?? ""
+            newStep()
             stage.step = appPart ? (step.isEmpty ? inner.name : "\(inner.name) · \(step)") : step
-            stepLabel.stringValue = stepTitle()
+            refreshLabel()
             appendLine("[\(stage.k)/\(stage.n)] \(stage.name) · \(stage.step) …")
         case "progress":
-            var text = stepTitle()
+            var text = ""
             if appPart {   // the second part's bar: its engine stages done, plus the current one's share
                 if inner.n > 0 {
                     let f = (Double(inner.k - 1) + (e["frac"] as? Double ?? 0)) / Double(inner.n)
@@ -207,9 +225,15 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     bar.stopAnimation(nil); bar.isIndeterminate = false; bar.doubleValue = f
                     text += " — \(Int((f * 100).rounded())) %"
                 } else if !bar.isIndeterminate { bar.isIndeterminate = true; bar.startAnimation(nil) }
-                if let eta = e["eta"] as? Double { text += " — " + left(eta) }
             }
-            stepLabel.stringValue = text
+            if let d = e["done"] as? Double, let t = e["total"] as? Double, t > 0, (e["unit"] as? String ?? "") != "" {   // the count: "4,887/8,345 lines"
+                let nf = NumberFormatter(); nf.numberStyle = .decimal
+                text += " — \(nf.string(from: NSNumber(value: Int(d))) ?? "")/\(nf.string(from: NSNumber(value: Int(t))) ?? "") \(e["unit"] as? String ?? "")"
+            }
+            if let note = e["note"] as? String, !note.isEmpty { text += " — " + note }
+            if let eta = e["eta"] as? Double { text += " — " + left(eta) }
+            detail = text
+            refreshLabel()
         case "stage_end":
             let ok = e["ok"] as? Bool ?? true, warn = e["warn"] as? Bool ?? false
             let sec = Int(e["elapsed"] as? Double ?? 0), summary = e["summary"] as? String ?? ""
@@ -228,6 +252,29 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         default: break
         }
     }
+    // The step line: the step, its count and time left from the engine, and how long the step has run (the engine says nothing for minutes in some steps)
+    func refreshLabel() {
+        guard stage.k > 0 else { return }
+        stepLabel.stringValue = stepTitle() + detail + " — " + clock(Date().timeIntervalSince(stepStart)) + " elapsed"
+    }
+    func newStep() { stepStart = Date(); lastBeat = stepStart; detail = "" }
+    func clock(_ seconds: Double) -> String {
+        let t = Int(seconds), h = t / 3600, m = t % 3600 / 60, s = t % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
+    }
+    // Every second while a build runs: the elapsed time moves, and a step that has logged nothing for a minute says it is still running
+    func tick() {
+        guard process != nil, stage.k > 0 else { return }
+        refreshLabel()
+        if Date().timeIntervalSince(lastBeat) >= 60 {
+            appendLine("  … \(stage.name) still running, \(clock(Date().timeIntervalSince(stepStart))) in this step" + detail)
+        }
+    }
+    func playDone() {
+        let url = Bundle.main.resourceURL?.appendingPathComponent("BuildDone.mp3")
+        let sound = url.flatMap { FileManager.default.fileExists(atPath: $0.path) ? NSSound(contentsOf: $0, byReference: true) : nil } ?? NSSound(named: "Glass")
+        sound?.play()
+    }
     func stepTitle() -> String { "Step \(stage.k)/\(stage.n): \(stage.name)" + (stage.step.isEmpty ? "" : " · \(stage.step)") }
 
     func appendLine(_ line: String) {
@@ -238,6 +285,7 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         else if line.hasPrefix("[RED] ") { color = .systemOrange }
         else { color = .textColor }
         readyNext = line.hasPrefix("READY: ")
+        lastBeat = Date()
         guard let storage = log.textStorage else { return }
         let start = storage.length
         storage.append(NSAttributedString(string: line + "\n", attributes: [.foregroundColor: color, .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)]))
@@ -267,11 +315,13 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.process = nil; self.choose.isEnabled = true
+                self.ticker?.invalidate(); self.ticker = nil
                 self.build.isEnabled = self.folderProblem(self.folder.stringValue) == nil
                 self.append("", flush: true)
                 self.bar.stopAnimation(nil)
                 if finished.terminationStatus == 0 {
                     self.setStatus("Local build ready. Keep the resulting game app private.", .ready)
+                    self.playDone()
                     self.bar.isIndeterminate = false; self.bar.doubleValue = 1; self.stepLabel.stringValue = "Done"
                     if self.appPart {
                         let sec = Int(Date().timeIntervalSince(self.appStart))
@@ -289,9 +339,12 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
         }
         output = URL(fileURLWithPath: folder.stringValue).appendingPathComponent("Bowshot-local")
-        log.string = ""; pending = ""; lastWarning = nil; sawError = false; readyNext = false; stage = (0, 0, "", ""); firstStages = 0; appPart = false; inner = (0, 0, ""); stepLabel.stringValue = "Starting…"; stepLabel.isHidden = false; bar.isHidden = false; bar.isIndeterminate = true; bar.startAnimation(nil); setStatus("Building from your files. The first full build can take 1.5+ hours.")
+        log.string = ""; pending = ""; lastWarning = nil; sawError = false; readyNext = false; stage = (0, 0, "", ""); firstStages = 0; appPart = false; inner = (0, 0, ""); detail = ""; stepLabel.stringValue = "Starting…"; stepLabel.isHidden = false; bar.isHidden = false; bar.isIndeterminate = true; bar.startAnimation(nil); setStatus("Building from your files. The first full build can take 1.5+ hours.")
         build.isEnabled = false; choose.isEnabled = false; reveal.isEnabled = false
-        do { try task.run(); process = task } catch {
+        do {
+            try task.run(); process = task
+            ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.tick() }
+        } catch {
             build.isEnabled = folderProblem(folder.stringValue) == nil; choose.isEnabled = true
             setStatus("Could not start the builder: \(error.localizedDescription)", .error)
         }
