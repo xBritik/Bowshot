@@ -10,6 +10,22 @@ Bowshot is a small Mac app that builds the game **on your Mac, from your own gam
 
 **[Download Bowshot 0.1.0](https://github.com/LeoGeneret/Bowshot/releases/latest)**
 
+## Contents
+
+- [What you get](#what-you-get)
+- [What you need](#what-you-need)
+- [Install, step by step](#install-step-by-step)
+  1. [Download Bowshot](#1-download-bowshot)
+  2. [Install the tools (once)](#2-install-the-tools-once)
+  3. [Prepare your game folder](#3-prepare-your-game-folder)
+  4. [Build the game](#4-build-the-game)
+  5. [Play](#5-play)
+- [If something goes wrong](#if-something-goes-wrong)
+- [Keep it private](#keep-it-private)
+- [For developers](#for-developers)
+- [Credits](#credits)
+- [Licence and project identity](#licence-and-project-identity)
+
 ## What you get
 
 - **MetalFX upscaling**, on by default, for a sharper picture.
