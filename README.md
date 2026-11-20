@@ -157,7 +157,7 @@ Everything below is for people who want to understand, build or contribute to Bo
 | Build log | `<game folder>/Bowshot-local/build.log` |
 | Settings chosen for your build | `<game folder>/Bowshot-local/runtime.env` |
 | Game settings file (overrides) | `~/Library/Application Support/nxnative/0400486024DEC000/env.txt` |
-| Game log (attach to bug reports) | `~/Library/Logs/nxnative/0400486024DEC000.log` |
+| Game log (attach to bug reports; its `perf:` lines give the frame rate every 10 seconds) | `~/Library/Logs/nxnative/0400486024DEC000.log` |
 | Builder's engine copy and Python | `~/Library/Application Support/Bowshot/` |
 
 ### Building Bowshot from source
