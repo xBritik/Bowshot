@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.1 (20 Nov 2026)
+
 - Performance record: the game log gets a `perf:` line every 10 seconds (average frame rate, the frame rate of the slowest 1 % of frames, the worst frame, frames over 25 ms, dropped frames, GPU average and 95th percentile). It is the data behind performance reports. `DM_PERF_LOG=<seconds>` changes the interval, `0` turns it off.
 
 ## 0.1.0 (21 Nov 2026)
