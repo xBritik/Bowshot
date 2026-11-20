@@ -22,6 +22,12 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var stepStart = Date()                                // when the step shown began: its elapsed time is on the step line, ticking every second
     var detail = ""                                       // the step line's count part: " — 28 % — about 11 min left"
     var ticker: Timer?
+    // Setup: the tools the build needs, checked and installed from here (scripts/bowshot_setup.sh)
+    let setupBox = NSStackView()
+    var setupRows: [String: (text: NSTextField, button: NSButton)] = [:]
+    var setupStates: [String: (state: String, detail: String)] = [:]
+    var setupProcess: Process?
+    var setupReady = false
     var lastBeat = Date()                                 // the last line the log got: a step that says nothing for a minute gets a "still running" line
     var process: Process?
     var output: URL?
@@ -54,10 +60,10 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         editItem.submenu = editMenu
         menu.addItem(editItem)
         NSApp.mainMenu = menu
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 840, height: 620), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 840, height: 720), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "Bowshot — Local Game Builder"
         window.delegate = self
-        window.minSize = NSSize(width: 720, height: 560)
+        window.minSize = NSSize(width: 720, height: 640)
         let title = NSTextField(labelWithString: "Bowshot")
         title.font = .boldSystemFont(ofSize: 25)
         let iconView = NSImageView(image: NSApp.applicationIconImage)   // Bowshot's bow and arrow (the bundle's AppIcon.icns)
@@ -90,11 +96,19 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         logToggle.bezelStyle = .inline; logToggle.target = self; logToggle.action = #selector(toggleLog)
         scroll.isHidden = true   // the whole log, folded by default (Show build log)
         logScroll = scroll
+        let setupTitle = NSTextField(labelWithString: "Set up your Mac (once)"); setupTitle.font = .boldSystemFont(ofSize: 14)
+        let again = NSButton(title: "Check Again", target: self, action: #selector(recheckSetup)); again.bezelStyle = .inline
+        setupBox.orientation = .vertical; setupBox.alignment = .leading; setupBox.spacing = 8
+        setupBox.setViews([NSStackView(views: [setupTitle, again]),
+                           makeSetupRow("xcode", "Xcode", #selector(setupXcode)),
+                           makeSetupRow("metal", "Metal Toolchain", #selector(setupMetal)),
+                           makeSetupRow("tools", "Build tools", #selector(setupTools))], in: .top)
+        setupBox.isHidden = true   // until the first check says something is missing
         let credits = NSTextField(wrappingLabelWithString: "Engine: seedds / nxnative · Ocarina fork: cheemu21 / kid-with-sword-remake · Full contributors and licences are included under Documentation.")
         credits.font = .systemFont(ofSize: 11)
         let stack = NSStackView()
         stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 13
-        stack.setViews([heading, subtitle, row, buttons, status, stepLabel, bar, logToggle, scroll], in: .top)
+        stack.setViews([heading, subtitle, setupBox, row, buttons, status, stepLabel, bar, logToggle, scroll], in: .top)
         stack.setViews([credits], in: .bottom)   // the credits stay at the window's foot, the log folded or not
         stack.translatesAutoresizingMaskIntoConstraints = false
         let content = window.contentView!
@@ -114,6 +128,104 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         ])
         window.center(); window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        setStatus("Checking your Mac…")
+        refreshSetup()
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) { refreshSetup() }   // back from the App Store or Xcode: check again
+
+    // MARK: Setup
+    func makeSetupRow(_ id: String, _ title: String, _ action: Selector) -> NSStackView {
+        let text = NSTextField(labelWithString: title); text.lineBreakMode = .byTruncatingTail
+        text.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let button = NSButton(title: "Install", target: self, action: action); button.bezelStyle = .rounded; button.controlSize = .small; button.isHidden = true
+        setupRows[id] = (text, button)
+        let row = NSStackView(views: [text, button]); row.orientation = .horizontal; row.spacing = 12
+        return row
+    }
+    func setupScript() -> URL? {
+        guard let url = Bundle.main.resourceURL?.appendingPathComponent("engine/scripts/bowshot_setup.sh"), FileManager.default.fileExists(atPath: url.path) else { return nil }
+        return url
+    }
+    @objc func recheckSetup() { refreshSetup() }
+    func refreshSetup() {
+        guard setupProcess == nil, process == nil, let script = setupScript() else { return }
+        DispatchQueue.global().async { [weak self] in
+            let task = Process(); task.executableURL = URL(fileURLWithPath: "/bin/bash"); task.arguments = [script.path, "--status"]
+            let pipe = Pipe(); task.standardOutput = pipe; task.standardError = FileHandle.nullDevice; task.standardInput = FileHandle.nullDevice
+            guard (try? task.run()) != nil else { return }
+            let data = pipe.fileHandleForReading.readDataToEndOfFile(); task.waitUntilExit()
+            let out = String(decoding: data, as: UTF8.self)
+            DispatchQueue.main.async { self?.applySetup(out) }
+        }
+    }
+    func applySetup(_ output: String) {
+        setupStates = [:]
+        for line in output.components(separatedBy: "\n") {
+            let p = line.split(separator: "|", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
+            if p.count == 3 { setupStates[p[0]] = (p[1], p[2]) }
+        }
+        func ok(_ id: String) -> Bool { setupStates[id]?.state == "ok" }
+        let xcodeOK = ok("xcode")
+        func show(_ id: String, _ good: Bool, _ text: String, button: String? = nil, enabled: Bool = true) {
+            guard let row = setupRows[id] else { return }
+            row.text.stringValue = (good ? "✓ " : "• ") + text
+            row.text.textColor = good ? .systemGreen : .labelColor
+            row.button.isHidden = good || button == nil
+            if let b = button { row.button.title = b }
+            row.button.isEnabled = enabled && setupProcess == nil
+        }
+        let x = setupStates["xcode"]
+        show("xcode", xcodeOK, x?.detail ?? "Xcode", button: x?.state == "manual" ? "Open App Store" : x?.state == "select" ? "Select Xcode…" : x?.state == "firstlaunch" ? "Open Xcode" : nil)
+        show("metal", ok("metal"), setupStates["metal"]?.detail ?? "Metal Toolchain", button: "Install", enabled: xcodeOK)
+        let missing = [("uv", "uv"), ("zstd", "zstd"), ("glslang", "glslang")].filter { !ok($0.0) }.map { $0.1 }
+        show("tools", missing.isEmpty, missing.isEmpty ? "Build tools (uv, zstd, glslang)" : "Build tools to install: \(missing.joined(separator: ", "))", button: "Install", enabled: xcodeOK)
+        setupReady = !setupStates.isEmpty && xcodeOK && ok("metal") && missing.isEmpty
+        setupBox.isHidden = setupReady
+        updateBuildButton()
+    }
+    @objc func setupXcode() {
+        switch setupStates["xcode"]?.state ?? "" {
+        case "manual": if let url = URL(string: "https://apps.apple.com/app/xcode/id497799835") { NSWorkspace.shared.open(url) }
+        case "firstlaunch":
+            let apps = ((try? FileManager.default.contentsOfDirectory(atPath: "/Applications")) ?? []).filter { $0.hasPrefix("Xcode") && $0.hasSuffix(".app") }.sorted()
+            if let app = apps.last { NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/" + app)) }
+        case "select": runSetup(["--select-xcode"], title: "Selecting Xcode…")
+        default: break
+        }
+    }
+    @objc func setupMetal() { runSetup(["--install", "metal"], title: "Downloading the Metal Toolchain (a few GB)…") }
+    @objc func setupTools() { runSetup(["--install", "tools"], title: "Installing the build tools…") }
+
+    // One setup step: the script's output goes to the build log (opened), and the setup is checked again when it ends
+    func runSetup(_ args: [String], title: String) {
+        guard setupProcess == nil, process == nil, let script = setupScript() else { return }
+        let task = Process(); task.executableURL = URL(fileURLWithPath: "/bin/bash"); task.arguments = [script.path] + args
+        let pipe = Pipe(); task.standardOutput = pipe; task.standardError = pipe; task.standardInput = FileHandle.nullDevice
+        pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            let data = handle.availableData
+            guard !data.isEmpty else { handle.readabilityHandler = nil; return }
+            let text = String(decoding: data, as: UTF8.self).replacingOccurrences(of: "\r", with: "\n")   // curl's progress bar redraws with \r
+            DispatchQueue.main.async { self?.append(text) }
+        }
+        task.terminationHandler = { [weak self] finished in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.setupProcess = nil; self.append("", flush: true); self.bar.stopAnimation(nil); self.bar.isHidden = true; self.stepLabel.isHidden = true
+                if finished.terminationStatus != 0 { self.setStatus("That setup step failed. The log below says why.", .error) }
+                self.refreshSetup()
+                self.updateBuildButton()
+                if finished.terminationStatus != 0 { self.setStatus("That setup step failed. The log below says why.", .error) }
+            }
+        }
+        if logScroll.isHidden { toggleLog() }
+        appendLine("— \(title)")
+        do {
+            try task.run(); setupProcess = task
+            setStatus(title); build.isEnabled = false
+            for r in setupRows.values { r.button.isEnabled = false }
+            bar.isHidden = false; bar.isIndeterminate = true; bar.startAnimation(nil)
+        } catch { setStatus("Could not start the setup: \(error.localizedDescription)", .error) }
     }
 
     @objc func chooseFolder() {
@@ -152,8 +264,12 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // The Build button is enabled (and blue) only for a valid folder and while no build runs
     func updateBuildButton() {
         let problem = folderProblem(folder.stringValue)
-        build.isEnabled = process == nil && problem == nil
-        if process == nil { if let problem = problem { setStatus(problem, .error) } else { setStatus("Ready to build. The first full build can take 1.5+ hours.") } }
+        let busy = process != nil || setupProcess != nil
+        build.isEnabled = !busy && setupReady && problem == nil
+        if !busy {
+            if !setupReady { setStatus(setupStates.isEmpty ? "Checking your Mac…" : "First, finish the setup steps above.") }
+            else if let problem = problem { setStatus(problem, .error) } else { setStatus("Ready to build. The first full build can take 1.5+ hours.") }
+        }
     }
 
     // The log, line by line: bowshot_build.sh's blocking errors (ERROR: ) in red, the engine's warnings ([RED] ) in orange, the finished app (READY: and the line
@@ -293,7 +409,7 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc func startBuild() {
-        guard process == nil else { return }
+        guard process == nil, setupProcess == nil, setupReady else { return }
         if let problem = folderProblem(folder.stringValue) { setStatus(problem, .error); build.isEnabled = false; return }
         guard let resources = Bundle.main.resourceURL else { setStatus("The app resources are missing.", .error); return }
         let script = resources.appendingPathComponent("engine/scripts/bowshot_build.sh")
@@ -316,7 +432,7 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 guard let self = self else { return }
                 self.process = nil; self.choose.isEnabled = true
                 self.ticker?.invalidate(); self.ticker = nil
-                self.build.isEnabled = self.folderProblem(self.folder.stringValue) == nil
+                self.build.isEnabled = self.setupReady && self.folderProblem(self.folder.stringValue) == nil
                 self.append("", flush: true)
                 self.bar.stopAnimation(nil)
                 if finished.terminationStatus == 0 {
@@ -345,7 +461,7 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             try task.run(); process = task
             ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.tick() }
         } catch {
-            build.isEnabled = folderProblem(folder.stringValue) == nil; choose.isEnabled = true
+            build.isEnabled = setupReady && folderProblem(folder.stringValue) == nil; choose.isEnabled = true
             setStatus("Could not start the builder: \(error.localizedDescription)", .error)
         }
     }
@@ -372,7 +488,7 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 if CommandLine.arguments.contains("--self-check") {
     let resources = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
-    let required = ["engine/LICENSE", "engine/UPSTREAM-REVISION", "engine/scripts/bowshot_build.sh", "engine/scripts/build_ipa_from_nsp.py", "Documentation/CREDITS.md"]
+    let required = ["engine/LICENSE", "engine/UPSTREAM-REVISION", "engine/scripts/bowshot_build.sh", "engine/scripts/bowshot_setup.sh", "engine/scripts/build_ipa_from_nsp.py", "Documentation/CREDITS.md"]
     let missing = required.filter { !FileManager.default.fileExists(atPath: resources.appendingPathComponent($0).path) }
     if !missing.isEmpty { fputs("Missing builder resources: \(missing.joined(separator: ", "))\n", stderr); exit(1) }
     print("Bowshot builder resources verified; no game is required for this check.")

@@ -4,16 +4,17 @@
 # The engine's progress: lines for a terminal, json events with BOWSHOT_PROGRESS=json (the builder window's progress bar; build.log then holds those events).
 # A blocking error is one line that starts with ERROR: (the builder window shows it in red); the finished app is the line READY: <path> (green).
 set -euo pipefail
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 SOURCE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SUPPORT_DIR="${BOWSHOT_SUPPORT_DIR:-$HOME/Library/Application Support/Bowshot}"
+# The tools the builder's setup screen installs (scripts/bowshot_setup.sh) come first, then Homebrew's for a Mac that has them already
+export PATH="$SUPPORT_DIR/tools/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 
 doctor() {
   [[ "$(uname -m)" == arm64 ]] || { echo 'ERROR: Apple silicon is required.'; return 1; }
-  command -v uv >/dev/null || { echo 'ERROR: Install the prerequisite tools shown in the README (uv is missing).'; return 1; }
-  xcrun --find metal >/dev/null 2>&1 || { echo 'ERROR: Install Xcode 27.2 and its Metal Toolchain, then open Xcode once.'; return 1; }
-  for tool in xcodegen zstd glslangValidator; do
-    command -v "$tool" >/dev/null || { echo "ERROR: Missing prerequisite: $tool. See the README."; return 1; }
+  command -v uv >/dev/null || { echo 'ERROR: A build tool is missing (uv). Open the builder window and use its setup steps (Install build tools).'; return 1; }
+  xcrun --find metal >/dev/null 2>&1 || { echo 'ERROR: Install Xcode 27.2 and its Metal Toolchain: the builder window has the setup steps.'; return 1; }
+  for tool in zstd glslangValidator; do   # xcodegen is only for iOS builds: the builder makes a Mac app
+    command -v "$tool" >/dev/null || { echo "ERROR: Missing build tool: $tool. Open the builder window and use its setup steps (Install build tools)."; return 1; }
   done
 }
 
