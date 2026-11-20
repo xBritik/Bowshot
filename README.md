@@ -25,7 +25,7 @@ Everything from [0.1.0](CHANGELOG.md#010-21-nov-2026) (MetalFX upscaling, the Re
 - [What you need](#what-you-need)
 - [Install, step by step](#install-step-by-step)
   1. [Download Bowshot](#1-download-bowshot)
-  2. [Install the tools (once)](#2-install-the-tools-once)
+  2. [Set up your Mac (once)](#2-set-up-your-mac-once)
   3. [Prepare your game folder](#3-prepare-your-game-folder)
   4. [Build the game](#4-build-the-game)
   5. [Play](#5-play)
@@ -55,34 +55,15 @@ Follow the steps in order. When you see a grey box of text, it is a command: **c
 2. Open your **Downloads** folder and double-click that zip file. An app called **Bowshot** (with a bow-and-arrow icon) appears next to it.
 3. Drag **Bowshot** into your **Applications** folder. Don't open it yet.
 
-### 2. Install the tools (once)
+### 2. Set up your Mac (once)
 
-1. **Xcode.** Open the **App Store**, search for **Xcode**, and install it. It is a very large download. When it is done, **open Xcode once**, accept the licence if asked, let it finish its setup, then close it. Bowshot needs **Xcode 27.2**.
-2. **Open the Terminal.** Press **⌘ Space**, type `Terminal`, and press Return. Keep the window open.
-3. **Homebrew** (a popular tool installer; skip this if you already have it). Paste:
+Open **Bowshot**. If something is missing, a **Set up your Mac** box lists what to do, with a button for each step. No Terminal and no Homebrew are needed. When every line has a green check, the box disappears.
 
-   ```sh
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-   ```
+1. **Xcode** (version 27.2 or later). Xcode is a very large download that Bowshot cannot install for you: click **Open App Store**, install it, then open Xcode once, accept the licence and let it finish its setup. If Xcode is installed but not selected, click **Select Xcode…** (your Mac asks for its password).
+2. **Metal Toolchain.** Click **Install**: Bowshot downloads Apple's graphics compiler (a few GB).
+3. **Build tools.** Click **Install**: Bowshot downloads `uv`, `glslang` and `zstd` into its own folder (`~/Library/Application Support/Bowshot/tools`). Each download is checked against a fixed SHA-256 before it is used.
 
-   Your Mac asks for its **password**. Type it (nothing shows as you type, that is normal) and press Return. **When it finishes, Homebrew prints a "Next steps" paragraph with two commands. Copy and run them**, or the next step will not work.
-4. **The other tools.** Paste these two commands, one after the other, and wait for each to finish:
-
-   ```sh
-   brew install uv xcodegen zstd glslang
-   ```
-
-   ```sh
-   xcodebuild -downloadComponent MetalToolchain
-   ```
-
-5. **Check everything is in place:**
-
-   ```sh
-   bash /Applications/Bowshot.app/Contents/Resources/engine/scripts/bowshot_build.sh --doctor
-   ```
-
-   The last line should say **`Prerequisite executables found.`** If not, it names what is missing: redo that step.
+When you come back to Bowshot after the App Store or Xcode, it checks again by itself; **Check Again** does it on demand. Already have these tools from Homebrew? Bowshot uses them and shows a green check.
 
 ### 3. Prepare your game folder
 
