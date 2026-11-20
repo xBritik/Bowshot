@@ -57,7 +57,7 @@ Follow the steps in order. When you see a grey box of text, it is a command: **c
 
 ### 2. Set up your Mac (once)
 
-Open **Bowshot**. If something is missing, a **Set up your Mac** box lists what to do, with a button for each step. No Terminal and no Homebrew are needed. When every line has a green check, the box disappears.
+Open **Bowshot**. It walks you through four screens: **Your Mac**, **Game**, **Build** and **Done**. If your Mac is missing something, the first one lists what to do, with a button for each step; when every line has a green check, **Continue** opens the next screen (and if nothing is missing, Bowshot skips it). No Terminal and no Homebrew are needed.
 
 1. **Xcode** (version 27.2 or later). Xcode is a very large download that Bowshot cannot install for you: click **Open App Store**, install it, then open Xcode once, accept the licence and let it finish its setup. If Xcode is installed but not selected, click **Select Xcode…** (your Mac asks for its password).
 2. **Metal Toolchain.** Click **Install**: Bowshot downloads Apple's graphics compiler (a few GB).
