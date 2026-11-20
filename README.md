@@ -158,7 +158,6 @@ Everything below is for people who want to understand, build or contribute to Bo
 This makes the **game-free builder**, not a game. The Python tools need Python 3.12 or newer, which `uv` provides (macOS's own `python3` may be older). Install the tools of step 2 first, then:
 
 ```sh
-mkdir -p ~/Desktop/dev && cd ~/Desktop/dev
 git clone https://github.com/LeoGeneret/Bowshot.git
 cd Bowshot
 uv run --no-project --python 3.14 tools/check_content.py
