@@ -4,6 +4,16 @@
 
 ## 0.1.1 (20 Nov 2026)
 
+### Builder (Bowshot.app)
+
+- The step line shows how long the current step has run, ticking every second, and a step that logs nothing for a minute adds a "still running" line to the build log.
+- Prewarm pipelines shows its count (`4,887/8,345 lines`), the bases compiled and the time left, read from the host's own progress lines.
+- The build log can be selected and copied with ⌘C (there is an Edit menu with Copy and Select All).
+- A sound plays when a build finishes.
+- Bowshot's icon is shown in the builder window.
+
+### Engine
+
 - Performance record: the game log gets a `perf:` line every 10 seconds (average frame rate, the frame rate of the slowest 1 % of frames, the worst frame, frames over 25 ms, dropped frames, GPU average and 95th percentile). It is the data behind performance reports. `DM_PERF_LOG=<seconds>` changes the interval, `0` turns it off.
 
 ## 0.1.0 (21 Nov 2026)
