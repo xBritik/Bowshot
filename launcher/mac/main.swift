@@ -104,11 +104,14 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                            makeSetupRow("metal", "Metal Toolchain", #selector(setupMetal)),
                            makeSetupRow("tools", "Build tools", #selector(setupTools))], in: .top)
         setupBox.isHidden = true   // until the first check says something is missing
+        setupBox.setHuggingPriority(.required, for: .vertical)   // the box keeps its own height: the window's spare height goes elsewhere
+        for v in setupBox.arrangedSubviews { v.setContentHuggingPriority(.required, for: .vertical) }
         let credits = NSTextField(wrappingLabelWithString: "Engine: seedds / nxnative · Ocarina fork: cheemu21 / kid-with-sword-remake · Full contributors and licences are included under Documentation.")
         credits.font = .systemFont(ofSize: 11)
         let stack = NSStackView()
         stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 13
-        stack.setViews([heading, subtitle, setupBox, row, buttons, status, stepLabel, bar, logToggle, scroll], in: .top)
+        let spacer = NSView(); spacer.setContentHuggingPriority(NSLayoutConstraint.Priority(1), for: .vertical)   // takes the window's spare height, so no row of the setup box stretches
+        stack.setViews([heading, subtitle, setupBox, row, buttons, status, stepLabel, bar, logToggle, scroll, spacer], in: .top)
         stack.setViews([credits], in: .bottom)   // the credits stay at the window's foot, the log folded or not
         stack.translatesAutoresizingMaskIntoConstraints = false
         let content = window.contentView!

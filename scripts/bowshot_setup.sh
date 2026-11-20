@@ -114,6 +114,18 @@ select_xcode() {
     && echo "✓ Selected $app" || { echo 'ERROR: Xcode was not selected (the password prompt was cancelled?).'; return 1; }
 }
 
+# Interface test: BOWSHOT_SETUP_FAKE=<file of status lines> makes --status print that file, and each install / select step only pretend (a short log, then its lines turn ok)
+if [[ -n "${BOWSHOT_SETUP_FAKE:-}" ]]; then
+  case "${1:-}" in
+    --status) cat "$BOWSHOT_SETUP_FAKE"; exit 0 ;;
+    --install|--select-xcode)
+      echo "(test) $*"; for i in 1 2 3; do echo "(test) step $i of 3 …"; sleep 1; done
+      case "${2:-}" in tools) ids='uv zstd glslang' ;; metal) ids=metal ;; *) ids=xcode ;; esac
+      for id in $ids; do sed -i '' "s/^$id|[a-z]*|.*/$id|ok|$id (test)/" "$BOWSHOT_SETUP_FAKE"; done
+      exit 0 ;;
+  esac
+fi
+
 case "${1:-}" in
   --status) status ;;
   --install)
