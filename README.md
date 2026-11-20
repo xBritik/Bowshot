@@ -92,7 +92,7 @@ Don't put it on the Desktop, in Documents or in iCloud Drive: those can sync wit
 
 ### 4. Build the game
 
-1. Open **Bowshot** from Applications. **The first time, right-click it → Open → Open.** The app is not signed by Apple, so a normal double-click is blocked once. If your Mac still refuses: **System Settings → Privacy & Security → Open Anyway**.
+1. Open **Bowshot** from Applications. **The first time, right-click it → Open, then close the pop-up** (click **Done**; do **not** choose *Move to Trash*). The app is not signed by Apple, so your Mac blocks it once. Then open **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to Bowshot, confirm, and open the app again.
 2. Click **Choose Game Folder…** and pick the **Ocarina** folder (the folder, not the file inside).
 3. The **Build My Local Game** button turns **blue**. Click it. If it stays grey, the line under it says why (missing game file, wrong folder…).
 4. **Wait.** A progress bar shows the current step and the time left. Keep the Mac **plugged in and awake** (don't close the lid) and don't do anything heavy meanwhile.
@@ -103,7 +103,7 @@ Building again later is much faster: it reuses what is still valid.
 ### 5. Play
 
 1. In Bowshot, click **Open game folder**. A folder called **Bowshot-local** opens.
-2. Open **Ocarina of Time** inside it. **The first time, right-click → Open → Open.** If your Mac asks whether the app may access a folder, click **Allow**: it needs that for your saves.
+2. Open **Ocarina of Time** inside it. **The first time, do the same: right-click → Open, close the pop-up, then Privacy & Security → Open Anyway.** If your Mac asks whether the app may access a folder, click **Allow**: it needs that for your saves.
 3. A settings window appears. You can leave it as it is and start the game.
 4. Play with the **keyboard or a controller** (Xbox, PlayStation and most Bluetooth pads work).
 5. To quit, press **⌘ Q**. **Save in the game first**, or your progress is lost.
@@ -122,7 +122,7 @@ Building again later is much faster: it reuses what is still valid.
 
 | Problem | What to do |
 |---|---|
-| "The app cannot be opened" | Right-click it → **Open** → **Open**, or **System Settings → Privacy & Security → Open Anyway**. |
+| "The app cannot be opened" | Right-click it → **Open**, close the pop-up (don't move it to the Trash), then **System Settings → Privacy & Security → Open Anyway**. |
 | **Build My Local Game** stays grey | Read the line under it: wrong folder, game file missing, or the folder is in iCloud or a Git project. Redo step 3. |
 | A red line with `Missing prerequisite` or `uv is missing` | Redo step 2, then the check at the end of it. |
 | A red line about **Xcode 27.2** or the **Metal Toolchain** | You need exactly that version of Xcode. Open it once, then run `xcodebuild -downloadComponent MetalToolchain` again. |
