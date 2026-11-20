@@ -8,7 +8,7 @@ Bowshot is a small Mac app that builds the game **on your Mac, from your own gam
 
 > **Experimental preview, version 0.1.0.** Tested only with Ocarina of Time **update v131072** on Apple silicon Macs.
 
-**[Download Bowshot 0.1.0](https://github.com/LeoGeneret/Bowshot/releases/latest)**
+**[Download Bowshot 0.1.0](https://github.com/LeoGeneret/Bowshot/releases/tag/v0.1.0)**
 
 ## Contents
 
@@ -49,8 +49,8 @@ Follow the steps in order. When you see a grey box of text, it is a command: **c
 
 ### 1. Download Bowshot
 
-1. Go to the [latest release](https://github.com/LeoGeneret/Bowshot/releases/latest) and download **`Bowshot-0.1.0-macOS-arm64.zip`**.
-2. Double-click the downloaded zip file. An app called **Bowshot** appears.
+1. Go to the [Bowshot 0.1.0 release page](https://github.com/LeoGeneret/Bowshot/releases/tag/v0.1.0), scroll to **Assets**, and click **`Bowshot-0.1.0-macOS-arm64.zip`**. Do **not** download the files named **Source code** or **`Bowshot-0.1.0-source.zip`**: they hold the project's code, not the app.
+2. Open your **Downloads** folder and double-click that zip file. An app called **Bowshot** (with a bow-and-arrow icon) appears next to it.
 3. Drag **Bowshot** into your **Applications** folder. Don't open it yet.
 
 ### 2. Install the tools (once)
