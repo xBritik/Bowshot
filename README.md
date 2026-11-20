@@ -2,6 +2,8 @@
 
 # Bowshot - (Experimental Work)
 
+> **Pas à l'aise avec l'informatique ? / New to this?** Un guide pas à pas, en français et sans jargon, est ici : **[GUIDE-INSTALLATION.md](GUIDE-INSTALLATION.md)**.
+
 A local Mac game builder based on **nxnative**, with the Ocarina of Time work from **kid-with-sword-remake**. Choose your own game dump, build it on your Mac, and keep the result on your machine.
 
 Bowshot packages other developers’ native-execution work with a small Mac launcher. It is not an independently developed replacement for nxnative. The game’s ARM code runs through nxnative’s runtime and Metal graphics layer rather than a conventional full-system emulator.
@@ -48,7 +50,7 @@ What 0.1.0 brings (the full list is in [CHANGELOG.md](CHANGELOG.md)):
 
 ## Setup and running
 
-Follow these steps in order. Steps 1–3 are one-time setup. You need your own game file before step 4: Bowshot does not include, download or point to one.
+A plain-language French version of these steps for beginners is in [GUIDE-INSTALLATION.md](GUIDE-INSTALLATION.md). Follow these steps in order. Steps 1–3 are one-time setup. You need your own game file before step 4: Bowshot does not include, download or point to one.
 
 ### 1. Check your Mac
 
@@ -67,8 +69,9 @@ Follow these steps in order. Steps 1–3 are one-time setup. You need your own g
 **B. From this source** (do step 3 first: it needs Xcode and uv)
 
 ```sh
-git clone https://github.com/LeoGeneret/Bowshot.git ~/Developer/Bowshot
-cd ~/Developer/Bowshot
+mkdir -p ~/Desktop/dev && cd ~/Desktop/dev
+git clone https://github.com/LeoGeneret/Bowshot.git
+cd Bowshot
 uv run --no-project --python 3.14 tools/package_builder.py
 ```
 
