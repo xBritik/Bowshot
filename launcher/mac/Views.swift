@@ -8,6 +8,7 @@ let margin: CGFloat = 20
 
 struct ContentView: View {
     @ObservedObject var m: BuilderModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,7 +25,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 680, minHeight: 540)
-        .animation(.easeInOut(duration: 0.2), value: m.step)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: m.step)
     }
 }
 
@@ -32,15 +33,16 @@ struct ContentView: View {
 
 struct StepBar: View {
     let current: Step
+    @Environment(\.appearsActive) private var appearsActive
     var body: some View {
         HStack(spacing: 8) {
             ForEach(Step.allCases, id: \.rawValue) { s in
                 HStack(spacing: 8) {
                     ZStack {
                         Circle().fill(s.rawValue < current.rawValue ? Color.accentColor : Color.clear)
-                        Circle().strokeBorder(s.rawValue <= current.rawValue ? Color.accentColor : Color.secondary.opacity(0.5), lineWidth: 1.5)
+                        Circle().strokeBorder(s.rawValue <= current.rawValue ? Color.accentColor : Color(nsColor: .tertiaryLabelColor), lineWidth: 1.5)
                         if s.rawValue < current.rawValue {
-                            Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
+                            Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(Color(nsColor: .alternateSelectedControlTextColor))   // the system text color on an accent fill
                         } else {
                             Text("\(s.rawValue + 1)").font(.caption.weight(.semibold)).foregroundStyle(s == current ? Color.accentColor : Color.secondary)
                         }
@@ -50,9 +52,10 @@ struct StepBar: View {
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Step \(s.rawValue + 1), \(s.title)" + (s == current ? ", current" : s.rawValue < current.rawValue ? ", done" : ""))
-                if s != Step.allCases.last { Rectangle().fill(Color.secondary.opacity(0.3)).frame(height: 1).frame(maxWidth: .infinity) }
+                if s != Step.allCases.last { Rectangle().fill(Color(nsColor: .separatorColor)).frame(height: 1).frame(maxWidth: .infinity) }
             }
         }
+        .opacity(appearsActive ? 1 : 0.6)   // custom chrome dims with the window, like the system's
     }
 }
 
@@ -90,7 +93,7 @@ struct Card<Content: View>: View {
     var body: some View {
         VStack(spacing: 0) { content }
             .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color(nsColor: .controlBackgroundColor)))
-            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.secondary.opacity(0.25)))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color(nsColor: .separatorColor)))
     }
 }
 
@@ -131,7 +134,7 @@ struct LogDisclosure: View {
             LogView(storage: m.log)
                 .frame(height: height)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.secondary.opacity(0.25)))
+                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color(nsColor: .separatorColor)))
                 .padding(.top, 8)
         } label: {
             Text(open ? "Hide details" : "Show details").font(.callout)
@@ -174,6 +177,7 @@ struct SetupScreen: View {
                 Button("Check Again") { m.refreshSetup() }.disabled(m.setupBusy != nil)
             } trailing: {
                 Button("Continue") { m.step = .game }
+                    .help("Go on to choosing your game (Return)")
                     .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction).disabled(!m.setupReady)
             }
         }
@@ -231,6 +235,7 @@ struct GameScreen: View {
                 Button("Back") { m.step = .setup }
             } trailing: {
                 Button("Build My Local Game") { m.startBuild() }
+                    .help("Start building the game on this Mac (Return)")
                     .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
                     .disabled(m.folderProblem != nil || !m.setupReady)
             }
@@ -255,7 +260,7 @@ struct DropZone: View {
         }
         .frame(maxWidth: 560, minHeight: 130)
         .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(targeted ? Color.accentColor.opacity(0.12) : Color.clear))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(targeted ? Color.accentColor : Color.secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(targeted ? Color.accentColor : Color(nsColor: .tertiaryLabelColor), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])))
     }
 }
 
@@ -279,6 +284,10 @@ struct ChosenFolder: View {
             .padding(12)
         }
         .frame(maxWidth: 560)
+        .contextMenu {
+            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: m.folder)]) }
+            Button("Copy Path") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(m.folder, forType: .string) }
+        }
     }
 }
 
@@ -373,7 +382,8 @@ struct DoneScreen: View {
             } trailing: {
                 HStack {
                     Button("Show in Finder") { m.showApp() }
-                    Button("Open Game") { m.openGame() }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                    Button("Open Game") { m.openGame() }
+                        .help("Open the game you built (Return)").buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
                 }
             }
         }

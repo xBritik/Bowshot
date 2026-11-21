@@ -1,16 +1,20 @@
 // SPDX-License-Identifier: MIT
 import AppKit
 import SwiftUI
+import Combine
 
 // The window and the menus; the screens are in Views.swift, what they do in Model.swift
-final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation {
     var window: NSWindow!
     let model = BuilderModel()
+    var titleWatch: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let menu = NSMenu()
         let item = NSMenuItem()
         let appMenu = NSMenu()
+        let aboutItem = NSMenuItem(title: "About Bowshot", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(aboutItem)
         let creditsItem = NSMenuItem(title: "Credits & Licences…", action: #selector(showCredits), keyEquivalent: "")
         creditsItem.target = self
         appMenu.addItem(creditsItem)
@@ -26,8 +30,18 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editItem.submenu = editMenu
         menu.addItem(editItem)
+        // Game menu: every action of the screens, with its shortcut (the buttons are not the only way in)
+        let gameItem = NSMenuItem(); let gameMenu = NSMenu(title: "Game")
+        for (title, sel, key) in [("Choose Game Folder…", #selector(menuChoose), "o"), ("Check Tools Again", #selector(menuCheck), "r"), ("Show in Finder", #selector(menuShow), "f"), ("Open Game", #selector(menuOpen), "g")] {
+            let it = NSMenuItem(title: title, action: sel, keyEquivalent: key); it.target = self; gameMenu.addItem(it)
+        }
+        gameItem.submenu = gameMenu
+        menu.addItem(gameItem)
         let windowItem = NSMenuItem(); let windowMenu = NSMenu(title: "Window")
         windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        windowMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+        windowMenu.addItem(.separator())
+        windowMenu.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
         windowItem.submenu = windowMenu
         menu.addItem(windowItem)
         NSApp.mainMenu = menu
@@ -38,7 +52,11 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.delegate = self
         window.minSize = NSSize(width: 680, height: 540)
         window.contentView = NSHostingView(rootView: ContentView(m: model))
-        window.center(); window.makeKeyAndOrderFront(nil)
+        if let look = ProcessInfo.processInfo.environment["BOWSHOT_APPEARANCE"] { NSApp.appearance = NSAppearance(named: look == "light" ? .aqua : .darkAqua) }   // interface test only: check both looks without touching the Mac's setting
+        window.center()
+        window.setFrameAutosaveName("BowshotBuilder")   // the window comes back where it was left
+        window.makeKeyAndOrderFront(nil)
+        titleWatch = model.$step.sink { [weak self] step in self?.window.title = step.title }   // the title names the screen, not the app
         window.makeFirstResponder(nil)   // the window opens calm: nothing focused
         NSApp.activate(ignoringOtherApps: true)
         model.refreshSetup()
@@ -46,6 +64,19 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidBecomeActive(_ notification: Notification) { model.refreshSetup() }   // back from the App Store or Xcode: check again
 
+    @objc func menuChoose() { if model.step == .game || model.step == .done { model.step = .game; model.chooseFolder() } }
+    @objc func menuCheck() { model.refreshSetup() }
+    @objc func menuShow() { model.showApp() }
+    @objc func menuOpen() { model.openGame() }
+    // Items that do not apply stay in the menu, dimmed
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        switch item.action {
+        case #selector(menuChoose): return !model.busy && (model.step == .game || model.step == .done)
+        case #selector(menuCheck): return !model.busy && model.step != .build
+        case #selector(menuShow), #selector(menuOpen): return model.step == .done
+        default: return true
+        }
+    }
     @objc func showCredits() {
         if let url = Bundle.main.resourceURL?.appendingPathComponent("Documentation/CREDITS.md") { NSWorkspace.shared.open(url) }
     }
