@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.1.1 (20 Nov 2026)
+
+### Builder (Bowshot.app)
+
+- A new guided interface in four screens: Your Mac (setup), Game (choose or drop your game folder, with the folder checked at once), Build (one progress bar for the whole build, the current step, the time left and the time elapsed) and Done (open the game, show it in Finder). A failed build says why and offers Try Again.
+- Setup screen: Bowshot checks Xcode, the Metal Toolchain and the build tools when it opens, and installs what it can with one button each (no Terminal, no Homebrew). `uv`, `glslangValidator` and `zstd` go into `~/Library/Application Support/Bowshot/tools`, with pinned versions and SHA-256 checks. Xcode itself is still installed from the App Store; Build stays off until every step is green.
+- xcodegen is no longer required: it is only for iOS builds.
+- The step line shows how long the current step has run, ticking every second, and a step that logs nothing for a minute adds a "still running" line to the build log.
+- Prewarm pipelines shows its count (`4,887/8,345 lines`), the bases compiled and the time left, read from the host's own progress lines.
+- The build log can be selected and copied with ⌘C (there is an Edit menu with Copy and Select All).
+- A sound plays when a build finishes.
+- Bowshot's icon is shown in the builder window.
+
+### Engine
+
 - Performance record: the game log gets a `perf:` line every 10 seconds (average frame rate, the frame rate of the slowest 1 % of frames, the worst frame, frames over 25 ms, dropped frames, GPU average and 95th percentile). It is the data behind performance reports. `DM_PERF_LOG=<seconds>` changes the interval, `0` turns it off.
 
 ## 0.1.0 (21 Nov 2026)
