@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: MIT
 import AppKit
 import SwiftUI
-import Combine
 
 // The window and the menus; the screens are in Views.swift, what they do in Model.swift
 final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation {
     var window: NSWindow!
     let model = BuilderModel()
-    var titleWatch: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let menu = NSMenu()
@@ -56,7 +54,6 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, 
         window.center()
         window.setFrameAutosaveName("BowshotBuilder")   // the window comes back where it was left
         window.makeKeyAndOrderFront(nil)
-        titleWatch = model.$step.sink { [weak self] step in self?.window.title = step.title }   // the title names the screen, not the app
         window.makeFirstResponder(nil)   // the window opens calm: nothing focused
         NSApp.activate(ignoringOtherApps: true)
         model.refreshSetup()
