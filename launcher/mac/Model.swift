@@ -9,7 +9,7 @@ enum Step: Int, CaseIterable {
 }
 
 // What the setup screen lists: Xcode, the Metal Toolchain, and the three small build tools together
-enum Requirement: String, CaseIterable { case xcode, metal, tools }
+enum Requirement: String, CaseIterable { case memory, xcode, metal, tools }
 
 struct RequirementRow {
     var ok: Bool
@@ -76,12 +76,15 @@ final class BuilderModel: ObservableObject {
 
     func state(_ id: String) -> String { setupStates[id]?.first ?? "" }
     func detail(_ id: String) -> String { setupStates[id].flatMap { $0.count > 1 ? $0[1] : nil } ?? "" }
+    var memoryOK: Bool { state("memory") != "low" }   // a status without a memory line (the test file) counts as fine
     var xcodeOK: Bool { state("xcode") == "ok" }
     var toolsMissing: [String] { ["uv", "zstd", "glslang"].filter { state($0) != "ok" } }
-    var setupReady: Bool { !setupStates.isEmpty && xcodeOK && state("metal") == "ok" && toolsMissing.isEmpty }
+    var setupReady: Bool { !setupStates.isEmpty && memoryOK && xcodeOK && state("metal") == "ok" && toolsMissing.isEmpty }
 
     func row(_ r: Requirement) -> RequirementRow {
         switch r {
+        case .memory:
+            return RequirementRow(ok: memoryOK, title: "Memory", detail: memoryOK ? (detail("memory").isEmpty ? "This Mac has enough memory." : detail("memory")) : detail("memory"), button: nil, enabled: false)
         case .xcode:
             let s = state("xcode")
             let button = s == "manual" ? "Open App Store" : s == "select" ? "Select Xcode…" : s == "firstlaunch" ? "Open Xcode" : nil
@@ -121,6 +124,7 @@ final class BuilderModel: ObservableObject {
 
     func perform(_ r: Requirement) {
         switch r {
+        case .memory: break   // nothing to do: the Mac either has the memory or cannot build the game
         case .xcode:
             switch state("xcode") {
             case "manual": if let url = URL(string: "https://apps.apple.com/app/xcode/id497799835") { NSWorkspace.shared.open(url) }
