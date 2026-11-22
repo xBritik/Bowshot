@@ -35,7 +35,7 @@ Off, the default, keeps the 3D picture at full size. On lets the game lower its 
 
 The size of the 3D picture, from 50 to 100 %. Below 100 % the size is fixed there and the game's own dynamic resolution is off; 100 % keeps the game's own. Lower can be lighter on the GPU but is blurrier; the HUD and text keep their sharpness. Only games the app can scale offer it.
 
-Bowshot, Ocarina of Time: the slider moves in twelfths of the output, each step a whole 16:9 size, with **Potato** (50 %, 960×540 handheld), **Normal** (67 %, 1280×720, the default) and **Native** (100 %, 1920×1080) written under it. ⌘= and ⌘- change it while you play ([The View menu](#the-view-menu)); the settings window lists those shortcuts under **While you play**.
+Bowshot, Ocarina of Time: the slider moves in twelfths of the output, each step a whole 16:9 size, with **Potato** (50 %, 960×540 handheld, the default), **Normal** (67 %, 1280×720) and **Native** (100 %, 1920×1080) written under it. ⌘= and ⌘- change it while you play ([The View menu](#the-view-menu)); the settings window lists those shortcuts under **While you play**.
 
 Hades II goes up to 300 %: it renders its whole picture, the HUD and text included, at 1280x720 docked and handheld, and above 100 % it renders larger instead of being scaled up: 150 % is 1920x1080, 200 % 2560x1440, 300 % 3840x2160. Sharper on a large screen or window, at more GPU time (about 2.5 times the GPU time at 200 % on an Apple M6); on a small screen the difference is slight. [Its note](../dm/games/0100A00019DE0000/README.md#rendering) has the measurements.
 
