@@ -167,7 +167,7 @@ struct SetupScreen: View {
                         if let busy = m.setupBusy {
                             HStack(spacing: 8) { ProgressView().controlSize(.small); Text(busy).foregroundStyle(.secondary) }.frame(maxWidth: 560, alignment: .leading)
                         }
-                        LogDisclosure(m: m, open: $showLog).frame(maxWidth: 560)
+                        if m.setupBusy != nil || m.log.length > 0 { LogDisclosure(m: m, open: $showLog).frame(maxWidth: 560) }   // nothing to show before the first install
                     }
                 }
                 .padding(margin)
