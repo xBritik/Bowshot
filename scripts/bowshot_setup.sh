@@ -5,7 +5,7 @@
 #   bowshot_setup.sh --install tools   uv, zstd and glslangValidator into "$SUPPORT_DIR/tools/bin" (pinned versions, SHA-256 checked)
 #   bowshot_setup.sh --install metal   Apple's Metal Toolchain (xcodebuild -downloadComponent MetalToolchain)
 #   bowshot_setup.sh --select-xcode    point the command line tools at Xcode (macOS asks for the password)
-# Ids: xcode, metal, uv, zstd, glslang. bowshot_build.sh puts the tools folder first on its PATH.
+# Ids: memory (state low = refused), xcode, metal, uv, zstd, glslang. bowshot_build.sh puts the tools folder first on its PATH.
 set -uo pipefail
 SUPPORT_DIR="${BOWSHOT_SUPPORT_DIR:-$HOME/Library/Application Support/Bowshot}"
 TOOLS="$SUPPORT_DIR/tools"; BIN="$TOOLS/bin"
@@ -54,8 +54,15 @@ tool_state() {   # id, executable, label
   else echo "$1|missing|$3 is not installed."; fi
 }
 
+MIN_RAM_GB=16
+memory_state() {   # the game needs 13 to 16 GB while it runs: a Mac with less cannot play it, so building it is refused
+  local gb=$(( $(sysctl -n hw.memsize) / 1073741824 ))
+  if (( gb >= MIN_RAM_GB )); then echo "memory|ok|$gb GB of memory"
+  else echo "memory|low|This Mac has $gb GB of memory. The game needs 13 to 16 GB while it runs, so Bowshot needs a Mac with at least $MIN_RAM_GB GB."; fi
+}
+
 status() {
-  xcode_state; metal_state
+  memory_state; xcode_state; metal_state
   tool_state uv uv "uv (Python manager)"; tool_state zstd zstd "zstd (compression)"; tool_state glslang glslangValidator "glslang (shader checker)"
 }
 
