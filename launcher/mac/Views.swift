@@ -254,7 +254,7 @@ struct DropZone: View {
     let targeted: Bool
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: "arrow.down.doc").font(.system(size: 26)).foregroundStyle(.secondary).accessibilityHidden(true)
+            Image(systemName: "folder").font(.system(size: 26)).foregroundStyle(.secondary).accessibilityHidden(true)
             Text("Drop your game folder here").font(.headline)
             Button("Choose Folder…") { m.chooseFolder() }
         }
