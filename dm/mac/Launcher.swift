@@ -141,6 +141,11 @@ struct LauncherView: View {
             .padding([.horizontal, .top], 20)
             Form {
                 settingSections(basic: true)
+                if let warning = renderScaleWarning {   // Bowshot: the game's memory use grows with the render scale, and a Mac under 24 GB has little room for it
+                    Section {
+                        Label(warning, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 if m.values["DM_MIC"] == "1" { MicrophoneDevicePicker() }
                 Section("While you play") {   // Bowshot: the game window's View menu (front_mac.m)
                     if m.settings.contains(where: { $0.env == "DM_RENDER_SCALE" }) {
@@ -182,6 +187,14 @@ struct LauncherView: View {
             .padding(20)
         }
         .frame(minWidth: 520, idealWidth: 560)
+    }
+
+    /// The render scale against this Mac's memory: under 24 GB the game (13 to 16 GB at the lowest scale, more as the scale rises) can fill the Mac's memory and close itself above Potato (0.5)
+    private var renderScaleWarning: String? {
+        guard let text = m.values["DM_RENDER_SCALE"], let scale = Double(text), scale > 0.51 else { return nil }
+        let gb = Int(ProcessInfo.processInfo.physicalMemory / 1_073_741_824)
+        guard gb < 24 else { return nil }
+        return "This Mac has \(gb) GB of memory. At this render scale the game may use more than it can give and close itself after a while. Potato (0.5) is the safest; Texture Memory Saver below helps."
     }
 
     /// Play, once the cloud's save is compared with this Mac's: a save that changed on both sides is the player's pick, not the newer file's (SaveCheck)
