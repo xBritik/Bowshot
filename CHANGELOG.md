@@ -17,6 +17,7 @@
 
 ### Engine
 
+- The game's memory limit now follows the Mac's memory (2 GB less than the Mac has, between 8 and 48 GB) instead of a fixed 13 GB, which closed the game early on a Mac with more memory (a 18 GB Mac gets 16 GB). The game itself needs 13 to 16 GB, so a Mac with 16 GB is tight. The limit is written when the app is built: rebuild to get it, or set `DM_MEM_CAP_GB` in `~/Library/Application Support/nxnative/0400486024DEC000/env.txt`.
 - Performance record: the game log gets a `perf:` line every 10 seconds (average frame rate, the frame rate of the slowest 1 % of frames, the worst frame, frames over 25 ms, dropped frames, GPU average and 95th percentile). It is the data behind performance reports. `DM_PERF_LOG=<seconds>` changes the interval, `0` turns it off.
 
 ## 0.1.0 (21 Nov 2026)
