@@ -80,6 +80,14 @@ SETTINGS
   RAM_GB=$(( $(sysctl -n hw.memsize) / 1073741824 )); MEM_CAP=$(( RAM_GB - 2 )); (( MEM_CAP < 8 )) && MEM_CAP=8; (( MEM_CAP > 48 )) && MEM_CAP=48
   echo "DM_MEM_CAP_GB=$MEM_CAP" >> "$ENV_FILE"
   echo "Memory limit for the game: $MEM_CAP GB (this Mac has $RAM_GB GB)."
+  # The render scale the settings window starts on: Potato (0.5) below 24 GB, else Normal (0.6667, the profile's default). Only a starting point, written once and only when the player has no
+  # choice saved yet: the window still shows it and changes it (an env file would lock it). The game's own memory use grows with the scale, and a Mac under 24 GB has little room for it.
+  if (( RAM_GB < 24 )); then
+    DOMAIN="org.nxnative.0400486024DEC000"
+    if ! defaults read "$DOMAIN" launcher.DM_RENDER_SCALE >/dev/null 2>&1; then
+      defaults write "$DOMAIN" launcher.DM_RENDER_SCALE "0.5000" && echo "Starting render scale: Potato (this Mac has $RAM_GB GB; change it in the settings window)."
+    fi
+  fi
 fi
 "$PYTHON" scripts/build_ipa_from_nsp.py "$GAME_DIR" --platform mac-app --work-dir "$WORK_DIR" --keep-extracted --env-file "$ENV_FILE" --fallback-icon "$ENGINE_DIR/launcher/mac/AppIcon.png" -o "$OUTPUT_APP" --progress "${BOWSHOT_PROGRESS:-lines}" 2>&1 | tee -a "$BUILD_LOG"
 printf '\nREADY: %s\nThis app contains your game. Keep it private; do not upload it.\n' "$OUTPUT_APP"
