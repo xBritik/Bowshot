@@ -180,7 +180,7 @@ Run `python3 tools/check_content.py --staged` before staging changes. Ignore rul
 - Performance and visual issues can come from the underlying engine. There is no guarantee of 60 FPS or glitch-free lighting.
 - A fresh machine needs the development tools of step 2; the .NET SDK is not needed.
 - The first local build is lengthy. Don't run a compiler-heavy build while judging gameplay performance.
-- The 13 GiB Ocarina memory cap is a conservative local setting, not a guarantee against memory pressure in every area.
+- The game's memory limit is set from your Mac's memory (2 GB less, between 8 and 48 GB). The game itself needs 13 to 16 GB while it runs, with short peaks when an area loads, so on a 16 GB Mac it can still close itself. Bowshot refuses to build on a Mac with less than 16 GB.
 - Upstream gameplay screenshots are omitted from this snapshot; some historical documentation still refers to that gallery.
 - Apple silicon only. The underlying project's iPhone and other workflows are not Bowshot release claims.
 
