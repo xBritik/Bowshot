@@ -141,11 +141,6 @@ struct LauncherView: View {
             .padding([.horizontal, .top], 20)
             Form {
                 settingSections(basic: true)
-                if let warning = renderScaleWarning {   // Bowshot: the game's memory use grows with the render scale, and a Mac under 24 GB has little room for it
-                    Section {
-                        Label(warning, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
                 if m.values["DM_MIC"] == "1" { MicrophoneDevicePicker() }
                 Section("While you play") {   // Bowshot: the game window's View menu (front_mac.m)
                     if m.settings.contains(where: { $0.env == "DM_RENDER_SCALE" }) {
@@ -220,7 +215,12 @@ struct LauncherView: View {
             let rows = m.rows(in: section, basic: basic)
             if !rows.isEmpty {
                 Section(section) {
-                    ForEach(rows) { SettingRow(s: $0, m: m) }
+                    ForEach(rows) { row in
+                        SettingRow(s: row, m: m)
+                        if row.env == "DM_RENDER_SCALE", let warning = renderScaleWarning {   // Bowshot: right under the slider it is about
+                            Label(warning, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
             }
         }
