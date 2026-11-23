@@ -30,7 +30,7 @@ struct Setting: Decodable, Identifiable {
         default: return true
         }
     }
-    let marks: [[String]]?   // range: [value, label] names for values (Bowshot: Ocarina of Time's Potato, Normal and Game's own render scales; from kid-with-sword-remake)
+    let marks: [[String]]?   // range: [value, label] names for values (Bowshot: Ocarina of Time's Potato and Game's own render scales; from kid-with-sword-remake)
     enum CodingKeys: String, CodingKey { case env, kind, label, note, def = "default", section, needs, level, base, options, min, max, step, marks, on, off }
 }
 struct SettingsFile: Decodable { let settings: [Setting] }
@@ -51,6 +51,7 @@ func offeredOptions(_ s: Setting, current: String?) -> [[String]] {
 final class LauncherModel: ObservableObject {
     let settings: [Setting]
     let fixed: Set<String>      // set by an env file or by the launch environment: shown, not changed
+    let fromFile: Set<String>   // of those, the ones an env file set (Bowshot: bowshot_build.sh's runtime.env); the Mac window does not draw them
     let fromLaunch: Set<String>   // of those, the ones the launch environment set (a front end's launch overrides, Xcode; DM_ENV_LAUNCH_KEYS from launcher.c or main.m)
     let ignoreSaved: Bool   // DM_SAVED_CHOICES=0: start from the defaults, and leave the saved choices as they are
     @Published var values: [String: String] = [:]
@@ -62,7 +63,8 @@ final class LauncherModel: ObservableObject {
         self.settings = settings
         let env = ProcessInfo.processInfo.environment
         fromLaunch = Set((env["DM_ENV_LAUNCH_KEYS"] ?? "").split(separator: " ").map(String.init))
-        fixed = fromLaunch.union((env["DM_ENV_FILE_KEYS"] ?? "").split(separator: " ").map(String.init))
+        fromFile = Set((env["DM_ENV_FILE_KEYS"] ?? "").split(separator: " ").map(String.init))
+        fixed = fromLaunch.union(fromFile)
         ignoreSaved = env["DM_SAVED_CHOICES"] == "0"
         if ignoreSaved { fputs("launcher: saved choices ignored (DM_SAVED_CHOICES=0)\n", stderr) }
         for s in settings {
@@ -89,7 +91,10 @@ final class LauncherModel: ObservableObject {
     func sections(basic: Bool) -> [String] {
         settings.filter { $0.basic == basic }.reduce(into: []) { if !$0.contains($1.sectionTitle) { $0.append($1.sectionTitle) } }
     }
-    func rows(in section: String, basic: Bool) -> [Setting] { rows(in: section).filter { $0.basic == basic } }
+    // Bowshot: the Mac window leaves out a row the build fixed in its env file (it cannot be changed, so it only showed a greyed value) and the rows of no use here (Ocarina of Time has
+    // one player: no pad to join). Their values still apply
+    private static let hiddenOnMac: Set<String> = ["DM_PAD_PRESS_TO_JOIN"]
+    func rows(in section: String, basic: Bool) -> [Setting] { rows(in: section).filter { $0.basic == basic && !fromFile.contains($0.env) && !Self.hiddenOnMac.contains($0.env) } }
     // A range's label: its percentage, with the size in pixels for the chosen console mode when the list has the base size (the render scale)
     func rangeLabel(_ s: Setting, _ v: Double) -> String {
         let p = "\(Int((v * 100).rounded())) %"

@@ -219,6 +219,9 @@ def header_one(g):
     except ValueError: sys.exit(f'{g.id}: render_scale is <min>:<max>:<step>: {rsr}')
     try: rsd = float(g.get('render_scale_default', '1.0'))   # the slider's default: the loader's with DM_RENDER_SCALE unset; a live step back to it forgets the saved choice (front_mac.m)
     except ValueError: sys.exit(f"{g.id}: render_scale_default is a number: {g.get('render_scale_default')}")
+    rsm = g.get('render_scale_marks', '')   # Bowshot: value=label,... for the key-step message (front_mac.m); render_base: the 3D views' base size, docked then handheld, in pixels (0 = none)
+    rbm = re.fullmatch(r'\s*(\d+)x(\d+)\s+(\d+)x(\d+)\s*', g.get('render_base', '')) or re.fullmatch(r'()()()()', '')
+    rb = [int(x or 0) for x in rbm.groups()]
     upd = g.get('upscaler_default', 'game')   # Bowshot: the Game's upscaler a run takes when DM_UPSCALER is unset, and the launcher's default for it (settings.tsv)
     if upd not in ('game', 'metalfx'): sys.exit(f'{g.id}: upscaler_default must be game or metalfx: {upd}')
     om = g.get('op_mode', 'console')   # the operation mode reported at start (hle_oe.c dm_opmode; DM_OPMODE overrides): console = docked, handheld = touch screen in use (Super Mario Galaxy's pointer)
@@ -276,6 +279,9 @@ def header_one(g):
          f'#define DM_GAME_UPSCALER_DEFAULT {q(upd)}',
          f'#define DM_GAME_RENDER_SCALE_MIN {rs_lo!r}f', f'#define DM_GAME_RENDER_SCALE_MAX {rs_hi!r}f', f'#define DM_GAME_RENDER_SCALE_STEP {rs_st!r}f',
          f'#define DM_GAME_RENDER_SCALE_DEFAULT {rsd!r}f',
+         f'#define DM_GAME_RENDER_SCALE_MARKS {q(rsm)}',
+         f'#define DM_GAME_RENDER_BASE_DOCKED_W {rb[0]}', f'#define DM_GAME_RENDER_BASE_DOCKED_H {rb[1]}',
+         f'#define DM_GAME_RENDER_BASE_HANDHELD_W {rb[2]}', f'#define DM_GAME_RENDER_BASE_HANDHELD_H {rb[3]}',
          f'#define DM_GAME_PERF_BOOST {int(pm == "boost")}',
          f'#define DM_GAME_TEX_FLUSH_UPLOAD {int(tfu == "on")}',
          f'#define DM_GAME_TEX_COPY_STAGING_BUILD "{sc[1] if sc else ""}"',

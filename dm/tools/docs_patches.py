@@ -20,7 +20,7 @@ HOST_EXT = ('.c', '.m', '.mm', '.h', '.inc', '.swift')
 TABLES = {'k_locks': 'engine frame limit set to fps_target', 'k_ue': "Unreal's allocator on a host malloc zone", 'k_nier_dr': 'frame interval and dynamic-resolution floor'}
 # Profile keys that are not behaviour switches: per-game data or controls, not something the host does differently
 NOT_SWITCHES = {'pad_layout', 'depth_mode', 'mem_used', 'sys_resource', 'shader_versions', 'shader_covers',
-                'render_scale', 'render_scale_default', 'render_scale_marks', 'upscaler_default'}   # Bowshot: a slider's range and the launcher's defaults, data per game
+                'render_scale', 'render_scale_default', 'render_scale_marks', 'render_base', 'upscaler_default'}   # Bowshot: a slider's range and the launcher's defaults, data per game
 
 # ---- Binding: what a patch's correctness is anchored to, from the loosest (GitHub issue #635). A patch is at its goal when its binding is the loosest it could have; the gap between the two
 # is the work list. A patch file's BINDING is a list of {'what', 'now', 'goal', 'purpose', 'why'} with an optional 'blocked' (why the gap cannot close yet) or 'kept' (why it stays

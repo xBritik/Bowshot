@@ -51,14 +51,14 @@ tex_flush_upload	on
 tex_dirty_upload	on
 
 # ---- Bowshot / kid-with-sword-remake additions ----
-# Handheld (1280x720 at the Render scale's Normal step): the mode measured at ~60 fps on a MacBook Air M5; docked outdoors is posterized on some Macs (issue #1653)
+# Handheld (measured at 1280x720, the Render scale's 0.8889 step): the mode measured at ~60 fps on a MacBook Air M5; docked outdoors is posterized on some Macs (issue #1653)
 op_mode	handheld
 # Bowshot: the launcher's Render scale, through nxnative's render-scale stub (patches.py render_scale, v131072). The slider is a fraction of the game's own 3D size
-# (1.0 = the game's own: 1440x810 handheld, 1920x1080 docked); eighteenths, so every step is a whole 16:9 size: 0.6667 = 960x540 (Potato), 0.8889 = 1280x720 (Normal),
-# 1.0 = 1440x810. The default is Potato: the game needs 13 to 16 GB of memory at that scale already, and more as it rises
+# (1.0 = the game's own: 1440x810 handheld, 1920x1080 docked); eighteenths, so every step is a whole 16:9 size: 0.6667 = 960x540 (Potato), 0.8889 = 1280x720,
+# 1.0 = 1440x810 (Game's own). The default is Potato: the game needs 13 to 16 GB of memory at that scale already, and more as it rises
 render_base	1920x1080 1440x810
 render_scale	0.6666667:1.0:0.0555555556
 render_scale_default	0.6666667
-render_scale_marks	0.6666667=Potato,0.8888889=Normal,1.0=Game's own
+render_scale_marks	0.6666667=Potato,1.0=Game's own
 # Bowshot: MetalFX draws the game's own upscaler networks unless the player picks Game's own (the launcher's Game's upscaler): about 1.4 ms less GPU a frame upstream on an M4 Pro, 3.4 ms on an M1
 upscaler_default	metalfx

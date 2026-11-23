@@ -22,7 +22,7 @@ struct SettingRow: View {
     private var percentage: String {   // Bowshot: "(default)" after the default value
         m.rangeLabel(s, rangeValue.wrappedValue) + (abs(rangeValue.wrappedValue - (Double(s.def) ?? .nan)) < 1e-4 ? " (default)" : "")
     }
-    // Bowshot: a range's named values (Ocarina of Time's Potato, Normal, Game's own) as fractions of the slider's width, written under it at their steps
+    // Bowshot: a range's named values (Ocarina of Time's Potato, Game's own) as fractions of the slider's width, written under it at their steps
     private var markPlaces: [(name: String, at: Double)] {
         guard let marks = s.marks, let lo = s.min, let hi = s.max, hi > lo else { return [] }
         return marks.compactMap { mk in mk.count == 2 ? Double(mk[0]).map { (name: mk[1], at: ($0 - lo) / (hi - lo)) } : nil }.filter { $0.at >= 0 && $0.at <= 1 }

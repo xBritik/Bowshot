@@ -9,7 +9,7 @@
 // So the order is: the launch environment, the player's env.txt, the bundle's, saved choices, the host's tested defaults (docs/frontends.md, Saved choices).
 // Before the host starts, the settings window (dm/mac/Launcher.swift dm_mac_launcher, linked in by pack_app.py) runs in this process and puts the player's settings into the environment; it keeps
 // what the launch environment and the env files set (DM_ENV_LAUNCH_KEYS, DM_ENV_FILE_KEYS). DM_LAUNCHER=0 or --no-launcher (open <app> --args --no-launcher) starts the game without the window,
-// with the saved choices; so does "Show this window at launch" turned off.
+// with the saved choices.
 #include <CoreFoundation/CoreFoundation.h>
 #include <ctype.h>
 #include <errno.h>

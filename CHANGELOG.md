@@ -11,10 +11,13 @@
 - Memory: unused graphics memory is given back under pressure, idle textures are evicted, CPU-no-access texture pools stay out of the guest's window and the sparse memory reports survive a long session. The game's memory limit of 0.1.1 (the Mac's memory minus 2 GB) is unchanged.
 - Fewer stutters: pipeline archives made offline are adopted before the first frame, archive writes wait while you play, background pipeline builds free their memory, the guest's clock is frozen while the archive opens, and the replay of a frame costs less CPU. Metal 4 mesh pipelines are prepared ahead.
 - Audio: the sound comes back after the output device changes. The microphone's default gain is 1x (it was 4x), so humming into the ocarina is less boosted: raise Microphone gain in the settings window if the game does not hear you.
-- Render scale now uses nxnative's stub for Ocarina of Time: it multiplies the size the game computes by the slider's value (1.0 is the game's own size) and keeps the game's dynamic resolution out of the way below 1.0. The slider's top is therefore the game's own 1440x810 (handheld) instead of 1920x1080: Potato (960x540, the default) and Normal (1280x720) are the same sizes as before and Native is gone.
+- Render scale now uses nxnative's stub for Ocarina of Time: it multiplies the size the game computes by the slider's value (1.0 is the game's own size) and keeps the game's dynamic resolution out of the way below 1.0. The slider's top is therefore the game's own 1440x810 (handheld) instead of 1920x1080: Potato (960x540, the default) keeps its size, the intermediate steps are finer, and Native is gone. The slider's marks are Potato and Game's own: there is no Normal any more.
 
 ### Builder (Bowshot.app) and game app
 
+- The settings window no longer draws the rows the build fixes (Dynamic resolution, Console mode, Upscaling, Hold frames when late: they only showed a greyed value) nor Press a button to join (Ocarina of Time has one player). Their values still apply.
+- View > Show Memory Use (⌥⌘I) shows the memory the game uses beside the limit that closes it, without changing anything.
+- ⌘= and ⌘- show a message at the bottom of the picture for about 3 seconds: the Render scale (its name, percentage and size in pixels) and the memory the game uses beside the limit that closes it, read again after 1.5 seconds, once the new size's render targets exist.
 - The memory warning under the Render scale slider names Potato, whose value is now 0.6667.
 
 ## 0.1.1 (20 Nov 2026)

@@ -16,7 +16,7 @@ Bowshot is a small Mac app that builds the game **on your Mac, from your own gam
 - **40 fps option** for Ocarina of Time on a 120 Hz screen (a steadier middle between 30 and 60), the dynamic resolution's threshold following the frame rate target, and fixes to the Vert+ screen shape.
 - **Memory and stutters:** graphics memory given back under pressure, idle textures evicted, pipelines adopted before the first frame, archive writes kept out of play, and a lighter replay of each frame.
 - **Sound** comes back after the output device changes, and the **microphone gain** starts at 1x instead of 4x.
-- **Render scale** now follows nxnative's: 100 % is the game's own 3D size (1440x810 handheld), so **Native (1920x1080) is gone**. Potato (the default) and Normal are the same sizes as before.
+- **Render scale** now follows nxnative's: 100 % is the game's own 3D size (1440x810 handheld), so **Native (1920x1080) is gone**. Potato (the default) keeps its size, and the slider is marked Potato and Game's own: there is no Normal any more.
 
 Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) (the performance record, the builder that shows it is alive) and [0.1.0](CHANGELOG.md#010-21-nov-2026) (MetalFX upscaling, the Performance HUD, the friendlier builder) is still there.
 

@@ -47,7 +47,7 @@ def launcher_json(out):   # settings.py for the Mac, as the packer runs it: a re
     import settings, nso_syms
     nso_syms.audio_input_capable = lambda paths: True   # the game's modules are not here; Ocarina of Time's main has audio input
     with tempfile.TemporaryDirectory() as t:
-        (Path(t) / 'main.fixups.tsv').write_text('# RENDER_SCALE\t1\n# DYNAMIC_RESOLUTION\t1\n')   # Ocarina of Time v131072's frame step stub
+        (Path(t) / 'main.fixups.tsv').write_text('# RENDER_SCALE\t1\n# DYNAMIC_RESOLUTION\t1\n# FRAME_STEP_120\t1\n')   # Ocarina of Time v131072's frame step stub
         d = settings.build(GAME, t, Path(t) / 'control.nacp')
     out.write_text(json.dumps(d, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
     return d['settings']

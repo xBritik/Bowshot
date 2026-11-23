@@ -182,11 +182,11 @@ class LauncherSettingsTests(unittest.TestCase):
         self.assertEqual((rs['min'], rs['max'], rs['default'], 'needs' in rs), (0.6666667, 1.0, '0.6666667', False))
         self.assertEqual(rs['base'], {'docked': [1920, 1080], 'handheld': [1440, 810]})
         marks = {round(float(v), 4): name for v, name in rs['marks']}
-        self.assertEqual(marks, {0.6667: 'Potato', 0.8889: 'Normal', 1.0: "Game's own"})
-        for k, name in ((0, 'Potato'), (4, 'Normal'), (6, "Game's own")):   # each mark is a step of the slider, and a whole 16:9 size of the handheld 1440x810
+        self.assertEqual(marks, {0.6667: 'Potato', 1.0: "Game's own"})
+        for k, name in ((0, 'Potato'), (6, "Game's own")):   # each mark is a step of the slider, and a whole 16:9 size of the handheld 1440x810
             v = rs['min'] + k * rs['step']
             self.assertEqual(marks[round(v, 4)], name)
-            self.assertEqual((round(1440 * float(f'{v:.4f}')), round(810 * float(f'{v:.4f}'))), {0: (960, 540), 4: (1280, 720), 6: (1440, 810)}[k])
+            self.assertEqual((round(1440 * float(f'{v:.4f}')), round(810 * float(f'{v:.4f}'))), {0: (960, 540), 6: (1440, 810)}[k])
 
     def test_render_scale_reaches_the_stubs_largest_scale(self):
         """The rewriter writes a render-scale stub's largest scale as RENDER_SCALE: 1 keeps the table's range (a stub that only lowers the size), 3 raises its top (Hades II)"""

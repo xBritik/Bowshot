@@ -2,7 +2,7 @@
 // app's Resources/dm/launcher.json (dm/games/settings.py with SETTINGS_PLATFORM=mac); the model and the rows are the iOS launcher's (dm/ios/Sources/LauncherSettings.swift, LauncherRow.swift),
 // and so is the store: launcher.<VAR> in the app's preferences, which launcher.c reads when the window is not shown (docs/frontends.md, Saved choices). Basic settings (level basic) come
 // first, the others under Advanced settings, each in the list's sections. Play puts the settings into this process's environment, which the host inherits; Quit and closing the window end the
-// app without the game. "Show this window at launch" off: no window unless Option is held at launch, and launcher.c applies the saved choices. The window never takes focus by itself: an app
+// app without the game. Bowshot: there is no "Show this window at launch" checkbox, so the window is always shown (DM_LAUNCHER=0 or --no-launcher skip it, launcher.c then applies the saved choices). The window never takes focus by itself: an app
 // opened in the background (open -g) keeps its window behind until the player switches to it
 import AppKit
 import AVFAudio
@@ -141,7 +141,6 @@ struct LauncherView: View {
     @ObservedObject var m: LauncherModel
     let done: (Bool) -> Void
     let fit: (CGFloat) -> Void
-    @AppStorage("window.show") private var show = true
     @AppStorage("window.advanced") private var advanced = false
     @State private var checking = false
     @State private var check = 0   // which Play the running check is for: one the player went on from without it is dropped
@@ -165,6 +164,7 @@ struct LauncherView: View {
                         LabeledContent("Render scale up / down") { Text("⌘=   ⌘−").monospaced().foregroundStyle(.secondary) }
                     }
                     LabeledContent("Performance HUD") { Text("⌥⌘P").monospaced().foregroundStyle(.secondary) }
+                    LabeledContent("Memory use") { Text("⌥⌘I").monospaced().foregroundStyle(.secondary) }
                 }
                 CloudSavesSection()
                 Section {
@@ -197,7 +197,6 @@ struct LauncherView: View {
                 fit(extraHeight)
             }
             HStack {
-                Toggle("Show this window at launch", isOn: $show).toggleStyle(.checkbox)
                 Spacer()
                 if checking {
                     ProgressView().controlSize(.small)
@@ -481,15 +480,11 @@ public func dmMacMicrophoneConsent() -> Int32 {
     return 0
 }
 
-// 1: Play (the window's settings are in the environment), 0: the player quit, 2: no window (no launcher.json, or "Show this window at launch" off): launcher.c applies the saved choices
+// 1: Play (the window's settings are in the environment), 0: the player quit, 2: no window (no launcher.json): launcher.c applies the saved choices
 @_cdecl("dm_mac_launcher")
 public func dmMacLauncher() -> Int32 {
     guard let url = Bundle.main.resourceURL?.appendingPathComponent("dm/launcher.json"), let data = try? Data(contentsOf: url) else { return 2 }
     guard let file = try? JSONDecoder().decode(SettingsFile.self, from: data), !file.settings.isEmpty else { fputs("[RED] launcher: dm/launcher.json cannot be read; starting the game\n", stderr); return 2 }
-    if (UserDefaults.standard.object(forKey: "window.show") as? Bool) == false && !NSEvent.modifierFlags.contains(.option) {
-        fputs("launcher: settings window off (hold Option at launch to show it)\n", stderr)
-        return SaveCheck.withoutWindow() ? 2 : 0
-    }
     let model = LauncherModel(file.settings)
     let app = NSApplication.shared, launcher = Launcher(model)
     app.setActivationPolicy(.regular)

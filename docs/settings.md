@@ -37,7 +37,7 @@ Off, the default, keeps the 3D picture at full size. On lets the game lower its 
 
 The size of the 3D picture, from 50 to 100 %. Below 100 % the size is fixed there and the game's own dynamic resolution is off; 100 % keeps the game's own. Lower can be lighter on the GPU but is blurrier; the HUD and text keep their sharpness. Only games the app can scale offer it.
 
-Bowshot, Ocarina of Time: the slider is a fraction of the game's own 3D size (1440×810 handheld, 1920×1080 docked), in eighteenths, each step a whole 16:9 size, with **Potato** (67 %, 960×540 handheld, the default), **Normal** (89 %, 1280×720) and **Game's own** (100 %, 1440×810) written under it. It does not go above the game's own size. ⌘= and ⌘- change it while you play ([The View menu](#the-view-menu)); the settings window lists those shortcuts under **While you play**.
+Bowshot, Ocarina of Time: the slider is a fraction of the game's own 3D size (1440×810 handheld, 1920×1080 docked), in eighteenths, each step a whole 16:9 size, with **Potato** (67 %, 960×540 handheld, the default) and **Game's own** (100 %, 1440×810) written under it. It does not go above the game's own size. ⌘= and ⌘- change it while you play and a message over the picture names the new scale, its size in pixels and the memory the game uses beside its limit ([The View menu](#the-view-menu)); the settings window lists those shortcuts under **While you play**.
 
 Hades II goes up to 300 %: it renders its whole picture, the HUD and text included, at 1280x720 docked and handheld, and above 100 % it renders larger instead of being scaled up: 150 % is 1920x1080, 200 % 2560x1440, 300 % 3840x2160. Sharper on a large screen or window, at more GPU time (about 2.5 times the GPU time at 200 % on an Apple M6); on a small screen the difference is slight. [Its note](../dm/games/0100A00019DE0000/README.md#rendering) has the measurements.
 
@@ -240,7 +240,7 @@ A Mac app ([A Mac app](development.md#a-mac-app)) shows its settings in a window
 
 Click **Play** (or press Return) to start the game. **Quit**, ⌘Q or closing the window ends the app without the game. The app remembers your choices for that game, and a game started without the window, from a front end or with the window turned off, uses them too ([Saved choices](frontends.md#saved-choices)). A setting fixed by an `env.txt` or by the program that started the app is shown greyed out.
 
-Turn off **Show this window at launch** to start the game at once with your choices. Hold Option while the app opens to see the window again. `DM_LAUNCHER=0` in the app's `env.txt` (`~/Library/Application Support/nxnative/<title ID>/env.txt`) or in its environment, or opening it with `open <app> --args --no-launcher`, also skips the window; your choices still apply. `DM_SAVED_CHOICES=0` starts with the tested defaults instead.
+The window is always shown. `DM_LAUNCHER=0` in the app's `env.txt` (`~/Library/Application Support/nxnative/<title ID>/env.txt`) or in its environment, or opening it with `open <app> --args --no-launcher`, also skips the window; your choices still apply. `DM_SAVED_CHOICES=0` starts with the tested defaults instead.
 
 ### Display mode
 
@@ -257,7 +257,7 @@ Turn off **Show this window at launch** to start the game at once with your choi
 
 ### The View menu
 
-Bowshot, while you play: **Show Performance HUD** (⌥⌘P) shows or hides Apple's Metal Performance HUD over the game (frames a second, GPU time, memory and the frame-time graph) and keeps the choice as [Performance HUD](#performance-hud)'s for the next start. **Increase Render Scale** (⌘=) and **Decrease Render Scale** (⌘-) move the Render scale one step at the next frame and keep the new value as your choice for the next start. The settings window lists these shortcuts under **While you play**.
+Bowshot, while you play: **Show Performance HUD** (⌥⌘P) shows or hides Apple's Metal Performance HUD over the game (frames a second, GPU time, memory and the frame-time graph) and keeps the choice as [Performance HUD](#performance-hud)'s for the next start. **Increase Render Scale** (⌘=) and **Decrease Render Scale** (⌘-) move the Render scale one step at the next frame, keep the new value as your choice for the next start, and show a message with the new scale, its size in pixels and the memory in use beside the limit that closes the game. **Show Memory Use** (⌥⌘I) shows that memory alone, without changing anything: it is the footprint the game's memory watchdog compares with its limit, which is not necessarily the figure of Apple's HUD. The settings window lists these shortcuts under **While you play**.
 
 ## Cloud saves
 
