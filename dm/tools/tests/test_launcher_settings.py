@@ -75,7 +75,7 @@ class LauncherSettingsTests(unittest.TestCase):
     def test_iphone_switches_only_on_the_iphone(self):   # the frame-rate counter and touch feedback are the iOS front end's (front_ios.m, DmGamepad.m)
         ios, mac = build(BOTW, 'nvn'), build(BOTW, 'nvn', 'mac')
         self.assertEqual(build(BOTW, 'nvn', 'ios').keys(), ios.keys())   # ios when unset
-        self.assertEqual(set(ios) - set(mac), {'DM_SHOW_FPS', 'DM_TOUCH_HAPTICS', 'DM_PICTURE_FIT'})
+        self.assertEqual(set(ios) - set(mac), {'DM_SHOW_FPS', 'DM_TOUCH_HAPTICS', 'DM_PICTURE_FIT', 'DM_ROTATION'})
         self.assertIn('DM_RUMBLE', mac); self.assertIn('DM_METAL_HUD', mac)
         self.assertEqual(set(mac) - set(ios), {'DM_FULLSCREEN', 'DM_SW2'})   # the Mac window's Display mode (front_mac.m reads 1 or 0); Switch 2 controllers (pad_switch2_apple.m, wired on the Mac only)
         s = mac['DM_FULLSCREEN']
@@ -92,6 +92,18 @@ class LauncherSettingsTests(unittest.TestCase):
     def test_unknown_platform_is_rejected(self):
         with self.assertRaisesRegex(SystemExit, 'SETTINGS_PLATFORM must be ios or mac'):
             build(WONDER, 'nvn', 'mca')
+
+    def test_picture_shape_requires_the_rewriter_capability(self):
+        games = ('0400486024DEC000', BOTW, '01006F8002326000')
+        for gid in games:
+            self.assertNotIn('DM_SCREEN_ASPECT', build(gid, 'nvn'))
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {'GFXAPI': 'nvn', 'SETTINGS_PLATFORM': 'ios'}):
+            (Path(tmp) / 'main.fixups.tsv').write_text('# SCREEN_ASPECT\t1\n', encoding='utf-8')
+            for gid in games:
+                with self.subTest(gid=gid):
+                    rows = settings.build(gid, tmp, Path(tmp) / 'control.nacp')['settings']
+                    shape = next(row for row in rows if row['env'] == 'DM_SCREEN_ASPECT')
+                    self.assertEqual(shape['default'], 'auto')
 
     def test_malformed_platform_defaults_are_rejected(self):
         for default in ('1|', '|0', '1|0|1'):
@@ -161,19 +173,20 @@ class LauncherSettingsTests(unittest.TestCase):
                 profile = type('Profile', (), {'id': BOTW, 'get': lambda self, key, default='', bad=bad: bad})()
                 with self.assertRaises(SystemExit): settings.render_base(profile)
 
-    def test_ocarina_render_scale_has_named_steps(self):   # Bowshot: the slider in twelfths with its marks, on Normal by default (no Resolution presets)
+    def test_ocarina_render_scale_has_named_steps(self):   # Bowshot: the slider in eighteenths of the game's own size with its marks, on Potato by default (no Resolution presets)
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / 'main.fixups.tsv').write_text('# RENDER_SCALE\t1\n')
             rows = {s['env']: s for s in settings.build('0400486024DEC000', tmp, Path(tmp) / 'control.nacp')['settings']}
         self.assertNotIn('DM_RES_PRESET', rows)
         rs = rows['DM_RENDER_SCALE']
-        self.assertEqual((rs['min'], rs['max'], rs['default'], 'needs' in rs), (0.5, 1.0, '0.5', False))
+        self.assertEqual((rs['min'], rs['max'], rs['default'], 'needs' in rs), (0.6666667, 1.0, '0.6666667', False))
+        self.assertEqual(rs['base'], {'docked': [1920, 1080], 'handheld': [1440, 810]})
         marks = {round(float(v), 4): name for v, name in rs['marks']}
-        self.assertEqual(marks, {0.5: 'Potato', 0.6667: 'Normal', 1.0: 'Native'})
-        for k, name in ((0, 'Potato'), (2, 'Normal'), (6, 'Native')):   # each mark is a step of the slider, and a whole 16:9 size of 1920x1080
+        self.assertEqual(marks, {0.6667: 'Potato', 0.8889: 'Normal', 1.0: "Game's own"})
+        for k, name in ((0, 'Potato'), (4, 'Normal'), (6, "Game's own")):   # each mark is a step of the slider, and a whole 16:9 size of the handheld 1440x810
             v = rs['min'] + k * rs['step']
             self.assertEqual(marks[round(v, 4)], name)
-            self.assertEqual((round(1920 * float(f'{v:.4f}')), round(1080 * float(f'{v:.4f}'))), {0: (960, 540), 2: (1280, 720), 6: (1920, 1080)}[k])
+            self.assertEqual((round(1440 * float(f'{v:.4f}')), round(810 * float(f'{v:.4f}'))), {0: (960, 540), 4: (1280, 720), 6: (1440, 810)}[k])
 
     def test_render_scale_reaches_the_stubs_largest_scale(self):
         """The rewriter writes a render-scale stub's largest scale as RENDER_SCALE: 1 keeps the table's range (a stub that only lowers the size), 3 raises its top (Hades II)"""

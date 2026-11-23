@@ -6,22 +6,25 @@ Turn your own copy of **Zelda: Ocarina of Time (Switch 2)** into a native Mac ap
 
 Bowshot is a small Mac app that builds the game **on your Mac, from your own game file**. It is based on [nxnative](https://github.com/seedds/nxnative) and the Ocarina of Time work from [kid-with-sword-remake](https://github.com/cheemu21/kid-with-sword-remake). **No game files are included**, and you can only play the copy you build yourself.
 
-> **Experimental preview, version 0.1.1.** Tested only with Ocarina of Time **update v131072** on Apple silicon Macs.
+> **Experimental preview, version 0.1.2.** Tested only with Ocarina of Time **update v131072** on Apple silicon Macs.
 
-**[Download Bowshot 0.1.1](https://github.com/xBritik/Bowshot/releases/tag/v0.1.1)**
+**[Download Bowshot 0.1.2](https://github.com/xBritik/Bowshot/releases/tag/v0.1.2)**
 
-## What's new in 0.1.1
+## What's new in 0.1.2
 
-- **Performance record:** while you play, the game log gets a `perf:` line every 10 seconds with the average frame rate, the slowest 1 % of frames, the worst frame, and the GPU time. It is the data to attach to a performance report.
-- **A builder that shows it is alive:** the time each step has run, the prewarm count and time left, a sound when the build is done, and a build log you can copy with **⌘ C**.
+- **Newer engine:** nxnative main of 23 November 2026 (225 commits after 0.1.1). The first build compiles every shader again, so it takes **1.5 hours or more**.
+- **40 fps option** for Ocarina of Time on a 120 Hz screen (a steadier middle between 30 and 60), the dynamic resolution's threshold following the frame rate target, and fixes to the Vert+ screen shape.
+- **Memory and stutters:** graphics memory given back under pressure, idle textures evicted, pipelines adopted before the first frame, archive writes kept out of play, and a lighter replay of each frame.
+- **Sound** comes back after the output device changes, and the **microphone gain** starts at 1x instead of 4x.
+- **Render scale** now follows nxnative's: 100 % is the game's own 3D size (1440x810 handheld), so **Native (1920x1080) is gone**. Potato (the default) and Normal are the same sizes as before.
 
-Everything from [0.1.0](CHANGELOG.md#010-21-nov-2026) (MetalFX upscaling, the Render scale slider, the Performance HUD, the friendlier builder) is still there.
+Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) (the performance record, the builder that shows it is alive) and [0.1.0](CHANGELOG.md#010-21-nov-2026) (MetalFX upscaling, the Performance HUD, the friendlier builder) is still there.
 
 **[Read the full changelog →](CHANGELOG.md)**
 
 ## Contents
 
-- [What's new in 0.1.1](#whats-new-in-011)
+- [What's new in 0.1.2](#whats-new-in-012)
 - [What you need](#what-you-need)
 - [Install, step by step](#install-step-by-step)
   1. [Download Bowshot](#1-download-bowshot)
@@ -51,7 +54,7 @@ Follow the steps in order. When you see a grey box of text, it is a command: **c
 
 ### 1. Download Bowshot
 
-1. Go to the [Bowshot 0.1.1 release page](https://github.com/xBritik/Bowshot/releases/tag/v0.1.1), scroll to **Assets**, and click **`Bowshot-0.1.1-macOS-arm64.zip`**. Do **not** download the files named **Source code** or **`Bowshot-0.1.1-source.zip`**: they hold the project's code, not the app.
+1. Go to the [Bowshot 0.1.2 release page](https://github.com/xBritik/Bowshot/releases/tag/v0.1.2), scroll to **Assets**, and click **`Bowshot-0.1.2-macOS-arm64.zip`**. Do **not** download the files named **Source code** or **`Bowshot-0.1.2-source.zip`**: they hold the project's code, not the app.
 2. Open your **Downloads** folder and double-click that zip file. An app called **Bowshot** (with a bow-and-arrow icon) appears next to it.
 3. Drag **Bowshot** into your **Applications** folder. Don't open it yet.
 

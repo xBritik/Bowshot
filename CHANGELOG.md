@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.1.2 (23 Nov 2026)
+
+### Engine
+
+- Upstream nxnative main `0293739d` (23 Nov 2026), pinned as `bowshot-0.1.2-nxnative-0293739d`, 225 commits after the 0.1.1 pin. Ocarina of Time: a 40 fps option on a screen at a multiple of 120 Hz (the frame step now counts in ticks of 1/120 s), the dynamic resolution's threshold scaled to the frame rate target, the screen shape (Vert+) updated in place.
+- The first build after this update compiles every shader again (the shader chain changed twice upstream, and the Bowshot changes to it with it): allow the 1.5 hours or more of a first build.
+- Memory: unused graphics memory is given back under pressure, idle textures are evicted, CPU-no-access texture pools stay out of the guest's window and the sparse memory reports survive a long session. The game's memory limit of 0.1.1 (the Mac's memory minus 2 GB) is unchanged.
+- Fewer stutters: pipeline archives made offline are adopted before the first frame, archive writes wait while you play, background pipeline builds free their memory, the guest's clock is frozen while the archive opens, and the replay of a frame costs less CPU. Metal 4 mesh pipelines are prepared ahead.
+- Audio: the sound comes back after the output device changes. The microphone's default gain is 1x (it was 4x), so humming into the ocarina is less boosted: raise Microphone gain in the settings window if the game does not hear you.
+- Render scale now uses nxnative's stub for Ocarina of Time: it multiplies the size the game computes by the slider's value (1.0 is the game's own size) and keeps the game's dynamic resolution out of the way below 1.0. The slider's top is therefore the game's own 1440x810 (handheld) instead of 1920x1080: Potato (960x540, the default) and Normal (1280x720) are the same sizes as before and Native is gone.
+
+### Builder (Bowshot.app) and game app
+
+- The memory warning under the Render scale slider names Potato, whose value is now 0.6667.
+
 ## 0.1.1 (20 Nov 2026)
 
 ### Builder (Bowshot.app)

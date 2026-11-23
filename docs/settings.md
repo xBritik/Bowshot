@@ -3,7 +3,7 @@
 The screen before the game starts shows the settings the game supports. A setting that only matters while another is on appears under it and disappears when that one is turned off. Tap **Play** to start; the app remembers your choices for the next start. All settings are on one scrollable screen, under **Game**, **Controls** and **Performance**. Tap a menu or move a slider there; no settings page needs opening. **Upscaling** is in **Game**, beside **Console mode**. A Mac app shows the same settings in a [window of its own](#the-mac-settings-window).
 
 - [Tested defaults](#tested-defaults)
-- [Game](#game): [Frame rate](#frame-rate), [Render scale](#render-scale), [Console mode](#console-mode), [Upscaling](#upscaling), [Game's upscaler](#games-upscaler), [Game language](#game-language), [Picture](#picture), [Frame-rate counter](#frame-rate-counter)
+- [Game](#game): [Frame rate](#frame-rate), [Render scale](#render-scale), [Console mode](#console-mode), [Upscaling](#upscaling), [Game's upscaler](#games-upscaler), [Game language](#game-language), [Picture](#picture), [Rotation](#rotation), [Frame-rate counter](#frame-rate-counter)
 - [Controls](#controls): [Touch feedback](#touch-feedback), [Game rumble](#game-rumble), [Rumble strength](#rumble-strength), [Rumble cutoff](#rumble-cutoff), [Press a button to join](#press-a-button-to-join)
 - [Performance](#performance): [Frame buffering](#frame-buffering), [Metal 4 pipelines](#metal-4-pipelines), [Pipeline prebuild](#pipeline-prebuild), [Encode thread](#encode-thread), [Hold frames when late](#hold-frames-when-late), [Performance HUD](#performance-hud), [Reset to tested defaults](#reset-to-tested-defaults)
 - [The Mac settings window](#the-mac-settings-window): [Display mode](#display-mode)
@@ -27,6 +27,8 @@ Games whose speed the app controls (Breath of the Wild, Tears of the Kingdom and
 
 On a Mac, a game checked at that speed (Fire Emblem Fortune's Weave, Mario & Luigi: Brothership) also offers **120 fps**. It needs a screen that shows 120 Hz, and uses more GPU and power. When frames do not fit, during movies, or on a slower screen, the game drops to 60 for a while, so it keeps its real speed. If you see the frame rate move between 60 and 120 and would rather it stayed still, choose 60.
 
+Ocarina of Time also offers **40 fps**, on the iPhone and the Mac. Each frame stays on screen for 25 ms, three refreshes of a 120 Hz screen, so motion is smoother than 30 and costs less than 60. It needs a screen that runs at 120 Hz (ProMotion): on a 60 Hz screen, in Low Power Mode, while the phone is hot, and during movies, the game runs at 30 instead (or 60 for 60-picture movies), at real speed.
+
 ### Dynamic resolution
 
 Off, the default, keeps the 3D picture at full size. On lets the game lower its resolution when frames run heavy and raise it again when they fit, as on the Switch: steadier frame rate, at times a softer picture. Only games whose resolution control the app can hold offer it (NieR:Automata, Ocarina of Time).
@@ -35,7 +37,7 @@ Off, the default, keeps the 3D picture at full size. On lets the game lower its 
 
 The size of the 3D picture, from 50 to 100 %. Below 100 % the size is fixed there and the game's own dynamic resolution is off; 100 % keeps the game's own. Lower can be lighter on the GPU but is blurrier; the HUD and text keep their sharpness. Only games the app can scale offer it.
 
-Bowshot, Ocarina of Time: the slider moves in twelfths of the output, each step a whole 16:9 size, with **Potato** (50 %, 960×540 handheld, the default), **Normal** (67 %, 1280×720) and **Native** (100 %, 1920×1080) written under it. ⌘= and ⌘- change it while you play ([The View menu](#the-view-menu)); the settings window lists those shortcuts under **While you play**.
+Bowshot, Ocarina of Time: the slider is a fraction of the game's own 3D size (1440×810 handheld, 1920×1080 docked), in eighteenths, each step a whole 16:9 size, with **Potato** (67 %, 960×540 handheld, the default), **Normal** (89 %, 1280×720) and **Game's own** (100 %, 1440×810) written under it. It does not go above the game's own size. ⌘= and ⌘- change it while you play ([The View menu](#the-view-menu)); the settings window lists those shortcuts under **While you play**.
 
 Hades II goes up to 300 %: it renders its whole picture, the HUD and text included, at 1280x720 docked and handheld, and above 100 % it renders larger instead of being scaled up: 150 % is 1920x1080, 200 % 2560x1440, 300 % 3840x2160. Sharper on a large screen or window, at more GPU time (about 2.5 times the GPU time at 200 % on an Apple M6); on a small screen the difference is slight. [Its note](../dm/games/0100A00019DE0000/README.md#rendering) has the measurements.
 
@@ -90,6 +92,10 @@ iPhone and iPad. **Fit**, the default, shows the game's picture (16:9, or the ta
 ### Picture shape
 
 Games whose profile supports it (Breath of the Wild, Animal Crossing: New Horizons). **iPhone Duo screen (1.43:1)** renders a taller picture of the Duo's own shape: the sides of 16:9 with more above and below, and the HUD at the screen's edges. **16:9** is the Switch's picture. The taller picture has about a quarter more pixels, so it runs a little slower and warmer.
+
+### Rotation
+
+iPhone and iPad. **Automatic**, the default, turns with the device as before: landscape either way on an iPhone, any way on an iPad. **Landscape** stays in landscape, either way up. **Portrait** stays upright, with the picture above the touch controls (or centred when a controller is connected). The screen turns as soon as you pick it, on the settings screen or in the in-game menu.
 
 ### Frame-rate counter
 
@@ -265,7 +271,7 @@ iCloud Drive takes a moment to carry a file from one device to the other. Quit t
 
 ## In-game menu
 
-On the iPhone and iPad the gear at the top centre of the touch controls opens a menu while the game runs; it stays when a controller hides the other controls. It holds **Console mode**, **Picture** and the **Frame-rate counter**, then **Controller layout** (**2D**, **3D**, and **Tap**, no controls and every touch to the game, in handheld mode), **Touch feedback** and **Game rumble**: the settings that take effect at once. A choice opens to show its options, the current one ticked. The menu's text keeps one size whatever the system text size, so it stays short over the game. A change is remembered as on the settings screen, which shows it at the next start; a setting `Documents/env.txt` fixes is shown, not changed. The other settings need the game to start again, so they are only on the settings screen: close the app fully and open it again.
+On the iPhone and iPad the gear at the top centre of the touch controls opens a menu while the game runs; it stays when a controller hides the other controls. It holds **Console mode**, **Picture**, **Rotation** and the **Frame-rate counter**, then **Controller layout** (**2D**, **3D**, and **Tap**, no controls and every touch to the game, in handheld mode), **Touch feedback** and **Game rumble**: the settings that take effect at once. A choice opens to show its options, the current one ticked. The menu's text keeps one size whatever the system text size, so it stays short over the game. A change is remembered as on the settings screen, which shows it at the next start; a setting `Documents/env.txt` fixes is shown, not changed. The other settings need the game to start again, so they are only on the settings screen: close the app fully and open it again.
 
 Console mode changes as on a Switch put in or taken out of its dock. While a TV shows the game it stays **Docked**, and the mode you pick applies when the TV is disconnected. **Docked** removes the Tap layout, as a docked Switch reads no touch screen.
 
@@ -279,14 +285,15 @@ A line like `DM_PRESENT_SNAP=0` in `Documents/env.txt` (in the Files app, under 
 
 | Setting | Variable | Values |
 |---|---|---|
-| Frame rate | `DM_FPS_TARGET` | `30`, `60`, `120` (games with `fps_max 120`) |
+| Frame rate | `DM_FPS_TARGET` | `30`, `40` (Ocarina of Time, a 120 Hz screen), `60`, `120` (games with `fps_max 120`) |
 | Render scale | `DM_RENDER_SCALE` | `0.5` to `1.0` (Hades II: to `3.0`) |
 | Console mode | `DM_OPMODE` | `1` docked, `0` handheld |
 | Game language | `DM_LANG` | a language code, such as `ja` |
 | Display mode (Mac) | `DM_FULLSCREEN` | `1` fullscreen, `0` a window |
 | Cloud saves folder (Mac) | `DM_SAVE_SYNC` | a folder; `icloud`: iCloud Drive › nxnative Saves; `0`: off |
 | Picture (iPhone and iPad) | `DM_PICTURE_FIT` | `fit` 16:9 with black bars, `fill` covers the screen, cropped |
-| Picture shape | `DM_SCREEN_ASPECT` | `auto` the app window's own shape where it is taller than 16:9 (iPad 4:3, iPhone Duo 1.43:1), else 16:9 (iOS only); `1.43` the iPhone Duo's shape, `0` 16:9 |
+| Picture shape | `DM_SCREEN_ASPECT` | On builds with screen-shape stubs, `auto` the app window's own shape where it is taller than 16:9 (iPad 4:3, iPhone Duo 1.43:1), else 16:9 (iOS only); `1.6` MacBook (16:10, Mac only); `1.43` the iPhone Duo's shape, `0` 16:9 |
+| Rotation (iPhone and iPad) | `DM_ROTATION` | `auto` as the device turns, `landscape`, `portrait` |
 | Frame-rate counter | `DM_SHOW_FPS` | `1`, `0` |
 | Touch feedback | `DM_TOUCH_HAPTICS` | `1`, `0` |
 | Game rumble | `DM_RUMBLE` | `1`, `0` |

@@ -22,7 +22,7 @@ Bowshot is a fork of [GreenKid-MV](https://github.com/adi0900/GreenKid-MV) by **
 
 ## Bowshot additions
 
-The Render scale choice and its live steps, the in-game Performance HUD toggle (Apple's Metal HUD), the bow-and-arrow icon, and the move to nxnative main `8c94bd1e` with kid-with-sword-remake's render-target pacing and Texture Memory Saver. They do not make the upstream or GreenKid-MV work original Bowshot work.
+The Render scale choice and its live steps, the in-game Performance HUD toggle (Apple's Metal HUD), the bow-and-arrow icon, the move to nxnative main `0293739d` (it was `8c94bd1e` in 0.1.0 and 0.1.1) with kid-with-sword-remake's render-target pacing and Texture Memory Saver, and the Render scale's Potato default and named steps on top of nxnative's stub. They do not make the upstream or GreenKid-MV work original Bowshot work.
 
 ## README reference
 
