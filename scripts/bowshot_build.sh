@@ -4,16 +4,18 @@
 # The engine's progress: lines for a terminal, json events with BOWSHOT_PROGRESS=json (the builder window's progress bar; build.log then holds those events).
 # A blocking error is one line that starts with ERROR: (the builder window shows it in red); the finished app is the line READY: <path> (green).
 set -euo pipefail
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 SOURCE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SUPPORT_DIR="${BOWSHOT_SUPPORT_DIR:-$HOME/Library/Application Support/Bowshot}"
+# The tools the builder's setup screen installs (scripts/bowshot_setup.sh) come first, then Homebrew's for a Mac that has them already
+export PATH="$SUPPORT_DIR/tools/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 
 doctor() {
   [[ "$(uname -m)" == arm64 ]] || { echo 'ERROR: Apple silicon is required.'; return 1; }
-  command -v uv >/dev/null || { echo 'ERROR: Install the prerequisite tools shown in the README (uv is missing).'; return 1; }
-  xcrun --find metal >/dev/null 2>&1 || { echo 'ERROR: Install Xcode 27.2 and its Metal Toolchain, then open Xcode once.'; return 1; }
-  for tool in xcodegen zstd glslangValidator; do
-    command -v "$tool" >/dev/null || { echo "ERROR: Missing prerequisite: $tool. See the README."; return 1; }
+  (( $(sysctl -n hw.memsize) / 1073741824 >= 16 )) || { echo 'ERROR: This Mac has less than 16 GB of memory. The game needs 13 to 16 GB while it runs, so Bowshot cannot build it here.'; return 1; }
+  command -v uv >/dev/null || { echo 'ERROR: A build tool is missing (uv). Open the builder window and use its setup steps (Install build tools).'; return 1; }
+  xcrun --find metal >/dev/null 2>&1 || { echo 'ERROR: Install Xcode 27.2 and its Metal Toolchain: the builder window has the setup steps.'; return 1; }
+  for tool in zstd glslangValidator; do   # xcodegen is only for iOS builds: the builder makes a Mac app
+    command -v "$tool" >/dev/null || { echo "ERROR: Missing build tool: $tool. Open the builder window and use its setup steps (Install build tools)."; return 1; }
   done
 }
 
@@ -69,12 +71,16 @@ DM_OPMODE=0
 DM_FPS_HOLD=off
 DM_TEX_RELEASE=0
 DM_GUEST_FILE=0
-DM_MEM_CAP_GB=13
 DM_FOCUS_KEEP=1
 DM_DYNAMIC_RESOLUTION=0
 DM_PRESENT_INTERVAL=display
 DM_PRESENT_UPSCALE=off
 SETTINGS
+  # The game's memory watchdog closes it when its resident memory passes this many GB (a guard against a runaway taking the whole Mac down).
+  # The game itself needs 13 to 16 GB, with load peaks of about 1 GB: 2 GB are left to macOS, between 8 and 48 GB (a fixed 13 closed the game early on a Mac with more memory)
+  RAM_GB=$(( $(sysctl -n hw.memsize) / 1073741824 )); MEM_CAP=$(( RAM_GB - 2 )); (( RAM_GB <= 16 )) && MEM_CAP=$(( RAM_GB - 1 )); (( MEM_CAP < 8 )) && MEM_CAP=8; (( MEM_CAP > 48 )) && MEM_CAP=48
+  echo "DM_MEM_CAP_GB=$MEM_CAP" >> "$ENV_FILE"
+  echo "Memory limit for the game: $MEM_CAP GB (this Mac has $RAM_GB GB)."
 fi
 "$PYTHON" scripts/build_ipa_from_nsp.py "$GAME_DIR" --platform mac-app --work-dir "$WORK_DIR" --keep-extracted --env-file "$ENV_FILE" --fallback-icon "$ENGINE_DIR/launcher/mac/AppIcon.png" -o "$OUTPUT_APP" --progress "${BOWSHOT_PROGRESS:-lines}" 2>&1 | tee -a "$BUILD_LOG"
 printf '\nREADY: %s\nThis app contains your game. Keep it private; do not upload it.\n' "$OUTPUT_APP"

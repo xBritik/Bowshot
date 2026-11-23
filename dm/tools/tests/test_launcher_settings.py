@@ -167,7 +167,7 @@ class LauncherSettingsTests(unittest.TestCase):
             rows = {s['env']: s for s in settings.build('0400486024DEC000', tmp, Path(tmp) / 'control.nacp')['settings']}
         self.assertNotIn('DM_RES_PRESET', rows)
         rs = rows['DM_RENDER_SCALE']
-        self.assertEqual((rs['min'], rs['max'], rs['default'], 'needs' in rs), (0.5, 1.0, '0.6667', False))
+        self.assertEqual((rs['min'], rs['max'], rs['default'], 'needs' in rs), (0.5, 1.0, '0.5', False))
         marks = {round(float(v), 4): name for v, name in rs['marks']}
         self.assertEqual(marks, {0.5: 'Potato', 0.6667: 'Normal', 1.0: 'Native'})
         for k, name in ((0, 'Potato'), (2, 'Normal'), (6, 'Native')):   # each mark is a step of the slider, and a whole 16:9 size of 1920x1080
