@@ -1,0 +1,41 @@
+name: Release
+# Pushing a tag vX.Y.Z builds the builder on an Apple silicon runner and publishes the release with its files.
+# The tag must match VERSION. The app is signed ad hoc (no Apple Developer certificate), as in the README's first-launch steps.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: The tag matches VERSION
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          test "${GITHUB_REF_NAME}" = "v$(tr -d '[:space:]' < VERSION)" || { echo "Tag ${GITHUB_REF_NAME} does not match VERSION $(cat VERSION)"; exit 1; }
+      - run: python tools/check_content.py --staged
+      - run: python -m unittest discover -s tests -v
+      - name: Package the builder
+        run: python tools/package_builder.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bowshot-release
+          path: |
+            dist/Bowshot-*-macOS-arm64.zip
+            dist/Bowshot-*-source.zip
+            dist/SHA256SUMS.txt
+            dist/CONTENT-CHECK.json
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES="$(awk -v v="${GITHUB_REF_NAME#v}" '$0 ~ "^## " v " " {f=1; next} /^## /{f=0} f' CHANGELOG.md)"
+          gh release create "${GITHUB_REF_NAME}" --title "Bowshot ${GITHUB_REF_NAME#v}" --notes "${NOTES:-See CHANGELOG.md}" \
+            dist/Bowshot-*-macOS-arm64.zip dist/Bowshot-*-source.zip dist/SHA256SUMS.txt

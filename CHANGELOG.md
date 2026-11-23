@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## 0.1.1 (20 Nov 2026)
+
+### Builder (Bowshot.app)
+
+- A new guided interface in four screens: Your Mac (setup), Game (choose or drop your game folder, with the folder checked at once), Build (one progress bar for the whole build, the current step, the time left and the time elapsed) and Done (open the game, show it in Finder). A failed build says why and offers Try Again.
+- Setup screen: Bowshot checks Xcode, the Metal Toolchain and the build tools when it opens, and installs what it can with one button each (no Terminal, no Homebrew). `uv`, `glslangValidator` and `zstd` go into `~/Library/Application Support/Bowshot/tools`, with pinned versions and SHA-256 checks. Xcode itself is still installed from the App Store; Build stays off until every step is green.
+- xcodegen is no longer required: it is only for iOS builds.
+- The step line shows how long the current step has run, ticking every second, and a step that logs nothing for a minute adds a "still running" line to the build log.
+- Prewarm pipelines shows its count (`4,887/8,345 lines`), the bases compiled and the time left, read from the host's own progress lines.
+- The build log can be selected and copied with ⌘C (there is an Edit menu with Copy and Select All).
+- A sound plays when a build finishes.
+- Bowshot's icon is shown in the builder window.
+
+### Engine
+
+- A Mac with less than 16 GB of memory cannot build the game: the setup screen shows a Memory line that is not ready, and the build refuses with a clear message.
+- The game's memory limit now follows the Mac's memory (2 GB less than the Mac has, between 8 and 48 GB) instead of a fixed 13 GB, which closed the game early on a Mac with more memory (a 18 GB Mac gets 16 GB, a 16 GB Mac 15 GB). The game itself needs 13 to 16 GB, so a Mac with 16 GB is tight. The limit is written when the app is built: rebuild to get it, or set `DM_MEM_CAP_GB` in `~/Library/Application Support/nxnative/0400486024DEC000/env.txt`.
+- The render scale now starts on Potato (0.5) for every Mac, because the game already needs 13 to 16 GB of memory at that scale and more as it rises. Normal and Native stay a click away.
+- The game's settings window shows a warning right under the Render scale slider when the render scale is above Potato on a Mac with less than 24 GB of memory (the game's memory use grows with the scale and it can close itself).
 - Performance record: the game log gets a `perf:` line every 10 seconds (average frame rate, the frame rate of the slowest 1 % of frames, the worst frame, frames over 25 ms, dropped frames, GPU average and 95th percentile). It is the data behind performance reports. `DM_PERF_LOG=<seconds>` changes the interval, `0` turns it off.
 
 ## 0.1.0 (21 Nov 2026)
