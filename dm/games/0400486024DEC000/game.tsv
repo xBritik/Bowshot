@@ -55,10 +55,10 @@ tex_dirty_upload	on
 op_mode	handheld
 # Bowshot: the launcher's Render scale, through the render-scale stub (patches.py render_scale, v131072). The slider is a
 # fraction of the output, 1920x1080 handheld and 2560x1440 docked; twelfths, so every step is a whole 16:9 size: 0.5 = 960x540 (the former Potato's 3D size), 0.6667 = 1280x720
-# (Normal's, the default), 1.0 = 1920x1080
+# (Normal's), 1.0 = 1920x1080. The default is Potato: the game needs 13 to 16 GB of memory at that scale already, and more as it rises
 render_base	2560x1440 1920x1080
 render_scale	0.5:1.0:0.0833333333
-render_scale_default	0.6667
+render_scale_default	0.5
 render_scale_marks	0.5=Potato,0.6666667=Normal,1.0=Native
 # Bowshot: MetalFX draws the game's own upscaler networks unless the player picks Game's own (the launcher's Game's upscaler): about 1.4 ms less GPU a frame upstream on an M4 Pro, 3.4 ms on an M1
 upscaler_default	metalfx
