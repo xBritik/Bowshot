@@ -250,7 +250,7 @@ private struct KeyCombo: View {
     init(_ keys: String) { self.keys = keys }
     var body: some View {
         Text(keys).font(.system(.body, design: .monospaced).weight(.medium)).tracking(3).foregroundStyle(.primary)
-            .padding(.leading, 11).padding(.trailing, 8).padding(.vertical, 3)
+            .padding(.leading, 8).padding(.trailing, 5)   // tracking adds 3 points after the last key too: the plate is even.padding(.vertical, 3)
             .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color.primary.opacity(0.2)))
             .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(Color.primary.opacity(0.45), lineWidth: 0.75))
             .accessibilityLabel(keys)
