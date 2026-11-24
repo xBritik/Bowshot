@@ -275,23 +275,26 @@ struct ForecastCard: View {
 
     private func symbol(_ state: String) -> (name: String, color: Color, label: String) {
         switch state {
-        case "reuse": return ("checkmark.circle.fill", .green, "Reused")
-        case "redo": return ("arrow.triangle.2.circlepath.circle.fill", .orange, "Made again")
-        case "new": return ("plus.circle.fill", .blue, "Made")
+        case "reuse": return ("checkmark.circle.fill", .green, "Already built, kept")
+        case "redo": return ("arrow.triangle.2.circlepath.circle.fill", .orange, "Will be built again")
+        case "new": return ("plus.circle.fill", .blue, "Will be built")
         default: return ("questionmark.circle", .secondary, "Decided during the build")
         }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("What this build will do").font(.headline)
+            Text(rows.contains { $0.id == "first" } ? "Your first build" : "Compared with your last build").font(.headline)
             Card {
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, r in
                     let s = symbol(r.state)
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: s.name).font(.system(size: 18)).foregroundStyle(s.color).frame(width: 32).accessibilityLabel(s.label)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(r.title).font(.callout.weight(.semibold))
+                            HStack(spacing: 8) {
+                                Text(r.title).font(.callout.weight(.semibold))
+                                Text(s.label).font(.caption.weight(.semibold)).foregroundStyle(s.color)
+                            }
                             Text(r.detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                         }
                         Spacer(minLength: 0)
@@ -301,7 +304,7 @@ struct ForecastCard: View {
                     if i < rows.count - 1 { Divider().padding(.leading, 56) }
                 }
             }
-            Text("A forecast read from the files of your last build. The build lists what it really did.").font(.caption).foregroundStyle(.secondary)
+            Text(rows.contains { $0.id == "first" } ? "Nothing to compare yet. The build lists what it really did." : "A forecast read from the files of your last build. The build lists what it really did.").font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: 560, alignment: .leading)
     }
