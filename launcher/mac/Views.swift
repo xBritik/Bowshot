@@ -219,6 +219,7 @@ struct GameScreen: View {
                     ScreenHeader(image: "shippingbox", tint: .accentColor, title: "Choose your game",
                                  subtitle: "Pick the folder with your own copy of Ocarina of Time (Switch 2, update v131072): one .nup file, or the .nsp files.")
                     if m.folder.isEmpty { DropZone(m: m, targeted: targeted) } else { ChosenFolder(m: m) }
+                    if !m.forecast.isEmpty && m.folderProblem == nil { ForecastCard(rows: m.forecast) }
                     Card {
                         Fact(symbol: "clock", text: "The first build takes 1.5 hours or more. Later builds are much faster.")
                         Divider().padding(.leading, 44)
@@ -245,7 +246,86 @@ struct GameScreen: View {
             _ = p.loadObject(ofClass: URL.self) { url, _ in if let url = url { DispatchQueue.main.async { m.drop(url) } } }
             return true
         }
-        .onAppear { m.refreshSetup() }
+        .onAppear { m.refreshSetup(); m.refreshForecast() }
+    }
+}
+
+// What the next build will reuse and what it will make again, from the earlier build's files (scripts/bowshot_forecast.py). A forecast: the build itself says what it did
+struct ForecastCard: View {
+    let rows: [ForecastRow]
+
+    private func symbol(_ state: String) -> (name: String, color: Color, label: String) {
+        switch state {
+        case "reuse": return ("checkmark.circle.fill", .green, "Reused")
+        case "redo": return ("arrow.triangle.2.circlepath.circle.fill", .orange, "Made again")
+        case "new": return ("plus.circle.fill", .blue, "Made")
+        default: return ("questionmark.circle", .secondary, "Decided during the build")
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("What this build will do").font(.headline)
+            Card {
+                ForEach(Array(rows.enumerated()), id: \.element.id) { i, r in
+                    let s = symbol(r.state)
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: s.name).font(.system(size: 18)).foregroundStyle(s.color).frame(width: 32).accessibilityLabel(s.label)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(r.title).font(.callout.weight(.semibold))
+                            Text(r.detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(12)
+                    .accessibilityElement(children: .combine)
+                    if i < rows.count - 1 { Divider().padding(.leading, 56) }
+                }
+            }
+            Text("A forecast read from the files of your last build. The build lists what it really did.").font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: 560, alignment: .leading)
+    }
+}
+
+// Every step of the build with what became of it: reused (its inputs were as at the last build), made, or failed, with the time it took
+struct StageList: View {
+    @ObservedObject var m: BuilderModel
+
+    private func look(_ s: StageState) -> (name: String, color: Color, label: String) {
+        switch s {
+        case .running: return ("circle.dotted", .accentColor, "Running")
+        case .reused: return ("checkmark.circle.fill", .green, "Reused")
+        case .rebuilt: return ("hammer.circle.fill", .orange, "Made")
+        case .failed: return ("xmark.octagon.fill", .red, "Failed")
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(m.notices.enumerated()), id: \.offset) { _, n in
+                Label(n, systemImage: "info.circle").font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            if !m.stages.isEmpty {
+                Card {
+                    ForEach(Array(m.stages.enumerated()), id: \.element.id) { i, s in
+                        let l = look(s.state)
+                        HStack(spacing: 10) {
+                            Image(systemName: l.name).foregroundStyle(l.color).frame(width: 22).accessibilityLabel(l.label)
+                            Text(s.name).font(.callout)
+                            Spacer(minLength: 8)
+                            Text(s.state == .reused ? "reused" : s.state == .running ? "running" : "\(m.clock(Double(s.seconds)))")
+                                .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .help(s.summary)
+                        .accessibilityElement(children: .combine)
+                        if i < m.stages.count - 1 { Divider().padding(.leading, 44) }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: 560, alignment: .leading)
     }
 }
 
@@ -336,6 +416,7 @@ struct BuildScreen: View {
                         }
                         .frame(maxWidth: 560)
                     }
+                    if !m.stages.isEmpty || !m.notices.isEmpty { StageList(m: m) }
                     LogDisclosure(m: m, open: $showLog, height: m.failed ? 220 : 160).frame(maxWidth: 560)
                 }
                 .padding(margin)
@@ -366,13 +447,21 @@ struct DoneScreen: View {
             VStack(spacing: margin) {
                 Spacer(minLength: 0)
                 ScreenHeader(image: "checkmark.seal.fill", tint: .green, title: "Your game is ready",
-                             subtitle: "Ocarina of Time.app is in the Bowshot-local folder, inside your game folder. Built in \(m.clock(m.finishedIn)).")
+                             subtitle: (m.inApplications ? "Ocarina of Time.app is in your Applications folder (and in the Bowshot-build folder, inside your game folder, at no extra space). " : "Ocarina of Time.app is in the Bowshot-build folder, inside your game folder. ") + "Built in \(m.clock(m.finishedIn)).")
                 Card {
                     Fact(symbol: "lock.fill", text: "This app contains your game. Keep it private and do not upload it.")
                     Divider().padding(.leading, 44)
                     Fact(symbol: "arrow.down.app", text: "Drag it to your Applications folder if you like, or play it from where it is.")
+                    if !m.freed.isEmpty {
+                        Divider().padding(.leading, 44)
+                        Fact(symbol: "trash", text: "Freed \(m.freed)")
+                    }
                 }
                 .frame(maxWidth: 560)
+                if !m.stages.isEmpty {
+                    DisclosureGroup("\(m.reusedCount) steps reused, \(m.rebuiltCount) made") { StageList(m: m).padding(.top, 6) }
+                        .frame(maxWidth: 560, alignment: .leading)
+                }
                 Spacer(minLength: 0)
             }
             .padding(margin)

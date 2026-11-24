@@ -1,6 +1,40 @@
 # Changelog
 
-## Unreleased
+## 0.1.3 (unreleased)
+
+0.1.2 was never released: its engine update (nxnative `0293739d`) makes Ocarina of Time's GPU hang after one to four minutes (`kIOGPUCommandBufferCallbackErrorHang`; reported upstream as [seedds/nxnative#3274](https://github.com/seedds/nxnative/issues/3274)). 0.1.3 keeps 0.1.1's engine, which plays, and takes from 0.1.2 and from the work done after it only what does not touch the engine. **The shader chain is 0.1.1's (`e52917b72fcf`): a game built with 0.1.1 is reused, and nothing about the shaders, the pipeline archive or the extracted game is made again.**
+
+### From 0.1.2 (kept)
+
+- The finished game app is also put in Applications (a clone on the same disk, so no extra space; `scripts/bowshot_install.sh`). The copy in `Bowshot-build` stays, so the next build reuses it. An app of the same name in Applications is replaced only if it is this game's, and not while it runs; if Applications cannot be written, the app stays in `Bowshot-build` and the log says why.
+- The builder is named Bowshot <version> and its window title says it; the game's settings window says which Bowshot built it ("Built with Bowshot 0.1.3", at the bottom left).
+- The settings window no longer draws the rows the build fixes (Dynamic resolution, Console mode, Upscaling, Hold frames when late), nor Press a button to join (Ocarina of Time has one player), nor the Show this window at launch checkbox. Their values still apply.
+- ⌘= and ⌘- show a message at the bottom of the picture for about 3 seconds: the Render scale (its name, percentage and size in pixels) and the memory the game uses beside the limit that closes it, read again after 1.5 seconds. View > Show Memory Use (⌥⌘I) shows the memory alone. It is a native label over the window, drawn only when one of these keys is pressed.
+- The microphone's default gain is 1x (it was 4x), so humming into the ocarina is less boosted: raise Microphone gain in the settings window if the game does not hear you.
+
+### Builder (Bowshot.app)
+
+- The Game screen shows "What this build will do" before you start: whether the game files and the shaders of your last build will be reused, and when the translation chain changed (so the shaders are compiled again, 1.5 hours or more). It is read from the files of your last build and never starts the engine (`bowshot_build.sh --forecast <game folder>`, `scripts/bowshot_forecast.py`).
+- The Build and Done screens list every step with what became of it (reused, made, failed) and the time it took, and say why the shaders are compiled again when the engine reports it.
+- Every build writes `Bowshot-build/build-report.md`: its steps in order, which were reused and which made, the time of each, the machine and the versions. `scripts/bowshot_report.py record` keeps a build in `docs/builds/` and `compare` sets two builds side by side (slower steps, steps reused before and made now); `docs/builds/README.md` says how to compare like with like.
+- `scripts/bowshot_watch.py <game folder>` serves a page on 127.0.0.1 that follows a build while it runs (step, bar, time left, steps done, disk, log). It only reads.
+- The folder the build works and writes in, inside your game folder, is now called `Bowshot-build` (it was `Bowshot-local`). A game folder that has the old one gets it renamed at the next build, at once and keeping everything in it, so nothing is built again because of the name. A build writes `Bowshot-build/last-build.txt` (the Bowshot version and engine revision it was made with), which the forecast compares with the Bowshot you run.
+- Each build frees the disk space of files it will not use, and only those Bowshot made and nothing reads any more: the engine copies of other Bowshot versions (`~/Library/Application Support/Bowshot/engine/`, except one another build is running from), the `obsolete` folder of the build folder (after a successful build), and the idle Metal build folders that the pipeline archive compiler leaves in the user cache folder (`scripts/clean_metal_cache.py`: only folders nothing changed in for an hour, none while a game runs). What the next build reuses (the extracted game, the shaders, the app), your game files and other apps are never touched. The log says what was freed, and the Done screen shows the total.
+
+### Repository: Mac only and Ocarina of Time only
+
+The source tree and the builder app carried the upstream project's other games and its iPhone and iPad app. Bowshot builds one game on the Mac, so they are gone, and the builder app goes from 880 MB to about 60 MB.
+
+- **Other games' profiles:** the 225 profiles in `dm/games` are deleted (745 MB). `dm/games` keeps Ocarina of Time (`0400486024DEC000`), the shared readers and `settings.tsv`. `dm/games/README.md` lost its table of games and its "Adding a game" chapter.
+- **iPhone and iPad:** `dm/ios` is deleted except `dm/ios/tools/ios_metal.py`, which the shader chain reads by path (changing the chain's files compiles every shader again). The launcher's three Swift files moved to `dm/mac`.
+- **Scripts and tooling:** `scripts/regress.py` (it needs every game), `scripts/push_romfs.sh`, the GitHub game-request form, the issue and pull-request labelling tools and `UPSTREAM_README.md` are deleted.
+- **Notes:** other games' names and title IDs in the Markdown notes are replaced by "another game" and `<title ID>`; links in the docs to the deleted profiles are dead.
+- **Packaging** takes only the files Git tracks, where it took everything in the folder (local build output included: `dm/host/gen`, 43 MB, and `.DS_Store` files). The app leaves out tests, fuzz corpora and developer documentation: a build reads none of them.
+- **Not touched on purpose, to leave the engine and its shader chain as in 0.1.1:** the code and comments of `dm/gfx`, `dm/host`, `dm/tools` and `dm/third_party` (other games' names stay in them), the iOS branches inside the shader tools and in `scripts/build_ipa_from_nsp.py`, and the readers for other games' formats. They go with a version that builds the shaders again anyway.
+
+### Held back with 0.1.2 (not in this version)
+
+The engine update to nxnative `0293739d`: the 40 fps option, the dynamic resolution's threshold following the frame rate target, memory given back under pressure and idle texture eviction, the stutter fixes (pipeline archives adopted before the first frame), the audio recovery after an output change, nxnative's render-scale stub (Potato and Game's own marks, Native gone), the MacBook 16:10 picture shape, and the Pipeline prebuild and archive progress and the two-groups-at-a-time archive build made on top of that engine. They come back one by one, or with the engine, once the GPU hang is understood.
 
 ## 0.1.1 (20 Nov 2026)
 
