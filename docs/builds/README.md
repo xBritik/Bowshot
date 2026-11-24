@@ -44,3 +44,5 @@ Keep the Mac plugged in, close other apps, and do not play while it builds: the 
 | Id | Date | Bowshot | Chain | Case | Wall clock | Note |
 |---|---|---|---|---|---|---|
 | 0.1.2-beta-6-cold | 2026-11-23 | 0.1.2 | `ba5a707f7ecf` | cold | 1:32:20 | 9 steps made, 5 reused (the second engine pass); shaders 36:24 with none from the cache, prebuild 19:26, archive 28:32, prewarm 2:42, app 2:32 |
+| 0.1.1-cold | 2026-11-23 | 0.1.1 | `e52917b72fcf` | cold | 1:20:08 | shaders 34:00 with none from the cache, prebuild 12:01, archive 24:29, prewarm 2:15, app 2:30; the engine of 0.1.1, which plays |
+| 0.1.3-warm | 2026-11-23 | 0.1.3 | `e52917b72fcf` | warm | 0:10:12 | same engine and chain as the line above: shaders restored from the cache 3:15, prebuild 0:08, archive 0:27, prewarm 1:57, app 0:49 (the host changed, so the prewarm and the app are made again) |
