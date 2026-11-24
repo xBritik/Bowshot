@@ -46,6 +46,7 @@ final class BuilderModel: ObservableObject {
     @Published var checked = false                       // the first check of the Mac has answered
     @Published var setupStates: [String: [String]] = [:]  // id -> [state, detail]
     @Published var setupBusy: String?                    // the title of the setup step that runs, nil when none
+    @Published var setupFailed: String?                  // the id of the install ("tools", "metal") that ended with an error, until the next try or until the check finds nothing missing
     var setupProcess: Process?
 
     // MARK: Game folder
@@ -130,7 +131,8 @@ final class BuilderModel: ObservableObject {
             return RequirementRow(ok: ok, title: "Metal Toolchain", detail: ok ? "Apple's graphics compiler is installed." : "Apple's graphics compiler, a download of a few GB.", button: ok ? nil : "Install", enabled: xcodeOK && setupBusy == nil)
         case .tools:
             let miss = toolsMissing
-            return RequirementRow(ok: miss.isEmpty, title: "Build tools", detail: miss.isEmpty ? "uv, zstd and glslang are installed." : "To install: \(miss.joined(separator: ", ")). They go in Bowshot's own folder.", button: miss.isEmpty ? nil : "Install", enabled: xcodeOK && setupBusy == nil)
+            let failed = setupFailed == "tools" && !miss.isEmpty ? " The last try failed: open the log below for the reason." : ""
+            return RequirementRow(ok: miss.isEmpty, title: "Build tools", detail: miss.isEmpty ? "uv, zstd and glslang are installed." : "To install: \(miss.joined(separator: ", ")). They go in Bowshot's own folder.\(failed)", button: miss.isEmpty ? nil : "Install", enabled: xcodeOK && setupBusy == nil)
         }
     }
 
@@ -186,9 +188,10 @@ final class BuilderModel: ObservableObject {
             let text = String(decoding: data, as: UTF8.self).replacingOccurrences(of: "\r", with: "\n")   // curl's progress bar redraws with \r
             DispatchQueue.main.async { self?.append(text) }
         }
-        task.terminationHandler = { [weak self] _ in
+        task.terminationHandler = { [weak self] finished in
             DispatchQueue.main.async {
                 guard let self = self else { return }
+                self.setupFailed = finished.terminationStatus != 0 ? args.last : nil
                 self.setupProcess = nil; self.setupBusy = nil; self.append("", flush: true)
                 self.refreshSetup()
             }

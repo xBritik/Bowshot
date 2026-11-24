@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.4 (24 Nov 2026)
+
+A fix for the Mac setup screen. Nothing in the engine or the game changes.
+
+- **Build tools install again.** On a Mac without Homebrew, the setup screen's Install button for the build tools failed on glslang ("Could not install glslangValidator") and the build could not start. Khronos ships `glslangValidator` as a link to `glslang`, and the installer unpacked the link without its target. It now installs the real binary under that name. A Mac that already has `glslangValidator` was never affected.
+- **zstd installs too.** It follows glslang in the same step, so it was never reached after that failure.
+- **A failed install says so.** The Build tools line now says the last try failed and points to the log. Before, it looked unchanged.
+
 ## 0.1.3 (24 Nov 2026)
 
 0.1.2 was never released: its engine makes the game's GPU hang after a few minutes ([seedds/nxnative#3274](https://github.com/seedds/nxnative/issues/3274)). 0.1.3 keeps 0.1.1's engine and takes only what does not touch it. A game built with 0.1.1 is reused.

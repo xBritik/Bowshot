@@ -88,7 +88,8 @@ install_tools() {
   fi
   if [[ ! -x "$BIN/glslangValidator" ]] && ! command -v glslangValidator >/dev/null 2>&1; then
     fetch "$GLSLANG_URL" "$GLSLANG_SHA" "$work/glslang.tar.gz" || return 1
-    tar xzf "$work/glslang.tar.gz" -C "$work" bin/glslangValidator && install -m 755 "$work/bin/glslangValidator" "$BIN/glslangValidator" && sign_if_needed "$BIN/glslangValidator" || { echo 'ERROR: Could not install glslangValidator.'; return 1; }
+    # In the archive bin/glslangValidator is a symlink to bin/glslang: unpacking the link alone leaves it dangling, so the real binary is unpacked and installed under the Validator's name
+    tar xzf "$work/glslang.tar.gz" -C "$work" bin/glslang && install -m 755 "$work/bin/glslang" "$BIN/glslangValidator" && sign_if_needed "$BIN/glslangValidator" || { echo 'ERROR: Could not install glslangValidator.'; return 1; }
     echo "✓ glslang $GLSLANG_VERSION"
   fi
   if [[ ! -x "$BIN/zstd" ]] && ! command -v zstd >/dev/null 2>&1; then
