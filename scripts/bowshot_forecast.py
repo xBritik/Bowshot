@@ -56,8 +56,7 @@ def main(argv):
     version, rev = read(ROOT / 'VERSION').strip(), read(ROOT / 'UPSTREAM-REVISION').strip()
     last = recorded(private)
     if last.get('version') and last.get('revision'):
-        if (last['version'], last['revision']) == (version, rev): line('last', 'reuse', 'Same Bowshot as last time', f'Last built with Bowshot {last["version"]} ({last["revision"]}).')
-        else: line('last', 'check', 'New Bowshot since your last build', f'Last built with Bowshot {last["version"]} ({last["revision"]}), now {version} ({rev}).')
+        if (last['version'], last['revision']) != (version, rev): line('last', 'check', 'New Bowshot since your last build', f'Last built with Bowshot {last["version"]} ({last["revision"]}), now {version} ({rev}).')
     # The game's files: kept while they are as the extraction recorded them (the engine compares each package's name, size and time at the start)
     if any(work.glob('extract/*/RomFS.img')) or any(work.glob('extract/*/extract.key')):
         line('extract', 'reuse', 'Game files', 'Already extracted. Checked again at the start: a game file that changed is extracted again.')
@@ -71,7 +70,7 @@ def main(argv):
     else: line('shaders', 'new', 'Shaders', 'No finished shader library on disk: they are compiled, 1.5 hours or more.')
     # What the engine only knows when it runs
     line('pipelines', 'check', 'Pipeline archive and prewarm', 'Decided while the build runs: seconds when their inputs are unchanged, minutes to hours when they changed.')
-    if (private / 'Ocarina of Time.app').is_dir(): line('app', 'reuse', 'Game app', 'Made again from the steps above; the parts that did not change are cloned, not copied.')
+    if (private / 'Ocarina of Time.app').is_dir(): line('app', 'redo', 'Game app', 'Made again from the steps above; the parts that did not change are cloned, not copied.')
     else: line('app', 'new', 'Game app', 'Packed at the end.')
     return 0
 
