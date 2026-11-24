@@ -16,6 +16,7 @@ Bowshot is a small Mac app that builds the game **on your Mac, from your own gam
 
 - **A forecast before the build:** the Game screen says what the next build will reuse and what it will make again, and the Build and Done screens list every step with its time and whether it was reused. A build writes a report of its steps (`Bowshot-build/build-report.md`).
 - **The game app goes into Applications** as well (a clone: no extra space), and the settings window says which Bowshot built it. The builder carries its version in its name.
+- **An update check** in the builder and in the game's settings window: once a day at most, Bowshot asks GitHub whether a newer release exists and shows a link to it. It sends nothing about you or your Mac, and downloads nothing. Turn it off in the builder's Bowshot menu (Check for Updates Automatically), or with `DM_UPDATE_CHECK=0` in the game's `env.txt`.
 - **Less disk used:** each build frees what it will not use (old engine copies, the `obsolete` folder, idle Metal build folders), and the app is about 60 MB instead of 880 MB.
 - **In the game:** ⌘= and ⌘- show a message with the render scale, its size in pixels and the memory in use; View > Show Memory Use (⌥⌘I) shows the memory alone. The microphone's default gain is 1x (it was 4x): raise it in the settings window if the game does not hear you. The settings window no longer draws rows the build fixes.
 - **A tidier source tree:** only Ocarina of Time's profile, no iPhone app, other games' names out of the notes.

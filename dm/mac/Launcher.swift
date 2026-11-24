@@ -126,6 +126,7 @@ struct LauncherView: View {
     @AppStorage("window.advanced") private var advanced = false
     @State private var checking = false
     @State private var check = 0   // which Play the running check is for: one the player went on from without it is dropped
+    @State private var update: UpdateCheck.Release?   // Bowshot: a newer Bowshot than the one that built this app (UpdateCheck, once a day; DM_UPDATE_CHECK=0 in env.txt turns it off)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -172,6 +173,7 @@ struct LauncherView: View {
                 if let v = Bundle.main.object(forInfoDictionaryKey: "BowshotVersion") as? String, !v.isEmpty {   // Bowshot: the builder this app was made with
                     Text("Built with Bowshot \(v)").font(.footnote).foregroundStyle(.secondary)
                 }
+                if let release = update { Link("Bowshot \(release.version) is available", destination: release.url).font(.footnote) }
                 Spacer()
                 if checking {
                     ProgressView().controlSize(.small)
@@ -184,6 +186,9 @@ struct LauncherView: View {
             .padding(20)
         }
         .frame(minWidth: 520, idealWidth: 560)
+        .onAppear {
+            UpdateCheck.automaticCheck(current: UpdateCheck.runningVersion) { outcome in if case .newer(let release) = outcome { update = release } }
+        }
     }
 
     /// The render scale against this Mac's memory: under 24 GB the game (13 to 16 GB at the lowest scale, more as the scale rises) can fill the Mac's memory and close itself above Potato (0.5)

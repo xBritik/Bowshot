@@ -92,7 +92,7 @@ def min_os(host):   # the host's deployment target (LC_BUILD_VERSION minos): the
 
 
 def swift_sources():   # the settings window, with its model, rows and cloud-save report
-    return [HERE / 'Launcher.swift', HERE / 'LauncherSettings.swift', HERE / 'LauncherRow.swift', HERE / 'SaveSyncReport.swift']
+    return [HERE / 'Launcher.swift', HERE / 'LauncherSettings.swift', HERE / 'LauncherRow.swift', HERE / 'SaveSyncReport.swift', HERE / 'UpdateCheck.swift']
 
 
 def build_launcher(out, minos, clang, swiftc, sdk):   # launcher.c's main and the host's cloud-save code (its send after the host exits), linked by swiftc with the settings window (no Swift main: -parse-as-library)

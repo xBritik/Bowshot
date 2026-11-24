@@ -14,6 +14,7 @@ struct ContentView: View {
         VStack(spacing: 0) {
             StepBar(current: m.step).padding(.horizontal, margin).padding(.vertical, 14)
             Divider()
+            if let release = m.update { UpdateBanner(release: release) { m.update = nil } }
             Group {
                 switch m.step {
                 case .setup: SetupScreen(m: m)
@@ -26,6 +27,24 @@ struct ContentView: View {
         }
         .frame(minWidth: 680, minHeight: 540)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: m.step)
+    }
+}
+
+// A newer Bowshot is out: a line under the step bar with the link to its page (nothing is downloaded here), and Later to hide it until the next start
+struct UpdateBanner: View {
+    let release: UpdateCheck.Release
+    let later: () -> Void
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrow.down.circle.fill").foregroundStyle(Color.accentColor).accessibilityHidden(true)
+            Text("Bowshot \(release.version) is available.").font(.callout)
+            Link("View the release", destination: release.url).font(.callout)
+            Spacer()
+            Button("Later", action: later).buttonStyle(.borderless).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, margin).padding(.vertical, 8)
+        .background(Color.accentColor.opacity(0.12))
+        .accessibilityElement(children: .combine)
     }
 }
 
