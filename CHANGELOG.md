@@ -8,7 +8,7 @@
 
 - The finished game app is also put in Applications (a clone on the same disk, so no extra space; `scripts/bowshot_install.sh`). The copy in `Bowshot-build` stays, so the next build reuses it. An app of the same name in Applications is replaced only if it is this game's, and not while it runs; if Applications cannot be written, the app stays in `Bowshot-build` and the log says why.
 - The builder is named Bowshot <version> and its window title says it; the game's settings window says which Bowshot built it ("Built with Bowshot 0.1.3", at the bottom left).
-- The settings window no longer draws the rows the build fixes (Dynamic resolution, Console mode, Upscaling, Hold frames when late), nor Press a button to join (Ocarina of Time has one player), nor the Show this window at launch checkbox. Their values still apply.
+- The settings window no longer draws the rows the build fixes (Console mode, Upscaling), nor Press a button to join (Ocarina of Time has one player), nor the Show this window at launch checkbox. Their values still apply. Dynamic resolution and Hold frames when late are not fixed by the build in 0.1.3: they are in the window (both off by default, as before), so they can be tried without a new build.
 - ⌘= and ⌘- show a message at the bottom of the picture for about 3 seconds: the Render scale (its name, percentage and size in pixels) and the memory the game uses beside the limit that closes it, read again after 1.5 seconds. View > Show Memory Use (⌥⌘I) shows the memory alone. It is a native label over the window, drawn only when one of these keys is pressed.
 - The microphone's default gain is 1x (it was 4x), so humming into the ocarina is less boosted: raise Microphone gain in the settings window if the game does not hear you.
 
