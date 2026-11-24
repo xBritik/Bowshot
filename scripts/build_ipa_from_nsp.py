@@ -460,6 +460,9 @@ def rmtree(p):
 NX_EXTRACT = 'dm/tools/nx_extract_bin/nx_extract'   # the committed native executable (dm/tools/native_tools.sh), built from dm/tools/nx_extract
 
 
+FIRST_START_S = 300   # a native tool copied a moment ago (the engine copy of a new version) can take a minute to start the first time while macOS checks it: 20 s the second time, over 60 s the first (a build failed with 'does not start' on the 60 s wait)
+
+
 def nx_extract_source_sha(repo):   # the same convention as nx_extract --source-sha: the sha256 of Program.cs and nx_extract.csproj, in that order, first 16 digits
     return hashlib.sha256(b''.join((repo / 'dm/tools/nx_extract' / f).read_bytes() for f in ('Program.cs', 'nx_extract.csproj'))).hexdigest()[:16]
 
@@ -476,7 +479,7 @@ def find_nx_extract(repo, env):
     """The committed nx_extract, a native executable (no .NET needed, GitHub issue #1853), once it has shown that it runs and that it was built from the in-repo source: after an edit
     to Program.cs the old executable would extract with the old code"""
     nx = repo / NX_EXTRACT
-    try: r = subprocess.run([str(nx), '--source-sha'], capture_output=True, text=True, env=env, timeout=60, errors='replace')
+    try: r = subprocess.run([str(nx), '--source-sha'], capture_output=True, text=True, env=env, timeout=FIRST_START_S, errors='replace')
     except (OSError, subprocess.SubprocessError) as e: raise BuildError(f'nx_extract does not start ({e}): {nx}') from e
     got, want = r.stdout.strip(), nx_extract_source_sha(repo)
     if r.returncode or not got: raise BuildError(f'nx_extract does not run ({(r.stderr.strip().splitlines() or [f"exit code {r.returncode}"])[0]}): {nx}')
@@ -656,7 +659,7 @@ def nsz_command(env):
         exe = shutil.which(name, path=env.get('PATH'))
         if not exe: continue
         exe = str(Path(exe).absolute())   # conversion runs in another cwd; PATH entries can be relative
-        try: help_result = subprocess.run([exe, '--help'], capture_output=True, text=True, errors='replace', timeout=60, env=env)
+        try: help_result = subprocess.run([exe, '--help'], capture_output=True, text=True, errors='replace', timeout=FIRST_START_S, env=env)
         except (OSError, subprocess.SubprocessError) as e:
             failures.append(f'{exe}: --help failed ({e})'); continue
         if help_result.returncode:
@@ -1304,7 +1307,7 @@ def check_ios_sdk(env):   # the iOS platform is a separate download in Xcode's C
 def check_translator(xlate, env):
     """The shader translator is a committed native executable (dm/tools/native_tools.sh, universal): one short run of `--source-sha`, which translates nothing, shows before the extraction
     that it starts (not missing, executable, not held back by macOS), where dmsh_build.py would stop at the shader step (tool_lock.py xlate_embedded reports the same failure there)"""
-    try: r = subprocess.run([str(xlate), '--source-sha'], capture_output=True, text=True, env=env, timeout=60, errors='replace')
+    try: r = subprocess.run([str(xlate), '--source-sha'], capture_output=True, text=True, env=env, timeout=FIRST_START_S, errors='replace')
     except (OSError, subprocess.SubprocessError) as e: raise BuildError(f'the shader translator does not start ({e}): {xlate}') from e
     if r.returncode == 0 and r.stdout.strip(): return
     why = (r.stderr.strip().splitlines() or r.stdout.strip().splitlines() or [f'exit code {r.returncode}'])[0]
