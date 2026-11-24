@@ -17,7 +17,7 @@
 
 <p align="center">
   <a href="https://github.com/xBritik/Bowshot/releases">Releases</a> &middot;
-  <a href="#why-bowshot">Features</a> &middot;
+  <a href="#features">Features</a> &middot;
   <a href="#what-you-need">Requirements</a> &middot;
   <a href="#install">Install</a> &middot;
   <a href="#play">Play</a> &middot;
@@ -36,12 +36,19 @@ Bowshot is a Mac app that builds the game **on your Mac, from your own game file
 
 **[Download the latest Bowshot](https://github.com/xBritik/Bowshot/releases/latest)** (currently 0.1.4)
 
-## Why Bowshot
+## Features
 
-- **Simplified install.** Four screens guide you: Your Mac, Game, Build, Done.
-- **Fast rebuilds.** The first build takes **1 hour or more**. A rebuild took about **10 minutes** on an M3 Pro, and the Game screen says what is kept.
-- **In-game resolution change** with **⌘=** and **⌘-**. **Render scale** goes from 50 % to 100 %, and **Dynamic resolution** works at 100 %.
-- **Light on disk.** Each build frees what it will not use. The builder is about **60 MB**.
+| Feature | What it does |
+|---|---|
+| 🧭 **Simplified install** | Four screens guide you: Your Mac, Game, Build, Done |
+| ⚡ **Fast rebuilds** | The first build takes 1 hour or more; a rebuild took about 10 minutes on an M3 Pro, and the Game screen says what is kept |
+| 🔎 **In-game resolution change** | **⌘=** and **⌘-** change the Render scale from 50 % to 100 % while you play |
+| 📐 **Dynamic resolution** | Works at 100 % Render scale |
+| ✨ **MetalFX upscaling** | Apple's MetalFX upscaler sharpens edges and text when the game renders below the screen's resolution |
+| 🎮 **Controller layout** | Nintendo Switch, Xbox or PlayStation face buttons, with matching button icons in the game (0.2.0, not yet released) |
+| 📊 **Performance HUD** | **⌥⌘P** shows or hides it; **⌥⌘I** shows the memory the game uses |
+| 🔄 **Update check** | The builder and the game's settings window ask GitHub once a day at most; nothing about you is sent |
+| 💾 **Light on disk** | Each build frees what it will not use; the builder is about 60 MB |
 
 ## What's new in 0.1.4
 
@@ -64,7 +71,7 @@ Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) and [0.1.0](CHANGELOG.md#0
 
 ## Contents
 
-- [Why Bowshot](#why-bowshot)
+- [Features](#features)
 - [What's new in 0.1.4](#whats-new-in-014)
 - [What you need](#what-you-need)
 - [Install](#install)
