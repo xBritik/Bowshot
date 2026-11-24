@@ -1,4 +1,4 @@
-<p align="center"><img src="launcher/mac/AppIcon.png" alt="Bowshot icon: a bow and arrow" width="160"></p>
+<p align="center"><img src="docs/social-preview.png" alt="Bowshot: Ocarina of Time on your Mac. A native Mac app built from your own game file." width="640"></p>
 
 # Bowshot
 
