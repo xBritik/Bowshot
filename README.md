@@ -62,7 +62,7 @@ Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) and [0.1.0](CHANGELOG.md#0
 
 1. **Download.** On the [release page](https://github.com/xBritik/Bowshot/releases/tag/v0.1.3), get **`Bowshot-0.1.3-macOS-arm64.zip`**. Not the files named *Source code*.
 2. **Install.** Open the zip. Drag **Bowshot 0.1.3** into **Applications**.
-3. **Open it.** The first time, right-click it, choose **Open**, then close the pop-up. Go to **System Settings → Privacy & Security** and click **Open Anyway**. Apple has not signed the app.
+3. **Open it.** Apple has not signed the app, so your Mac blocks it once. Open **Bowshot 0.1.3**, close the pop-up, then go to **System Settings → Privacy & Security**. Click **Open Anyway** next to Bowshot.
 4. **Follow the screens.**
    - **Your Mac.** Bowshot checks Xcode 27.2, the Metal Toolchain and the build tools. Click the button next to each missing item. Xcode comes from the App Store.
    - **Game.** Put your game file in a folder of its own, outside Desktop, Documents and iCloud Drive. Choose that folder, then click **Build My Local Game**.
@@ -71,7 +71,7 @@ Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) and [0.1.0](CHANGELOG.md#0
 
 ## Play
 
-1. Open **Ocarina of Time** (in Applications, or in the **Bowshot-build** folder inside your game folder). The first time, right-click, **Open**, then **Open Anyway**, as for Bowshot.
+1. Open **Ocarina of Time** (in Applications, or in the **Bowshot-build** folder inside your game folder). The first time, your Mac blocks it as it did Bowshot: go to **System Settings → Privacy & Security** and click **Open Anyway**.
 2. Allow access to a folder if your Mac asks. Saves need it.
 3. Click **Play** in the settings window.
 4. Use the **keyboard** or a **controller**.
@@ -90,7 +90,7 @@ Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) and [0.1.0](CHANGELOG.md#0
 
 | Problem | What to do |
 |---|---|
-| "The app cannot be opened" | Right-click it, **Open**, then **Privacy & Security → Open Anyway**. |
+| "The app cannot be opened" | Open **System Settings → Privacy & Security** and click **Open Anyway** next to the app. |
 | **Build My Local Game** stays grey | Read the line under the folder. Wrong folder, missing game file, or a folder in iCloud or a Git project. |
 | A red line about a missing tool, **Xcode 27.2** or the **Metal Toolchain** | Go back to **Your Mac** and use the buttons there. |
 | `The supported Ocarina of Time v131072 RomFS image was not found` | Your folder lacks **update v131072**. This version needs it. |
