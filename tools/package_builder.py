@@ -57,7 +57,7 @@ def main():
     sound = ROOT / 'launcher/mac/BuildDone.mp3'   # played when a build finishes (the builder falls back to a system sound without it)
     if sound.exists():
         shutil.copy2(sound, resources / 'BuildDone.mp3')
-    run('xcrun', 'swiftc', '-swift-version', '5', '-O', '-target', 'arm64-apple-macos15.0', '-framework', 'AppKit', '-framework', 'SwiftUI', *sorted((ROOT / 'launcher/mac').glob('*.swift')), '-o', executable)   # main.swift (window, menus), Model.swift, Views.swift
+    run('xcrun', 'swiftc', '-swift-version', '5', '-O', '-target', 'arm64-apple-macos15.0', '-framework', 'AppKit', '-framework', 'SwiftUI', *sorted((ROOT / 'launcher/mac').glob('*.swift')), ROOT / 'dm/mac/UpdateCheck.swift', '-o', executable)   # UpdateCheck.swift is shared with the game app's settings window   # main.swift (window, menus), Model.swift, Views.swift
     info = {
         'CFBundleName': f'Bowshot {version}', 'CFBundleDisplayName': f'Bowshot {version}',
         'CFBundleIdentifier': 'local.bowshot.builder', 'CFBundleExecutable': 'Bowshot',

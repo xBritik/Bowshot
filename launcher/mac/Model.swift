@@ -53,6 +53,16 @@ final class BuilderModel: ObservableObject {
     @Published var forecast: [ForecastRow] = []          // what the next build reuses and makes again, read from the folder before it starts
     var forecastFolder = ""                              // the folder the forecast in flight was asked for
 
+    // MARK: Updates
+    @Published var update: UpdateCheck.Release?          // a Bowshot newer than this one, from the update check (the banner over the screens)
+
+    // The automatic check, at most once a day (UpdateCheck.automaticCheck); the menu's "Check for Updates…" asks at once and answers in an alert
+    func checkForUpdates() {
+        UpdateCheck.automaticCheck(current: UpdateCheck.runningVersion) { [weak self] outcome in
+            if case .newer(let release) = outcome { self?.update = release }
+        }
+    }
+
     // MARK: Build
     @Published var building = false
     @Published var failed = false
