@@ -154,7 +154,7 @@ uv run --no-project --python 3.14 -m unittest discover -s tests -v
 uv run --no-project --python 3.14 tools/package_builder.py
 ```
 
-`dist/<version>/` then holds `Bowshot <version>.app`, the builder ZIP, a source ZIP, `SHA256SUMS.txt` and `CONTENT-CHECK.json` (one folder a version, so earlier builds stay); `dist/` is ignored by Git. Publish the checked ZIPs as release assets, not the app bundle. To make it again, delete `dist/` first. `python3 tools/package_builder.py --beta N` makes a local test build, `Bowshot <VERSION>-beta-N.app`: the name, the window title and the "Built with Bowshot" line of the games it builds say the beta, and the `VERSION` file does not change.
+`dist/<version>/` then holds `Bowshot <version>.app`, the builder ZIP, a source ZIP, `SHA256SUMS.txt` and `CONTENT-CHECK.json` (one folder a version, so earlier builds stay); `dist/` is ignored by Git. Publish only the builder ZIP as a release asset, not the app bundle; GitHub adds the source archives itself. To make it again, delete `dist/` first. `python3 tools/package_builder.py --beta N` makes a local test build, `Bowshot <VERSION>-beta-N.app`: the name, the window title and the "Built with Bowshot" line of the games it builds say the beta, and the `VERSION` file does not change.
 
 To see the game's settings window without a game or a build (about a minute):
 
