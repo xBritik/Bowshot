@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.3 (unreleased)
+## 0.1.3 (24 Nov 2026)
 
 0.1.2 was never released: its engine update (nxnative `0293739d`) makes Ocarina of Time's GPU hang after one to four minutes (`kIOGPUCommandBufferCallbackErrorHang`; reported upstream as [seedds/nxnative#3274](https://github.com/seedds/nxnative/issues/3274)). 0.1.3 keeps 0.1.1's engine, which plays, and takes from 0.1.2 and from the work done after it only what does not touch the engine. **The shader chain is 0.1.1's (`e52917b72fcf`): a game built with 0.1.1 is reused, and nothing about the shaders, the pipeline archive or the extracted game is made again.**
 
@@ -12,10 +12,13 @@
 - ⌘= and ⌘- show a message at the bottom of the picture for about 3 seconds: the Render scale (its name, percentage and size in pixels) and the memory the game uses beside the limit that closes it, read again after 1.5 seconds. View > Show Memory Use (⌥⌘I) shows the memory alone. It is a native label over the window, drawn only when one of these keys is pressed.
 - The microphone's default gain is 1x (it was 4x), so humming into the ocarina is less boosted: raise Microphone gain in the settings window if the game does not hear you.
 
-### Builder (Bowshot.app)
+### The game and its settings window
 
 - Dynamic resolution now works: with the launcher's Render scale at 100 % and Dynamic resolution on, the game's own dynamic resolution runs (it had no effect at any scale, because the render-scale stubs replaced the game's scale every frame). Below 100 % the scale is still fixed and the row is greyed out. With Dynamic resolution off, 100 % is still the fixed full size. This changes the game's rewriter patches, so the next build redoes the rewrite step; it was read from the code and is not yet measured in play.
 - The game's settings window: Dynamic resolution sits right under Render scale in the basic settings and is greyed out, its label saying "100 % render scale only", until the scale is at 100 % (a settings row can now say `enabled=<VAR>=<value>`: drawn always, greyed out until that setting has that value). The keyboard shortcuts ("While you play") are drawn as keys, with a plate behind them and room between the characters, and "Advanced settings" opens from its whole line, not only its arrow.
+
+### Builder (Bowshot.app)
+
 - Closing the builder window (or quitting) while a build runs now asks first, and stopping stops the build and every compiler job it started (it used to refuse to close). The steps that were finished are kept and the next build resumes from there; the builder goes back to the Game screen, not to an error. The finished steps of a build are all green ticks (a made step was orange). The "Show details" and "steps reused" lists open and close from their whole label, not only their small arrow, and the last screen scrolls when its list of steps is open (it did not, so the end of the list could be out of reach in a small window).
 - The Game screen shows "Compared with your last build" ("Your first build" when there is none) before you start: whether the game files and the shaders of your last build are kept, each row saying so in words ("Already built, kept", "Will be built again", "Will be built"), not only by its icon, and the clock line above says how long this build takes (from the builds recorded in `docs/builds`, on an M3 Pro: another Mac scales it), and whether the shaders of your last build will be reused, and when the translation chain changed (so the shaders are compiled again, 1.5 hours or more). It is read from the files of your last build and never starts the engine (`bowshot_build.sh --forecast <game folder>`, `scripts/bowshot_forecast.py`).
 - The Build and Done screens list every step with what became of it (reused, made, failed) and the time it took, and say why the shaders are compiled again when the engine reports it.
