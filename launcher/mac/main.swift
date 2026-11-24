@@ -18,6 +18,12 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, 
         let creditsItem = NSMenuItem(title: "Credits & Licences…", action: #selector(showCredits), keyEquivalent: "")
         creditsItem.target = self
         appMenu.addItem(creditsItem)
+        let updatesItem = NSMenuItem(title: "Check for Updates…", action: #selector(menuUpdates), keyEquivalent: "")
+        updatesItem.target = self
+        appMenu.addItem(updatesItem)
+        let autoItem = NSMenuItem(title: "Check for Updates Automatically", action: #selector(menuAutoUpdates), keyEquivalent: "")   // once a day at most; only GitHub is asked, for the latest release
+        autoItem.target = self
+        appMenu.addItem(autoItem)
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Hide \(name)", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         appMenu.addItem(.separator())
@@ -59,6 +65,7 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, 
         window.makeFirstResponder(nil)   // the window opens calm: nothing focused
         NSApp.activate(ignoringOtherApps: true)
         model.refreshSetup()
+        model.checkForUpdates()
     }
 
     func applicationDidBecomeActive(_ notification: Notification) { model.refreshSetup() }   // back from the App Store or Xcode: check again
@@ -67,12 +74,35 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, 
     @objc func menuCheck() { model.refreshSetup() }
     @objc func menuShow() { model.showApp() }
     @objc func menuOpen() { model.openGame() }
+    @objc func menuAutoUpdates() { UpdateCheck.automatic.toggle() }
+    // "Check for Updates…": asks GitHub now and says what it found, newer or not
+    @objc func menuUpdates() {
+        guard let current = UpdateCheck.runningVersion else {
+            let alert = NSAlert(); alert.messageText = "This copy of Bowshot does not know its version"; alert.informativeText = "Look for the latest release on the Bowshot page on GitHub."; alert.runModal(); return
+        }
+        UpdateCheck.check(current: current) { [weak self] outcome in
+            let alert = NSAlert()
+            switch outcome {
+            case .newer(let release):
+                alert.messageText = "Bowshot \(release.version) is available"; alert.informativeText = "You have Bowshot \(current). The release page has the download; nothing is downloaded from here."
+                alert.addButton(withTitle: "View the Release"); alert.addButton(withTitle: "Later")
+                if alert.runModal() == .alertFirstButtonReturn { NSWorkspace.shared.open(release.url) }
+                self?.model.update = release
+                return
+            case .current: alert.messageText = "Bowshot is up to date"; alert.informativeText = "You have Bowshot \(current), the latest release."
+            case .ahead(let release): alert.messageText = "This Bowshot is newer than the latest release"; alert.informativeText = "You have Bowshot \(current); the latest release is \(release.version)."
+            case .failed: alert.messageText = "Could not check for updates"; alert.informativeText = "GitHub did not answer, or you are offline. Try again later."
+            }
+            alert.runModal()
+        }
+    }
     // Items that do not apply stay in the menu, dimmed
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
         switch item.action {
         case #selector(menuChoose): return !model.busy && (model.step == .game || model.step == .done)
         case #selector(menuCheck): return !model.busy && model.step != .build
         case #selector(menuShow), #selector(menuOpen): return model.step == .done
+        case #selector(menuAutoUpdates): item.state = UpdateCheck.automatic ? .on : .off; return true
         default: return true
         }
     }

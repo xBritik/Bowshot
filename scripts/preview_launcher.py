@@ -78,7 +78,7 @@ def main():
     run([xcrun('clang'), '-isysroot', sdk, '-arch', 'arm64', '-mmacosx-version-min=26.6', '-O2', '-I', ROOT / 'dm/host', '-c', '-o', base / 'save_sync.o', ROOT / 'dm/host/save_sync.c'])
     run([xcrun('swiftc'), '-sdk', sdk, '-target', 'arm64-apple-macos26.6', '-swift-version', '5', '-parse-as-library', '-module-cache-path', base / 'module-cache',
          '-o', contents / 'MacOS/launcher', ROOT / 'dm/mac/Launcher.swift', ROOT / 'dm/mac/LauncherSettings.swift', ROOT / 'dm/mac/LauncherRow.swift',
-         ROOT / 'dm/mac/SaveSyncReport.swift', base / 'preview_main.swift', base / 'save_sync.o',
+         ROOT / 'dm/mac/SaveSyncReport.swift', ROOT / 'dm/mac/UpdateCheck.swift', base / 'preview_main.swift', base / 'save_sync.o',
          '-framework', 'CoreFoundation', '-framework', 'AppKit', '-framework', 'SwiftUI', '-framework', 'AVFAudio', '-framework', 'CoreAudio'])
     print(f'\nPreview app: {app}\nFixed as in the game app (runtime.env): {", ".join(k for k, _ in fixed)}\n', flush=True)
     run([contents / 'MacOS/launcher'])
