@@ -1,0 +1,15 @@
+id	part	step	state	seconds	summary
+0.1.2-beta-6-cold	1	unpack v131072	reused	14	24.4 GB, reused (image checked)
+0.1.2-beta-6-cold	1	rewrite	made	55	main, subsdk0, sdk
+0.1.2-beta-6-cold	1	shader split	made	39	42,847 shaders
+0.1.2-beta-6-cold	1	Mac shaders	made	2184	42,847 of 42,847 shaders ready (0 from the cache)
+0.1.2-beta-6-cold	1	Mac host	made	22	/Users/leo/Games/Ocarina/Bowshot-build/build/tools/dmhost
+0.1.2-beta-6-cold	1	Pipeline prebuild	made	1166	
+0.1.2-beta-6-cold	2	unpack v131072	reused	0	24.4 GB, reused (inputs unchanged)
+0.1.2-beta-6-cold	2	rewrite	reused	1	main, subsdk0, sdk, reused (inputs unchanged)
+0.1.2-beta-6-cold	2	shader split	reused	1	42,847 shaders, reused (inputs unchanged)
+0.1.2-beta-6-cold	2	Mac shaders	reused	1	42,847 of 42,847 shaders ready, reused (inputs unchanged)
+0.1.2-beta-6-cold	2	Mac host	made	0	/Users/leo/Games/Ocarina/Bowshot-build/build/tools/dmhost
+0.1.2-beta-6-cold	2	Pipeline archive	made	1712	applegpu_g15s, 4.9 GB
+0.1.2-beta-6-cold	2	Prewarm pipelines	made	162	15 files, 990.4 MB
+0.1.2-beta-6-cold	2	Mac app	made	152	Ocarina of Time.app, 35.5 GB

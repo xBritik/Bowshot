@@ -8,18 +8,20 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, 
     let model = BuilderModel()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let version = (Bundle.main.object(forInfoDictionaryKey: "BowshotVersion") as? String) ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? ""
+        let name = version.isEmpty ? "Bowshot" : "Bowshot \(version)"   // the app's name, the window's title
         let menu = NSMenu()
         let item = NSMenuItem()
         let appMenu = NSMenu()
-        let aboutItem = NSMenuItem(title: "About Bowshot", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        let aboutItem = NSMenuItem(title: "About \(name)", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(aboutItem)
         let creditsItem = NSMenuItem(title: "Credits & Licences…", action: #selector(showCredits), keyEquivalent: "")
         creditsItem.target = self
         appMenu.addItem(creditsItem)
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Hide Bowshot", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: "Hide \(name)", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Quit Bowshot", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "Quit \(name)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.submenu = appMenu
         menu.addItem(item)
         // Edit menu: without it ⌘C and ⌘A have no menu item to reach the log (a text view only copies through the responder chain's copy:)
@@ -46,7 +48,7 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, 
         NSApp.windowsMenu = windowMenu
 
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 600), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        window.title = "Bowshot"
+        window.title = name
         window.delegate = self
         window.minSize = NSSize(width: 680, height: 540)
         window.contentView = NSHostingView(rootView: ContentView(m: model))
