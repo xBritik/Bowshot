@@ -1,8 +1,28 @@
-<p align="center"><img src="docs/social-preview.png" alt="Bowshot: Ocarina of Time on your Mac. A native Mac app built from your own game file." width="640"></p>
+<p align="center"><img src="launcher/mac/AppIcon.png" alt="Bowshot icon: a bow and arrow" width="160"></p>
 
-# Bowshot
+<h1 align="center">Bowshot</h1>
 
-Build **Zelda: Ocarina of Time (Switch 2)** as a native Mac app. On your Mac, from your own copy.
+<p align="center"><strong>The Legend of Zelda: Ocarina of Time (Switch 2) as a native Mac app,<br>built on your Mac from your own game file, on <a href="https://github.com/seedds/nxnative">nxnative</a></strong></p>
+
+<p align="center">
+  <a href="https://github.com/xBritik/Bowshot/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/xBritik/Bowshot?label=latest%20release"></a>
+  <img alt="macOS 26.6+ on Apple silicon" src="https://img.shields.io/badge/macOS-26.6%2B%20Apple%20silicon-black?logo=apple">
+  <img alt="graphics: Metal and MetalFX" src="https://img.shields.io/badge/graphics-Metal%20%2B%20MetalFX-blue">
+  <img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-yellow">
+</p>
+
+<p align="center">
+  <a href="https://github.com/xBritik/Bowshot/releases">Releases</a> &middot;
+  <a href="#why-bowshot">Features</a> &middot;
+  <a href="#what-you-need">Requirements</a> &middot;
+  <a href="#install">Install</a> &middot;
+  <a href="#play">Play</a> &middot;
+  <a href="#if-something-goes-wrong">Troubleshooting</a> &middot;
+  <a href="#for-developers">Developers</a> &middot;
+  <a href="#credits">Credits</a>
+</p>
+
+---
 
 Bowshot is a Mac app that builds the game **on your Mac, from your own game file**. It is based on [nxnative](https://github.com/seedds/nxnative) and the Ocarina of Time work from [kid-with-sword-remake](https://github.com/cheemu21/kid-with-sword-remake). **No game files are included.** You can only play the copy you build yourself.
 
