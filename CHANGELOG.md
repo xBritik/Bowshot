@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0 (unreleased)
+
+- **Controller layout.** A new Controller layout setting (`DM_PAD_LAYOUT`: Nintendo Switch, Xbox, PlayStation). An Xbox or PlayStation pad then uses its own face-button labels (the bottom button is A), and the button icons in the game match it. `DM_PAD_MAP` remaps single buttons, for example `A=B,B=A`.
+- **Ocarina of Time on a PlayStation or Xbox pad.** The controller screens, the callout banners and the ocarina and key prompts are redrawn for the pad. The builder makes them from your own copy of the game, so Bowshot carries no Nintendo files. Made on the Mac, not yet checked in play.
+
 ## 0.1.4 (24 Nov 2026)
 
 A fix for the Mac setup screen. Nothing in the engine or the game changes.
