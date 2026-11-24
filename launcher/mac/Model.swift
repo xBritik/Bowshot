@@ -49,7 +49,8 @@ final class BuilderModel: ObservableObject {
     var setupProcess: Process?
 
     // MARK: Game folder
-    @Published var folder = "" { didSet { if folder != oldValue { forecast = []; refreshForecast() } } }
+    @Published var folder = "" { didSet { if folder != oldValue { forecast = []; forecastTime = nil; refreshForecast() } } }
+    @Published var forecastTime: String?                 // "This build takes about ...", from the forecast
     @Published var forecast: [ForecastRow] = []          // what the next build reuses and makes again, read from the folder before it starts
     var forecastFolder = ""                              // the folder the forecast in flight was asked for
 
@@ -268,10 +269,12 @@ final class BuilderModel: ObservableObject {
     }
 
     func applyForecast(_ output: String) {
-        forecast = output.components(separatedBy: "\n").compactMap { l in
+        let rows = output.components(separatedBy: "\n").compactMap { l -> ForecastRow? in
             let p = l.split(separator: "|", maxSplits: 3, omittingEmptySubsequences: false).map(String.init)
             return p.count == 4 ? ForecastRow(id: p[0], state: p[1], title: p[2], detail: p[3]) : nil
         }
+        forecastTime = rows.first { $0.id == "total" }?.detail   // the estimate of the whole build, shown beside the clock (not a row)
+        forecast = rows.filter { $0.id != "total" }
     }
 
     // MARK: - Log
