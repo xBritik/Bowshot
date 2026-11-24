@@ -82,6 +82,7 @@ struct SettingRow: View {
                 }
             }
         }
-        .disabled(locked)
+        .disabled(locked || !m.isEnabled(s))
+        .opacity(m.isEnabled(s) ? 1 : 0.45)   // greyed out until the setting it depends on has the value its label names
     }
 }

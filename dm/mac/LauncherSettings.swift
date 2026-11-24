@@ -6,6 +6,7 @@ struct Setting: Decodable, Identifiable {
     let env, kind, label, note, def: String
     let section: String?   // heading on the settings screen; absent in older bundles
     let needs: String?     // "<VAR>=<value>": a sub-setting, drawn only while that setting has that value
+    let enabled: String?   // "<VAR>=<value>": drawn always, greyed out until that setting has that value (its label says why)
     let level: String?     // "basic": shown first (the Mac window's Basic settings); any other or none: Advanced settings. The iPhone keeps one list
     let base: Base?        // render scale: the 3D views' size at 1.0, docked and handheld, for the size in pixels (the Mac window)
     struct Base: Decodable { let docked, handheld: [Int] }
@@ -31,7 +32,7 @@ struct Setting: Decodable, Identifiable {
         }
     }
     let marks: [[String]]?   // range: [value, label] names for values (Bowshot: Ocarina of Time's Potato, Normal and Native render scales; from kid-with-sword-remake)
-    enum CodingKeys: String, CodingKey { case env, kind, label, note, def = "default", section, needs, level, base, options, min, max, step, marks, on, off }
+    enum CodingKeys: String, CodingKey { case env, kind, label, note, def = "default", section, needs, enabled, level, base, options, min, max, step, marks, on, off }
 }
 struct SettingsFile: Decodable { let settings: [Setting] }
 
@@ -80,12 +81,16 @@ final class LauncherModel: ObservableObject {
     // A row with "needs" is a sub-setting of the row it names: drawn only while that setting has that value, so a
     // setting that cannot do anything is not offered (an upscaler's detail with the upscaler off, rumble strength
     // with rumble off). A row naming a setting this game does not have stays drawn, as it has nothing to hide behind
-    func visible(_ s: Setting) -> Bool {
-        guard let n = s.needs, let eq = n.firstIndex(of: "=") else { return true }
+    func visible(_ s: Setting) -> Bool { holds(s.needs) }
+    // Whether a "<VAR>=<value>" condition holds now (true without one, or when it names a setting this game does not have)
+    func holds(_ condition: String?) -> Bool {
+        guard let n = condition, let eq = n.firstIndex(of: "=") else { return true }
         let key = String(n[n.startIndex..<eq]), want = String(n[n.index(after: eq)...])
         guard let v = values[key] else { return true }
+        if let a = Double(v), let b = Double(want) { return abs(a - b) < 0.0005 }   // a range keeps four decimals ("1.0000"): compared as numbers
         return v == want
     }
+    func isEnabled(_ s: Setting) -> Bool { holds(s.enabled) }
     func rows(in section: String) -> [Setting] { settings.filter { $0.sectionTitle == section && visible($0) } }
     // The Mac window: Basic settings first, then Advanced settings, each in the list's sections and order
     func sections(basic: Bool) -> [String] {
