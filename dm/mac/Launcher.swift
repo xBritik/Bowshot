@@ -144,14 +144,24 @@ struct LauncherView: View {
                 if m.values["DM_MIC"] == "1" { MicrophoneDevicePicker() }
                 Section("While you play") {   // Bowshot: the game window's View menu (front_mac.m)
                     if m.settings.contains(where: { $0.env == "DM_RENDER_SCALE" }) {
-                        LabeledContent("Render scale up / down") { Text("⌘=   ⌘−").monospaced().foregroundStyle(.secondary) }
+                        LabeledContent("Render scale up / down") { HStack(spacing: 6) { KeyCombo("⌘="); KeyCombo("⌘−") } }
                     }
-                    LabeledContent("Performance HUD") { Text("⌥⌘P").monospaced().foregroundStyle(.secondary) }
-                    LabeledContent("Memory use") { Text("⌥⌘I").monospaced().foregroundStyle(.secondary) }
+                    LabeledContent("Performance HUD") { KeyCombo("⌥⌘P") }
+                    LabeledContent("Memory use") { KeyCombo("⌥⌘I") }
                 }
                 CloudSavesSection()
                 Section {
-                    DisclosureGroup("Advanced settings", isExpanded: $advanced) {}
+                    Button { advanced.toggle() } label: {   // the whole line opens it, not only the arrow of a DisclosureGroup
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+                                .rotationEffect(.degrees(advanced ? 90 : 0)).frame(width: 12)
+                            Text("Advanced settings")
+                            Spacer(minLength: 0)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityValue(advanced ? "Expanded" : "Collapsed")
                 }
                 if advanced {
                     settingSections(basic: false)
@@ -231,6 +241,19 @@ struct LauncherView: View {
                 }
             }
         }
+    }
+}
+
+/// A key combination drawn as a key: the text in the primary colour on a filled, outlined plate, so it reads against the grouped form's background
+private struct KeyCombo: View {
+    let keys: String
+    init(_ keys: String) { self.keys = keys }
+    var body: some View {
+        Text(keys).font(.system(.body, design: .monospaced).weight(.medium)).tracking(3).foregroundStyle(.primary)
+            .padding(.leading, 11).padding(.trailing, 8).padding(.vertical, 3)
+            .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color.primary.opacity(0.2)))
+            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(Color.primary.opacity(0.45), lineWidth: 0.75))
+            .accessibilityLabel(keys)
     }
 }
 
