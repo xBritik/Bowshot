@@ -15,13 +15,10 @@ Bowshot is a Mac app that builds the game **on your Mac, from your own game file
 ## Why Bowshot
 
 - **A window, not commands.** Four screens guide you: Your Mac, Game, Build, Done.
-- **Fast rebuilds.** The first build takes **1.5 hours or more**. A rebuild took about **10 minutes** on an M3 Pro. The Game screen shows what is kept and about how long it takes.
-- **You see the build.** One progress bar, the time left, every step with its time, and a report. Closing the window asks first.
-- **You pick the picture size.** **Render scale** from 50 % to 100 %, in the window or with **⌘=** and **⌘-**. **Dynamic resolution** at 100 %. MetalFX and a Performance HUD (**⌥⌘P**) too.
+- **Fast rebuilds.** The first build takes **1.5 hours or more**. A rebuild took about **10 minutes** on an M3 Pro, and the Game screen says what is kept.
+- **Picture size you choose.** **Render scale** from 50 % to 100 %, in the window or with **⌘=** and **⌘-**. **Dynamic resolution** at 100 %.
+- **A build you can follow.** Progress bar, time left, every step with its time. Closing the window asks first.
 - **Light on disk.** Each build frees what it will not use. The builder is about **60 MB**.
-- **Private.** No game file is in the repository or the builder.
-- **Update check.** Once a day at most. It sends nothing about you. You can turn it off.
-- **Mac only, one game.** Less to download, less to go wrong.
 
 ## What's new in 0.1.3
 
