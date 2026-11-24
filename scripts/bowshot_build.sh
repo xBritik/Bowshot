@@ -101,7 +101,7 @@ BUILD_LOG="$PRIVATE_DIR/build.log"
 tidy_engines; tidy_metal   # before the long work: what earlier builds left and this one will not use
 printf 'Private outputs: %s\nEngine revision: %s\n' "$PRIVATE_DIR" "$REVISION"
 cd "$ENGINE_DIR"
-"$PYTHON" scripts/build_ipa_from_nsp.py "$GAME_DIR" --platform mac --work-dir "$WORK_DIR" --keep-extracted --progress "${BOWSHOT_PROGRESS:-lines}" 2>&1 | tee "$BUILD_LOG"
+"$PYTHON" scripts/build_ipa_from_nsp.py "$GAME_DIR" --platform mac --no-run-prebuild --work-dir "$WORK_DIR" --keep-extracted --progress "${BOWSHOT_PROGRESS:-lines}" 2>&1 | tee "$BUILD_LOG"
 # The second part (the game app) is one step of its own in the builder window: the engine numbers its stages afresh
 if [[ "${BOWSHOT_PROGRESS:-}" == json ]]; then echo '{"ev": "bowshot_part", "name": "Game app"}'; fi
 ENV_FILE="$PRIVATE_DIR/runtime.env"

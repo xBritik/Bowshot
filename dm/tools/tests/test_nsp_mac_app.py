@@ -1447,6 +1447,16 @@ class SeenShaders(unittest.TestCase):   # --seen-shaders: the keys, the partial 
         cmd = self.run_cmd(partial=True)
         self.assertTrue(cmd.endswith(f'2>&1 | tee {self.tmp}/run/host.log')); self.assertIn(f'DM_PSO_ARCHIVE={self.tmp}/run/pso_archive_partial', cmd); self.assertFalse(stamp.exists())
 
+    def test_the_run_prebuild_can_be_left_out(self):   # --no-run-prebuild: the run command's pipeline prebuild (only that command reads its archive) does not run; nothing else of mac_run changes
+        (self.tmp / 'shader_pairs.tsv').write_text('v\tf\n')
+        ran = []
+        with mock.patch.object(nsp, 'run', lambda cmd, log, **kw: ran.append(str(log))):
+            with_prebuild = self.run_cmd(); n_with = len(ran)
+            without = self.run_cmd(run_prebuild=False); n_without = len(ran) - n_with
+        self.assertEqual((n_with, n_without), (1, 0)); self.assertEqual(with_prebuild, without)   # the command that runs the game is the same
+        self.assertTrue(any('prebuild of the run command: skipped' in m for m in self.said))
+        self.assertTrue(nsp.parse_args(['--no-run-prebuild']).no_run_prebuild); self.assertFalse(nsp.parse_args([]).no_run_prebuild)
+
     def test_pack_takes_the_partial_folder(self):   # the app and its pipeline archive read b-<chain> of the folder build_shaders returned
         ran = []
         def fake_run(cmd, log, env=None, cwd=None, on_line=None, fatal=True):
