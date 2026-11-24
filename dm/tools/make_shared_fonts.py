@@ -66,6 +66,8 @@ def build(out_dir, src=SOURCE, letters=LETTERS):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import make_ext_font
     make_ext_font.build(os.path.join(out_dir, EXT), letters)
+    for layout in ('xbox', 'playstation'):   # DM_PAD_LAYOUT's button icons: the host serves nintendo_ext_<layout>.ttf for type 5 (hle_sdk16.c)
+        make_ext_font.build(os.path.join(out_dir, EXT.replace('.ttf', '_%s.ttf' % layout)), letters, layout)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2: sys.exit(__doc__ or 'usage: make_shared_fonts.py out_dir [source.ttf]')
