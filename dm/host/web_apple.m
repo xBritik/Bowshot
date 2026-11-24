@@ -375,7 +375,9 @@ static NSString *mime(NSString *ext) {
     NSString *f = [_dir stringByAppendingPathComponent:rel]; NSData *d = nil;
     if ([rel isEqualToString:@"__dm_font/nintendo_ext.ttf"]) {   // the Nintendo extension font (button icons): the host's stand-in, as the shared font service gives it (hle_sdk16.c)
         const char *e = getenv("DM_SHARED_FONT_EXT"), *fd = getenv("DM_FONT_DIR");
-        f = (e ? @(e) : fd ? [@(fd) stringByAppendingPathComponent:@"nintendo_ext.ttf"] : nil) ?: @"";   // @"": no path, or one that is not UTF-8, is not found
+        int lay = dm_pad_face_layout(); NSString *nm = lay == DM_PAD_LAYOUT_XBOX ? @"nintendo_ext_xbox.ttf" : lay == DM_PAD_LAYOUT_PLAYSTATION ? @"nintendo_ext_playstation.ttf" : @"nintendo_ext.ttf";   // DM_PAD_LAYOUT's icons, as hle_sdk16.c serves them
+        if (!(e && *e) && fd && ![[NSFileManager defaultManager] fileExistsAtPath:[@(fd) stringByAppendingPathComponent:nm]]) nm = @"nintendo_ext.ttf";
+        f = (e ? @(e) : fd ? [@(fd) stringByAppendingPathComponent:nm] : nil) ?: @"";   // @"": no path, or one that is not UTF-8, is not found
         d = [NSData dataWithContentsOfFile:f];
     } else if (rel.length && ![rel containsString:@".."] && [f hasPrefix:_dir]) {
         d = [NSData dataWithContentsOfFile:f];

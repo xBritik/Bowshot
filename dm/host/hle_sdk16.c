@@ -1,6 +1,7 @@
 // System service interfaces used by games on newer SDKs (16.x): oe / time / pl (shared font) / vi vsync / diag.
 // On the real device all of these go through Horizon system services (IPC); the host gives values directly or makes them "unavailable".
 #include "hle.h"
+#include "dm_input.h"
 #include <fcntl.h>
 #include <pthread.h>
 #include <pthread/qos.h>
@@ -88,7 +89,10 @@ static const char *const font_file[FONT_TYPES] = {"standard.ttf", "chinese_simpl
 static font_t font_by_type[FONT_TYPES];   // what each type is served: its own file, or the standard font's mapping
 static font_t font_open_type(int type) {   // font_mu held; an empty font_t: the type takes the standard font
     if (type == 5) {
-        font_t f = font_open(getenv("DM_SHARED_FONT_EXT"), font_file[5]);
+        const char *ov = getenv("DM_SHARED_FONT_EXT"); font_t f = {0};
+        int lay = dm_pad_face_layout();   // DM_PAD_LAYOUT=xbox / playstation: the pad's own button icons (make_shared_fonts.py), else the Switch's
+        if ((!ov || !*ov) && lay != DM_PAD_LAYOUT_SWITCH) f = font_open(NULL, lay == DM_PAD_LAYOUT_XBOX ? "nintendo_ext_xbox.ttf" : "nintendo_ext_playstation.ttf");
+        if (!f.p) f = font_open(ov, font_file[5]);
         if (!f.p) LOG("[YELLOW] Nintendo extended shared font missing (dm/tools/make_shared_fonts.py makes nintendo_ext.ttf): button icons will be drawn as '?'");
         return f;
     }
