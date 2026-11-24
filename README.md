@@ -2,7 +2,7 @@
 
 # Bowshot
 
-Turn your own copy of **Zelda: Ocarina of Time (Switch 2)** into a native Mac app, with sharper graphics and a smooth frame rate.
+Build your own copy of **Zelda: Ocarina of Time (Switch 2)** into a native Mac app, on your Mac.
 
 Bowshot is a small Mac app that builds the game **on your Mac, from your own game file**. It is based on [nxnative](https://github.com/seedds/nxnative) and the Ocarina of Time work from [kid-with-sword-remake](https://github.com/cheemu21/kid-with-sword-remake). **No game files are included**, and you can only play the copy you build yourself.
 
@@ -14,25 +14,28 @@ Bowshot is a small Mac app that builds the game **on your Mac, from your own gam
 
 ## Why Bowshot
 
-- **A real Mac app to build the game, no Terminal.** Four screens (Your Mac, Game, Build, Done) check your Mac, install the build tools with one button each (pinned versions, SHA-256 checked, no Homebrew), build, and open the game. A failed build says why and offers Try Again.
-- **Later builds take minutes, not hours.** Every step of the build is kept with a fingerprint of its inputs and reused while they are unchanged: the first build takes 1.5 hours or more, a rebuild with the same shaders took about 10 minutes on an M3 Pro. Before you start, the Game screen says what will be kept, what will be made again, and about how long it takes. The first build is also 12 to 19 minutes shorter and uses 7 to 9 GB less disk than before, because it no longer makes a pipeline cache that only the terminal run command reads.
-- **You see and control the build.** One progress bar with the time left, the list of steps with the time of each and whether it was reused, a report of the build (`Bowshot-build/build-report.md`) you can compare between versions, and a page that follows a build from a browser (`scripts/bowshot_watch.py`). Closing the window during a build asks first, then stops it and every compiler job it started; what was finished is kept.
-- **Resolution you can change while you play.** Render scale from Potato (50 %) to Native (100 %, 1920x1080), with the size in pixels: change it in the settings window or in play with ⌘= and ⌘-, with the memory in use shown beside it. Dynamic resolution can be turned on at 100 %. MetalFX upscaling and a Performance HUD (⌥⌘P) are in the same window.
-- **Light on disk.** Each build frees what it will not use (old engine copies, the `obsolete` folder, idle Metal build folders), the builder is about 60 MB, and the game app is cloned into Applications at no extra space.
-- **Private by construction.** No game file is in the repository or in the builder, a content check runs before every release, and everything is built on your Mac from your own copy.
-- **Stays up to date.** Once a day at most, the builder and the game's settings window ask GitHub whether a newer Bowshot exists and show a link. It sends nothing about you or your Mac and can be turned off.
-- **Mac only, one game.** The source tree and the builder carry no other game and no iPhone app, so there is less to download and less to go wrong.
+Bowshot is a builder with a window, not a list of commands to run.
+
+- You build from a Mac app with four screens (Your Mac, Game, Build, Done). It checks your Mac, installs the build tools with one button each (pinned versions, SHA-256 checked, no Homebrew), builds, and opens the game. A failed build says why and offers Try Again.
+- A rebuild reuses every step whose inputs did not change. The first build takes 1.5 hours or more; a rebuild with the same shaders took about 10 minutes on an M3 Pro. Before you start, the Game screen lists what will be kept and what will be made again, with a time estimate. The first build also skips a pipeline cache that only the terminal run command reads, which saves 12 to 19 minutes and 7 to 9 GB of disk.
+- The Build screen shows one progress bar with the time left, then every step with its time and whether it was reused. Each build writes a report (`Bowshot-build/build-report.md`) you can compare with another build, and `scripts/bowshot_watch.py` serves a page that follows a build from a browser. Closing the window during a build asks first, then stops the build and every compiler job it started. Finished steps are kept.
+- You choose the picture size. Render scale runs from Potato (50 %) to Native (100 %, 1920x1080), shown with its size in pixels, in the settings window or in play with ⌘= and ⌘-. Dynamic resolution can be turned on at 100 %. MetalFX upscaling and the Performance HUD (⌥⌘P) are in the same window.
+- Each build frees the disk space it will not use: old engine copies, the `obsolete` folder and idle Metal build folders. The builder is about 60 MB, and the game app is cloned into Applications without extra space.
+- No game file is in the repository or in the builder. A content check runs before every release, and the game is built on your Mac from your own copy.
+- Once a day at most, the builder and the game's settings window ask GitHub whether a newer Bowshot exists and show a link. The request carries nothing about you or your Mac, and you can turn it off.
+- The source tree and the builder carry one game and no iPhone app, so there is less to download and less to go wrong.
 
 ## What's new in 0.1.3
 
-- **A forecast before the build:** the Game screen says what the next build will reuse and what it will make again, and the Build and Done screens list every step with its time and whether it was reused. A build writes a report of its steps (`Bowshot-build/build-report.md`).
-- **The game app goes into Applications** as well (a clone: no extra space), and the settings window says which Bowshot built it. The builder carries its version in its name.
-- **An update check** in the builder and in the game's settings window: once a day at most, Bowshot asks GitHub whether a newer release exists and shows a link to it. It sends nothing about you or your Mac, and downloads nothing. Turn it off in the builder's Bowshot menu (Check for Updates Automatically), or with `DM_UPDATE_CHECK=0` in the game's `env.txt`.
-- **Less disk used:** each build frees what it will not use (old engine copies, the `obsolete` folder, idle Metal build folders), and the app is about 60 MB instead of 880 MB.
-- **In the game:** ⌘= and ⌘- show a message with the render scale, its size in pixels and the memory in use; View > Show Memory Use (⌥⌘I) shows the memory alone. The microphone's default gain is 1x (it was 4x): raise it in the settings window if the game does not hear you. The settings window no longer draws rows the build fixes.
-- **Dynamic resolution works** at 100 % render scale (it had no effect at any scale before), and sits right under Render scale in the settings window, greyed out below 100 % with its label saying so. The keyboard shortcuts of the settings window are drawn as keys and Advanced settings opens from its whole line. Dynamic resolution was read from the code and has not yet been measured in play.
-- **A safer builder:** closing it during a build asks before stopping, and the lists of steps scroll in a small window.
-- **A tidier source tree:** only Ocarina of Time's profile, no iPhone app, other games' names out of the notes.
+- The Game screen says what the next build will reuse and what it will make again, with a time estimate. The Build and Done screens list every step with its time. A build writes a report of its steps (`Bowshot-build/build-report.md`).
+- The game app goes into Applications as well, as a clone with no extra space, and the settings window says which Bowshot built it. The builder carries its version in its name.
+- The builder and the game's settings window check for a newer release once a day at most and show a link. They send nothing about you or your Mac and download nothing. To turn it off, use Check for Updates Automatically in the builder's Bowshot menu, or `DM_UPDATE_CHECK=0` in the game's `env.txt`.
+- Each build frees what it will not use, and the builder is about 60 MB instead of 880 MB.
+- ⌘= and ⌘- show the render scale, its size in pixels and the memory in use. View > Show Memory Use (⌥⌘I) shows the memory alone. The microphone's default gain is 1x (it was 4x): raise it in the settings window if the game does not hear you.
+- Dynamic resolution works at 100 % render scale (it had no effect at any scale before). It sits under Render scale in the settings window and is greyed out below 100 %, with its label saying so. This comes from reading the code and has not been measured in play yet.
+- Closing the builder during a build asks before stopping it, and the lists of steps scroll in a small window.
+- The settings window draws the keyboard shortcuts as keys, opens Advanced settings from its whole line, and leaves out the rows the build fixes.
+- The source tree keeps only Ocarina of Time's profile and no iPhone app.
 
 Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) (the performance record, the builder that shows it is alive) and [0.1.0](CHANGELOG.md#010-21-nov-2026) (MetalFX upscaling, the Performance HUD, the friendlier builder) is still there.
 
