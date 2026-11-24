@@ -17,6 +17,24 @@ int main(void) {
     h.buttons = 1u << 12; CHECK(pad_hid_buttons(&h) == DM_BTN_MINUS);
     h.buttons = 1u << 9; CHECK(pad_hid_buttons(&h) == DM_BTN_ZR);           // 99 skipped: the default stays
     h.buttons = 1u << 4; CHECK(pad_hid_buttons(&h) == 0);                    // X= maps X to nothing
+    // DM_PAD_LAYOUT=xbox / playstation: the face buttons by their printed labels (usage 1 bottom is A), the rest as before; a Nintendo report is by labels already
+    setenv("DM_PAD_LAYOUT", "PlayStation", 1);
+    pad_hid_init(&h, NULL, PAD_HID_DEFAULT);
+    h.buttons = 1u << 0; CHECK(pad_hid_buttons(&h) == DM_BTN_A);
+    h.buttons = 1u << 1; CHECK(pad_hid_buttons(&h) == DM_BTN_B);
+    h.buttons = 1u << 3; CHECK(pad_hid_buttons(&h) == DM_BTN_X);
+    h.buttons = 1u << 4; CHECK(pad_hid_buttons(&h) == DM_BTN_Y);
+    h.buttons = 1u << 11; CHECK(pad_hid_buttons(&h) == DM_BTN_PLUS);
+    pad_hid_init(&h, NULL, PAD_HID_X360);
+    { static const uint64_t want[4] = {DM_BTN_A, DM_BTN_B, DM_BTN_X, DM_BTN_Y}; for (int b = 0; b < 4; b++) { h.buttons = 1u << b; CHECK(pad_hid_buttons(&h) == want[b]); } }
+    pad_hid_init(&h, NULL, PAD_HID_NINTENDO); h.buttons = 1u << 1; CHECK(pad_hid_buttons(&h) == DM_BTN_A);
+    unsetenv("DM_PAD_LAYOUT");
+    // DM_PAD_MAP: DST=SRC swaps, DST= unbinds, a bad entry leaves the identity
+    CHECK(dm_pad_remap_spec(DM_BTN_A, "A=B,B=A") == DM_BTN_B);
+    CHECK(dm_pad_remap_spec(DM_BTN_B | DM_BTN_ZL, "A=B,B=A") == (DM_BTN_A | DM_BTN_ZL));
+    CHECK(dm_pad_remap_spec(DM_BTN_X | DM_BTN_Y, " x = ,bogus=A,Y=Q") == DM_BTN_Y);
+    CHECK(dm_pad_remap_spec(DM_BTN_A, NULL) == DM_BTN_A && dm_pad_remap_spec(DM_BTN_A, "") == DM_BTN_A);
+    CHECK((dm_pad_remap_spec(DM_BTN_SHAKE | DM_BTN_A, "A=") & DM_BTN_SHAKE) && !(dm_pad_remap_spec(DM_BTN_A, "A=") & DM_BTN_A));   // bits past 15 are kept
     pad_hid_init(&h, NULL, PAD_HID_NINTENDO);                               // Nintendo's report 0x3F: B A Y X L R ZL ZR - + LS RS
     { static const uint64_t want[12] = {DM_BTN_B, DM_BTN_A, DM_BTN_Y, DM_BTN_X, DM_BTN_L, DM_BTN_R, DM_BTN_ZL, DM_BTN_ZR, DM_BTN_MINUS, DM_BTN_PLUS, DM_BTN_LS, DM_BTN_RS};
       for (int b = 0; b < 12; b++) { h.buttons = 1u << b; CHECK(pad_hid_buttons(&h) == want[b]); } }

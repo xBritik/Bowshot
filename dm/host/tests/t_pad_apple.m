@@ -37,6 +37,15 @@ int main(void) { @autoreleasepool {
     for (NSString *k in @[@"Switch Pro Controller", @"Nintendo Switch Joy-Con (L/R)", @"Nintendo Switch Joy-Con (R)"]) {   // by label
         assert(face(k, 'A') == DM_BTN_A); assert(face(k, 'B') == DM_BTN_B); assert(face(k, 'X') == DM_BTN_X); assert(face(k, 'Y') == DM_BTN_Y);
     }
+    for (NSString *lay in @[@"xbox", @"playstation"]) {   // DM_PAD_LAYOUT: every pad by its printed labels
+        setenv("DM_PAD_LAYOUT", lay.UTF8String, 1);
+        for (id c in @[@"Xbox One", @"DualSense", [NSNull null]]) {
+            NSString *k = [c isKindOfClass:[NSString class]] ? c : nil;
+            assert(face(k, 'A') == DM_BTN_A); assert(face(k, 'B') == DM_BTN_B); assert(face(k, 'X') == DM_BTN_X); assert(face(k, 'Y') == DM_BTN_Y);
+        }
+    }
+    setenv("DM_PAD_LAYOUT", "bogus", 1); assert(face(@"DualSense", 'A') == DM_BTN_B);   // unknown: the Switch's
+    unsetenv("DM_PAD_LAYOUT"); assert(face(@"DualSense", 'A') == DM_BTN_B);
     TestPad *g = [TestPad new];   // nothing pressed, buttons nil: none
     assert(dm_pad_face((GCExtendedGamepad *)(id)g) == 0);
     printf("t_pad_apple OK\n");
