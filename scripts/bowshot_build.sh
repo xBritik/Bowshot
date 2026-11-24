@@ -109,15 +109,13 @@ printf '# Local settings for the app built from your dump\n' > "$ENV_FILE"
 if grep -q 'game profile: 0400486024DEC000' "$BUILD_LOG"; then
   IMAGE="$WORK_DIR/extract/v131072/RomFS.img"
   [[ -f "$IMAGE" ]] || { echo 'ERROR: The supported Ocarina of Time v131072 RomFS image was not found.'; exit 1; }
-  # Fixed for every run (an env file's values are shown locked in the settings window). Frame rate, Display mode and Game's upscaler stay the player's: their
-  # defaults are the profile's (60 fps, a window, MetalFX)
+  # Fixed for every run (the settings window does not draw a row its env file fixes). Frame rate, Display mode, Game's upscaler, Dynamic resolution and Hold frames when late
+  # stay the player's: their defaults are the profile's (60 fps, a window, MetalFX, both off)
   cat >> "$ENV_FILE" <<'SETTINGS'
 DM_OPMODE=0
-DM_FPS_HOLD=off
 DM_TEX_RELEASE=0
 DM_GUEST_FILE=0
 DM_FOCUS_KEEP=1
-DM_DYNAMIC_RESOLUTION=0
 DM_PRESENT_INTERVAL=display
 DM_PRESENT_UPSCALE=off
 SETTINGS
