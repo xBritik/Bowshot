@@ -240,7 +240,7 @@ struct GameScreen: View {
                     if m.folder.isEmpty { DropZone(m: m, targeted: targeted) } else { ChosenFolder(m: m) }
                     if !m.forecast.isEmpty && m.folderProblem == nil { ForecastCard(rows: m.forecast) }
                     Card {
-                        Fact(symbol: "clock", text: "The first build takes 1.5 hours or more. Later builds are much faster.")
+                        Fact(symbol: "clock", text: m.forecastTime ?? "The first build takes 1.5 hours or more. Later builds are much faster.")
                         Divider().padding(.leading, 44)
                         Fact(symbol: "bolt.fill", text: "Keep your Mac plugged in, and leave this window open. You can use other apps.")
                         Divider().padding(.leading, 44)
