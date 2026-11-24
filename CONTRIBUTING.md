@@ -19,6 +19,17 @@ Never commit or attach game files, keys, title keys or anything extracted from a
 - Another game: run `scripts/build_ipa_from_nsp.py` on its NSP folder and follow [Port another game](docs/development.md#port-another-game).
 - Prefer a fix that holds for every game to a game-specific rule, and fix a bug at its cause ([AGENTS.md](AGENTS.md)).
 
+## Workflow
+
+One workflow for every change, and for every contributor, the maintainer included.
+
+1. **A change starts on a branch off an up-to-date `main`** (`feature/<name>`, `fix/<name>`, `docs/<name>`). Nothing is committed or pushed to `main` directly.
+2. **One change, one PR, to `main`** ([A pull request](#a-pull-request)). The PR carries its docs and a line in the `## <next version> (unreleased)` section of `CHANGELOG.md`. CI (`publication.yml`: content check and `tests/`) must pass.
+3. **Merging a PR makes no version.** `main` collects merged changes until a version is cut.
+4. **The only change without a PR is `README.md`**, however small: it may be committed straight to `main`. Any other file, `docs/` and `CHANGELOG.md` included, goes through a PR.
+5. **A version is cut by its own PR:** `VERSION` set to `X.Y.Z` and the changelog's heading renamed `## X.Y.Z (date)` (the release notes are taken from that exact heading). Once merged, tag that commit `vX.Y.Z` and push the tag: `release.yml` checks that the tag equals `VERSION`, runs the tests, packages the builder and publishes the release. Any `v*` tag publishes, so tag final versions only. A test build before a version is a local build of a `X.Y.Z-beta-N` `VERSION`, never tagged.
+6. **A published version is never rewritten:** no deleted or moved tag. A broken feature is fixed or reverted by a PR to `main`, and ships as the next patch version (`X.Y.Z+1`), as 0.1.4 did.
+
 ## A pull request
 
 - **One change per PR, off `main`.** Rebase on `main` rather than merging it in.
