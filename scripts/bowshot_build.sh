@@ -132,7 +132,10 @@ fi
 INSTALL_OUT="$(bash "$SOURCE_ROOT/scripts/bowshot_install.sh" "$OUTPUT_APP" 2>&1)" || INSTALL_OUT="NOTE: The install in Applications failed, so the app stays in $PRIVATE_DIR."
 printf '%s\n' "$INSTALL_OUT" | tee -a "$BUILD_LOG"
 FINAL_APP="$(printf '%s\n' "$INSTALL_OUT" | sed -n 's/^INSTALLED: //p' | tail -1)"
+# What this build did and how long each step took, kept beside it (scripts/bowshot_report.py; docs/builds/README.md compares builds). A failure here never stops the build
+REPORT_NOTE=""; if "$PYTHON" "$ENGINE_DIR/scripts/bowshot_report.py" report "$BUILD_LOG" --out "$PRIVATE_DIR/build-report.md" >/dev/null 2>&1; then REPORT_NOTE="Build report: $PRIVATE_DIR/build-report.md"; fi
 tidy_obsolete; tidy_metal   # the build succeeded: what it retired, and the Metal folders its pipeline steps left (no host of this build runs any more)
 if (( FREED_KB > 0 )); then echo "FREED: $(human_kb "$FREED_KB") of files this build did not use."; fi
+[[ -z "$REPORT_NOTE" ]] || echo "$REPORT_NOTE"
 printf 'version=%s\nrevision=%s\n' "$(tr -d '\r\n' < "$SOURCE_ROOT/VERSION")" "$REVISION" > "$PRIVATE_DIR/last-build.txt"   # read by --forecast: what this build was made with
 printf '\nREADY: %s\nThis app contains your game. Keep it private; do not upload it.\n' "${FINAL_APP:-$OUTPUT_APP}"

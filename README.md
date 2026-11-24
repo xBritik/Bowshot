@@ -139,6 +139,7 @@ Everything below is for people who want to understand, build or contribute to Bo
 | Your game app (private) | `/Applications/Ocarina of Time.app`, and the same app in `<game folder>/Bowshot-build/` (a clone on the same disk: no extra space; the next build reuses it) |
 | Build log | `<game folder>/Bowshot-build/build.log` |
 | Version of the last build (the Game screen's forecast reads it) | `<game folder>/Bowshot-build/last-build.txt` |
+| What the build did and how long each step took | `<game folder>/Bowshot-build/build-report.md` |
 | Settings chosen for your build | `<game folder>/Bowshot-build/runtime.env` |
 | Game settings file (overrides) | `~/Library/Application Support/nxnative/0400486024DEC000/env.txt` |
 | Game log (attach to bug reports; its `perf:` lines give the frame rate every 10 seconds) | `~/Library/Logs/nxnative/0400486024DEC000.log` |
