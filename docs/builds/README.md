@@ -43,3 +43,4 @@ Keep the Mac plugged in, close other apps, and do not play while it builds: the 
 
 | Id | Date | Bowshot | Chain | Case | Wall clock | Note |
 |---|---|---|---|---|---|---|
+| 0.1.2-beta-6-cold | 2026-11-23 | 0.1.2 | `ba5a707f7ecf` | cold | 1:32:20 | 9 steps made, 5 reused (the second engine pass); shaders 36:24 with none from the cache, prebuild 19:26, archive 28:32, prewarm 2:42, app 2:32 |

@@ -289,6 +289,7 @@ class BuildCase(unittest.TestCase):
     """A profile, its libraries and a fake metal-tt for main (Build, Prewarm)"""
     def setUp(self):
         self.t = Path(tempfile.mkdtemp()).resolve(); self.addCleanup(shutil.rmtree, self.t)
+        patcher = mock.patch.object(po, 'BASES_JOBS', 1); patcher.start(); self.addCleanup(patcher.stop)   # these tests watch the groups one after the other; test_prebuild_progress.py runs them in parallel
         self.lib = self.t / f'b-{CHAIN}'; self.lib.mkdir()
         for k, j, funcs in (('v', {'pull': {}, 'entry_z': 'main0_z'}, [('main0', False), ('main0_z', False)]), ('f', {}, [('main0', False)]), ('c', {}, [('main0', True)])):
             (self.lib / f'{k}_b.json').write_text(json.dumps(dict({'chain': CHAIN, 'entry': 'main0'}, **j)))

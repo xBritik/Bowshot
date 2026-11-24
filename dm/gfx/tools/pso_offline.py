@@ -34,7 +34,7 @@
 # More bases than --batch-size are compiled in sequential groups (batches.<arch>/<index>/ in the work folder, each cached by its own inputs) and merged with metal-pack: one metal-tt on
 # Another game's 32,864 bases runs an 8 GB Mac out of paging space (docs/reference/shaders.md, Bounded groups for the offline pipeline compiler). The output is the same single file.
 # With compute pipelines, they and the bases are separate groups (batches.<arch>/c<index>/ and <index>/) merged the same way, so new pairs leave the compute pipelines compiled, and the
-# reverse. The compute groups are small (COMPUTE_BATCH) and run --jobs at a time: one metal-tt keeps about three cores busy.
+# reverse. The groups of render bases run --bases-jobs at a time, the compute groups (small, COMPUTE_BATCH) --jobs at a time: one metal-tt keeps about three cores busy.
 # Usage: pso_offline.py --msl <b-<chain> folder> --out <folder> --work <folder> [--game <id>] [--pairs <shader_pairs.tsv> [--pairs <pso_pairs.tsv>]] [--gpu g18p[,g17p]]
 #          [--depth gl|zero] [--platform ios|macos] [--os-min 27.0] [--script-only] [--batch-size N] [--shader-map <shader_map.tsv>] [--manifest <pso_manifest.tsv>] [--no-compute] [--jobs N]
 #          [--prewarm-host <Mac dmhost>]
@@ -45,7 +45,7 @@
 #   --os-min: the archives' system (default: for iOS the SDK's major version, e.g. 27.0; for macOS the major version this Mac runs, since the Mac app is built for the Mac that builds it).
 #   A device opens only an archive of its own major version (macOS 27.2 refused archives made for 26.0 and 26.6 and opened those for 27.0 and 27.2), and builds the bases itself
 #   otherwise: the SDK's version on a Mac whose system is older than its Xcode's SDK (macOS 26.6 with Xcode 27.1) left that Mac without them (GitHub issue #673)
-import argparse, concurrent.futures, contextlib, filecmp, hashlib, json, os, shutil, struct, subprocess, sys, time
+import argparse, concurrent.futures, contextlib, filecmp, hashlib, json, os, shutil, struct, subprocess, sys, threading, time
 from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'tools'))
@@ -63,6 +63,11 @@ BATCH = 1000   # bases per metal-tt run: Odyssey's largest compiler lifetime foo
 MAX_FAILED = 8   # pipelines of one group metal-tt may fail on before the run counts as failed (compile_isolating)
 COMPUTE_BATCH = 16   # compute pipelines per metal-tt run, JOBS runs at a time: one metal-tt keeps about 2-3 cores busy: another game's 233 took 268 s in 16 groups against 453 s in one run (M5 Pro, background priority, a loaded Mac)
 JOBS = max(1, (os.cpu_count() or 2) // 2)
+def default_bases_jobs():   # groups of render bases compiled at a time: one metal-tt keeps about 3 cores busy and holds about 2 GiB per 1,000 bases, so a Mac with 8 or more cores and 16 GB or more runs two
+    try: ram = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
+    except (ValueError, OSError, AttributeError): return 1
+    return 2 if (os.cpu_count() or 1) >= 8 and ram >= 16 << 30 else 1
+BASES_JOBS = default_bases_jobs()
 COLOUR = ('pixel_format', 'write_mask', 'blending_state', 'alpha_blend_operation', 'rgb_blend_operation', 'destination_alpha_blend_factor', 'destination_rgb_blend_factor',
           'source_alpha_blend_factor', 'source_rgb_blend_factor')
 
@@ -605,13 +610,14 @@ def groups_of(bases, computes, batch_size, compute_size=COMPUTE_BATCH, meshes=()
     return groups
 
 
-def compile_batches(lib_dir, bases, work, part, arch, platform, osmin, toolchain, batch_size, computes=(), jobs=1, compute_size=COMPUTE_BATCH, meshes=()):
+def compile_batches(lib_dir, bases, work, part, arch, platform, osmin, toolchain, batch_size, computes=(), jobs=1, compute_size=COMPUTE_BATCH, meshes=(), bases_jobs=1):
     """Limit compiler input size, then combine every completed group into the usual single archive.
 
     This bounds input count, not memory: a single pipeline can still exceed Apple's compiler resources.
     On M2, merged archives passed archive-only lookups of two synthetic pipelines and all 32,864 Odyssey bases.
     Other workloads and compiler versions can have different resource use.
-    The groups of bases run one after the other, as before; the compute groups, small, jobs at a time, each in its own folder (its TMPDIR).
+    The groups of render and mesh bases run bases_jobs at a time (one by one with 1), the compute groups, small, jobs at a time, each in its own folder (its TMPDIR). The pieces are merged in the
+    groups' order whichever finishes first, so the archive is the same.
     """
     groups = groups_of(bases, computes, batch_size, compute_size, meshes); total = len(groups); names = {name for name, _, _ in groups}
     failed = ([], [])   # what the groups left out (compile_isolating), returned
@@ -625,7 +631,16 @@ def compile_batches(lib_dir, bases, work, part, arch, platform, osmin, toolchain
         print(f'pso_offline: {arch}: batch {index}/{total}: ready ({"reused" if reused else "compiled"})', flush=True)
         fb, fc = read_failed(work / f'batches.{arch}' / name, arch); failed[0].extend(fb); failed[1].extend(fc)
         return piece
-    pieces = [one(i, *g) for i, g in enumerate(groups, 1) if g[1]]
+    base_groups = [(i, g) for i, g in enumerate(groups, 1) if g[1]]
+    if bases_jobs <= 1: pieces = [one(i, *g) for i, g in base_groups]   # one by one: a failed group ends the run before the next starts
+    else:
+        stop = threading.Event()   # a failed group: none starts after it, the ones under way finish (their pieces stay cached)
+        def guarded(i, g):
+            if stop.is_set(): return None
+            try: return one(i, *g)
+            except BaseException: stop.set(); raise
+        with concurrent.futures.ThreadPoolExecutor(bases_jobs) as pool:
+            pieces = [f.result() for f in [pool.submit(guarded, i, g) for i, g in base_groups]]
     with concurrent.futures.ThreadPoolExecutor(max(1, jobs)) as pool:   # a failed group stops the build once the others under way have finished (their pieces stay cached)
         futures = [pool.submit(one, i, *g) for i, g in enumerate(groups, 1) if not g[1]]
         pieces += [f.result() for f in futures]
@@ -920,6 +935,7 @@ def main(argv=None):
     ap.add_argument('--shader-map', action='append', help='shader_map.tsv: its compute shaders get pipelines (default: the profile\'s)')
     ap.add_argument('--manifest', action='append', help='pso_manifest.tsv: its C rows first (default: the profile\'s)')
     ap.add_argument('--no-compute', action='store_true', help='no compute pipelines, the bases alone')
+    ap.add_argument('--bases-jobs', type=int, default=BASES_JOBS, help=f'groups of render bases compiled at a time (default {BASES_JOBS}: two with 8 or more cores and 16 GB or more, else one; each metal-tt holds about 2 GiB per 1,000 bases)')
     ap.add_argument('--jobs', type=int, default=JOBS, help=f'metal-tt runs at a time for the compute pipelines (default {JOBS}, half the logical CPUs)')
     ap.add_argument('--prewarm-host', help='a Mac host built from this checkout for this profile (make -C dm/host GAME=<id>): its prebuild tool makes the prewarm lists\' R and M rows\' '
                                            'pipelines from these libraries, and metal-tt compiles them for each --gpu (<arch>-prewarm-<NN>.mtl4a with its index); without it there are none')
@@ -988,7 +1004,7 @@ def main(argv=None):
         part = work / f'{arch}.mtl4a.partial'; part.unlink(missing_ok=True)
         t1 = time.time(); print(f'pso_offline: {arch}: metal-tt, {len(bases)} bases, {len(meshes)} mesh bases, {len(computes)} compute pipelines (minutes) ...', flush=True)
         if a.batch_size and len(groups_of(bases, computes, a.batch_size, meshes=meshes)) > 1:
-            fb, fc = compile_batches(lib_dir, bases, work, part, arch, a.platform, osmin, tv, a.batch_size, computes, a.jobs, meshes=meshes)
+            fb, fc = compile_batches(lib_dir, bases, work, part, arch, a.platform, osmin, tv, a.batch_size, computes, a.jobs, meshes=meshes, bases_jobs=a.bases_jobs)
         else:
             fb, fc = compile_isolating(lib_dir, bases, computes, js, part, work, arch, a.platform, osmin, meshes)
         write_failed(work, arch, fb, fc); failed_bases += fb; failed_computes += fc

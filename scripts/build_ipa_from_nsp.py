@@ -293,6 +293,25 @@ class Progress:
 PROG = Progress()
 PREBUILD_COUNT = re.compile(r'pipeline prebuild: (?P<done>\d+) of (?P<total>\d+) prewarm lines(?:, (?P<bases>\d+) bases compiled)?')   # the host's prewarm progress line (nvn_mtl.m)
 PREBUILD_START = re.compile(r'pipeline prebuild: (?P<total>\d+) prewarm lines of ')   # its first line: how many lines it will build
+PAIRS_START = re.compile(r'pipeline prebuild: (?P<total>\d+) shader pairs of ')   # the pipeline prebuild's first line (nvn_mtl.m pso_prebuild): how many pairs it will build
+PAIRS_COUNT = re.compile(r'pipeline prebuild: (?P<done>\d+) of (?P<total>\d+) pairs, (?P<built>\d+) built')   # and its line every 1,000 pairs: the stage's count and, from its rate, the time left
+
+
+PSO_BATCH = re.compile(r'pso_offline: \S+: batch (?P<i>\d+)/(?P<total>\d+): (?:(?P<ready>ready)|.*compiling or checking cache)')   # pso_offline.py: a group of bases or compute pipelines starts, then is ready
+
+
+def pso_batch_progress():   # the Pipeline archive stage's line handler: the groups ready out of the groups to make (they may finish out of order), which gives the ETA
+    state = {'done': 0}
+    def on_line(line):
+        if m := PSO_BATCH.search(line):
+            if m['ready']: state['done'] += 1
+            PROG.set(done=state['done'], total=int(m['total']), unit='batches')
+    return on_line
+
+
+def pairs_progress(line):   # a line of the pipeline prebuild's host output → the stage's count (done / total pairs, the bases built), which gives the ETA
+    if m := PAIRS_COUNT.search(line): PROG.set(done=int(m['done']), total=int(m['total']), unit='pairs', note=f'{int(m["built"]):,} bases built')
+    elif m := PAIRS_START.search(line): PROG.set(done=0, total=int(m['total']), unit='pairs')
 
 
 def progress_mode(want):   # auto: redraw in a terminal or in Spyder (IPython handles \r), plain lines when the output goes to a file or a pipe
@@ -369,10 +388,11 @@ def run(cmd, log, env=None, cwd=None, on_line=None, ok=(), fatal=True):
     as for an exit code (what it writes may be incomplete; the code is 1 when the command's own was 0)"""
     cmd = [str(c) for c in cmd]
     log.parent.mkdir(parents=True, exist_ok=True)
-    tail = collections.deque(maxlen=40)
+    tail = collections.deque(maxlen=40); flushed = time.time()
     with open(log, 'w') as f, proc_group.Group(cmd, env=env, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as g:
         for line in g.lines():
             f.write(line); tail.append(line)
+            if time.time() - flushed >= 1: f.flush(); flushed = time.time()   # a log read while the step runs is at most a second behind (the file is block-buffered otherwise)
             if on_line:
                 try: on_line(line.rstrip('\n'))
                 except Exception: pass   # progress never stops the build (an interrupt raised in it does)
@@ -2926,7 +2946,7 @@ def mac_run(work, game, patched, host, font, msl, aoc, gfx, lang, env, logs, g, 
         PROG.add(1); PROG.stage('Pipeline prebuild', step='building')
         penv = run_saves.cloud_off(dict(env, **{k: str(v) for k, v in renv.items()}, DM_PSO_PREBUILD='tool'))   # the environment file's DM_SAVE_SYNC is for the player's runs
         if g.get('depth_mode', 'gl') == 'zero': penv['DM_PSO_PREBUILD_DEPTH'] = 'zero'   # a game that sets the near = 0 depth mode (the profile says so: the host learns it only at run time, which for a provisional or derived profile includes its check boots)
-        run([host], logs / 'pso_prebuild.log', env=penv, cwd=rd)
+        run([host], logs / 'pso_prebuild.log', env=penv, cwd=rd, on_line=pairs_progress)
         PROG.end()
     q = lambda v: shlex.quote(str(v))
     if parts is not None: parts.update(env=renv, host=host, arg=patched, cwd=rd)
@@ -3001,7 +3021,7 @@ def mac_pso(py, repo, work, lib, g, gpus, env, logs):
     split_mesh = work / 'shader/mesh_pairs.tsv' if not g.table('mesh_pairs.tsv').is_file() and (work / 'shader/mesh_pairs.tsv').is_file() else None
     if split_pso or split_mesh:   # the split's copies, as the app gets them (--pso-pairs / --mesh-pairs)
         cmd += ['--pairs', g.table('shader_pairs.tsv'), '--pairs', split_pso or g.table('pso_pairs.tsv'), '--pairs', split_mesh or g.table('mesh_pairs.tsv')]
-    if run(cmd, logs / 'pso_offline_mac.log', env=env, fatal=False):   # an optimization: the app builds the bases on its first start without it
+    if run(cmd, logs / 'pso_offline_mac.log', env=env, fatal=False, on_line=pso_batch_progress()):   # an optimization: the app builds the bases on its first start without it
         shutil.rmtree(out, ignore_errors=True)
         PROG.end('failed, the app is packed without one', warn=True)
         say(f'[RED] pipeline archive: pso_offline.py failed (see {logs / "pso_offline_mac.log"}); the app is packed without one and builds its pipeline bases on its first start (--gpu none skips this step)')
