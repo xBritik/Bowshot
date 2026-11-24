@@ -2,57 +2,49 @@
 
 # Bowshot
 
-Build your own copy of **Zelda: Ocarina of Time (Switch 2)** into a native Mac app, on your Mac.
+Build **Zelda: Ocarina of Time (Switch 2)** as a native Mac app. On your Mac, from your own copy.
 
-Bowshot is a small Mac app that builds the game **on your Mac, from your own game file**. It is based on [nxnative](https://github.com/seedds/nxnative) and the Ocarina of Time work from [kid-with-sword-remake](https://github.com/cheemu21/kid-with-sword-remake). **No game files are included**, and you can only play the copy you build yourself.
+Bowshot is a Mac app that builds the game **on your Mac, from your own game file**. It is based on [nxnative](https://github.com/seedds/nxnative) and the Ocarina of Time work from [kid-with-sword-remake](https://github.com/cheemu21/kid-with-sword-remake). **No game files are included.** You can only play the copy you build yourself.
 
-> **Experimental preview, version 0.1.3.** Tested only with Ocarina of Time **update v131072** on Apple silicon Macs.
+> **Experimental preview, version 0.1.3.** Tested only with Ocarina of Time **update v131072**, on Apple silicon Macs.
 >
-> 0.1.2 was **never released**: its engine update makes the game's GPU hang after a few minutes ([seedds/nxnative#3274](https://github.com/seedds/nxnative/issues/3274)). 0.1.3 keeps 0.1.1's engine, which plays, and takes from 0.1.2 only what does not touch the engine. See the [changelog](CHANGELOG.md).
+> 0.1.2 was **never released**. Its engine makes the game's GPU hang after a few minutes ([seedds/nxnative#3274](https://github.com/seedds/nxnative/issues/3274)). 0.1.3 keeps 0.1.1's engine, which plays. See the [changelog](CHANGELOG.md).
 
 **[Download Bowshot 0.1.3](https://github.com/xBritik/Bowshot/releases/tag/v0.1.3)**
 
 ## Why Bowshot
 
-Bowshot is a builder with a window, not a list of commands to run.
-
-- You build from a Mac app with four screens (Your Mac, Game, Build, Done). It checks your Mac, installs the build tools with one button each (pinned versions, SHA-256 checked, no Homebrew), builds, and opens the game. A failed build says why and offers Try Again.
-- A rebuild reuses every step whose inputs did not change. The first build takes 1.5 hours or more; a rebuild with the same shaders took about 10 minutes on an M3 Pro. Before you start, the Game screen lists what will be kept and what will be made again, with a time estimate. The first build also skips a pipeline cache that only the terminal run command reads, which saves 12 to 19 minutes and 7 to 9 GB of disk.
-- The Build screen shows one progress bar with the time left, then every step with its time and whether it was reused. Each build writes a report (`Bowshot-build/build-report.md`) you can compare with another build, and `scripts/bowshot_watch.py` serves a page that follows a build from a browser. Closing the window during a build asks first, then stops the build and every compiler job it started. Finished steps are kept.
-- You choose the picture size. Render scale runs from Potato (50 %) to Native (100 %, 1920x1080), shown with its size in pixels, in the settings window or in play with ⌘= and ⌘-. Dynamic resolution can be turned on at 100 %. MetalFX upscaling and the Performance HUD (⌥⌘P) are in the same window.
-- Each build frees the disk space it will not use: old engine copies, the `obsolete` folder and idle Metal build folders. The builder is about 60 MB, and the game app is cloned into Applications without extra space.
-- No game file is in the repository or in the builder. A content check runs before every release, and the game is built on your Mac from your own copy.
-- Once a day at most, the builder and the game's settings window ask GitHub whether a newer Bowshot exists and show a link. The request carries nothing about you or your Mac, and you can turn it off.
-- The source tree and the builder carry one game and no iPhone app, so there is less to download and less to go wrong.
+- **A window, not commands.** Four screens guide you: Your Mac, Game, Build, Done.
+- **Fast rebuilds.** The first build takes **1.5 hours or more**. A rebuild took about **10 minutes** on an M3 Pro. The Game screen shows what is kept and about how long it takes.
+- **You see the build.** One progress bar, the time left, every step with its time, and a report. Closing the window asks first.
+- **You pick the picture size.** **Render scale** from 50 % to 100 %, in the window or with **⌘=** and **⌘-**. **Dynamic resolution** at 100 %. MetalFX and a Performance HUD (**⌥⌘P**) too.
+- **Light on disk.** Each build frees what it will not use. The builder is about **60 MB**.
+- **Private.** No game file is in the repository or the builder.
+- **Update check.** Once a day at most. It sends nothing about you. You can turn it off.
+- **Mac only, one game.** Less to download, less to go wrong.
 
 ## What's new in 0.1.3
 
-- The Game screen says what the next build will reuse and what it will make again, with a time estimate. The Build and Done screens list every step with its time. A build writes a report of its steps (`Bowshot-build/build-report.md`).
-- The game app goes into Applications as well, as a clone with no extra space, and the settings window says which Bowshot built it. The builder carries its version in its name.
-- The builder and the game's settings window check for a newer release once a day at most and show a link. They send nothing about you or your Mac and download nothing. To turn it off, use Check for Updates Automatically in the builder's Bowshot menu, or `DM_UPDATE_CHECK=0` in the game's `env.txt`.
-- Each build frees what it will not use, and the builder is about 60 MB instead of 880 MB.
-- ⌘= and ⌘- show the render scale, its size in pixels and the memory in use. View > Show Memory Use (⌥⌘I) shows the memory alone. The microphone's default gain is 1x (it was 4x): raise it in the settings window if the game does not hear you.
-- Dynamic resolution works at 100 % render scale (it had no effect at any scale before). It sits under Render scale in the settings window and is greyed out below 100 %, with its label saying so. This comes from reading the code and has not been measured in play yet.
-- Closing the builder during a build asks before stopping it, and the lists of steps scroll in a small window.
-- The settings window draws the keyboard shortcuts as keys, opens Advanced settings from its whole line, and leaves out the rows the build fixes.
-- The source tree keeps only Ocarina of Time's profile and no iPhone app.
+- **Forecast** before a build, with a time estimate.
+- **Dynamic resolution** works at 100 % render scale. It was read from the code, not yet measured in play.
+- **Safer builder.** Closing it during a build asks first.
+- **Game app in Applications** too, with no extra space.
+- **Update check** in the builder and in the game's settings window.
+- **Smaller builder.** 60 MB instead of 880 MB.
+- **In the game.** ⌘= and ⌘- show the render scale and the memory in use. The microphone's default gain is now 1x.
+- **Tidier source tree.** Only Ocarina of Time, no iPhone app.
 
-Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) (the performance record, the builder that shows it is alive) and [0.1.0](CHANGELOG.md#010-21-nov-2026) (MetalFX upscaling, the Performance HUD, the friendlier builder) is still there.
-
-**[Read the full changelog →](CHANGELOG.md)**
+Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) and [0.1.0](CHANGELOG.md#010-21-nov-2026) is still there. **[Read the full changelog →](CHANGELOG.md)**
 
 ## Contents
 
 - [Why Bowshot](#why-bowshot)
 - [What's new in 0.1.3](#whats-new-in-013)
 - [What you need](#what-you-need)
-- [Install, step by step](#install-step-by-step)
-  1. [Download Bowshot](#1-download-bowshot)
-  2. [Set up your Mac (once)](#2-set-up-your-mac-once)
-  3. [Prepare your game folder](#3-prepare-your-game-folder)
-  4. [Build the game](#4-build-the-game)
-  5. [Play](#5-play)
+- [Install](#install)
+- [Play](#play)
 - [If something goes wrong](#if-something-goes-wrong)
+- [Disk space](#disk-space)
 - [Keep it private](#keep-it-private)
 - [For developers](#for-developers)
 - [Credits](#credits)
@@ -63,58 +55,27 @@ Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) (the performance record, t
 - A Mac with an **Apple chip** (M1 or newer) and **16 GB of memory or more**.
 - **macOS 26.6 or later.**
 - **About 100 GB of free disk space.**
-- **Your own copy of Ocarina of Time (Switch 2) with update v131072**: either one `.nup` file, or the `.nsp` files (the game plus the update). Bowshot does not provide this file and does not say where to find it.
-- An internet connection, and your Mac **plugged in**. Allow **half a day**: the downloads are large and the first build takes **1.5 hours or more**.
+- **Your own copy of Ocarina of Time (Switch 2), update v131072.** One `.nup` file, or the `.nsp` files (game and update). Bowshot does not provide it.
+- A Mac **plugged in**, and an internet connection. Allow a few hours.
 
-Not sure about your Mac? Click the Apple menu → **About This Mac**. The chip must say "Apple M…", and you can read the memory and the macOS version there. To update macOS: Apple menu → **System Settings** → **General** → **Software Update**.
+## Install
 
-## Install, step by step
+1. **Download.** On the [release page](https://github.com/xBritik/Bowshot/releases/tag/v0.1.3), get **`Bowshot-0.1.3-macOS-arm64.zip`**. Not the files named *Source code*.
+2. **Install.** Open the zip. Drag **Bowshot 0.1.3** into **Applications**.
+3. **Open it.** The first time, right-click it, choose **Open**, then close the pop-up. Go to **System Settings → Privacy & Security** and click **Open Anyway**. Apple has not signed the app.
+4. **Follow the screens.**
+   - **Your Mac.** Bowshot checks Xcode 27.2, the Metal Toolchain and the build tools. Click the button next to each missing item. Xcode comes from the App Store.
+   - **Game.** Put your game file in a folder of its own, outside Desktop, Documents and iCloud Drive. Choose that folder, then click **Build My Local Game**.
+   - **Build.** Wait. Keep the Mac plugged in and awake.
+   - **Done.** Click **Open Game**.
 
-Follow the steps in order. When you see a grey box of text, it is a command: **copy it, paste it into the Terminal app (⌘ V), and press Return.**
+## Play
 
-### 1. Download Bowshot
-
-1. Go to the [Bowshot 0.1.3 release page](https://github.com/xBritik/Bowshot/releases/tag/v0.1.3), scroll to **Assets**, and click **`Bowshot-0.1.3-macOS-arm64.zip`**. Do **not** download the files named **Source code** or **`Bowshot-0.1.3-source.zip`**: they hold the project's code, not the app.
-2. Open your **Downloads** folder and double-click that zip file. An app called **Bowshot 0.1.3** (with a bow-and-arrow icon) appears next to it.
-3. Drag **Bowshot 0.1.3** into your **Applications** folder. Don't open it yet.
-
-### 2. Set up your Mac (once)
-
-Open **Bowshot 0.1.3**. It walks you through four screens: **Your Mac**, **Game**, **Build** and **Done**. If your Mac is missing something, the first one lists what to do, with a button for each step; when every line has a green check, **Continue** opens the next screen (and if nothing is missing, Bowshot skips it). No Terminal and no Homebrew are needed.
-
-1. **Xcode** (version 27.2 or later). Xcode is a very large download that Bowshot cannot install for you: click **Open App Store**, install it, then open Xcode once, accept the licence and let it finish its setup. If Xcode is installed but not selected, click **Select Xcode…** (your Mac asks for its password).
-2. **Metal Toolchain.** Click **Install**: Bowshot downloads Apple's graphics compiler (a few GB).
-3. **Build tools.** Click **Install**: Bowshot downloads `uv`, `glslang` and `zstd` into its own folder (`~/Library/Application Support/Bowshot/tools`). Each download is checked against a fixed SHA-256 before it is used.
-
-When you come back to Bowshot after the App Store or Xcode, it checks again by itself; **Check Again** does it on demand. Already have these tools from Homebrew? Bowshot uses them and shows a green check.
-
-### 3. Prepare your game folder
-
-1. In the **Finder**, open the **Go** menu → **Home**.
-2. Create a new folder there (⇧ ⌘ N) and call it **`Ocarina`**.
-3. Copy **your game file** (the `.nup`, or the `.nsp` files) into it.
-
-Don't put it on the Desktop, in Documents or in iCloud Drive: those can sync with iCloud, and the build writes tens of gigabytes. Don't put it inside a Git project either.
-
-### 4. Build the game
-
-1. Open **Bowshot 0.1.3** from Applications. **The first time, right-click it → Open, then close the pop-up** (click **Done**; do **not** choose *Move to Trash*). The app is not signed by Apple, so your Mac blocks it once. Then open **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to Bowshot, confirm, and open the app again.
-2. Click **Choose Game Folder…** and pick the **Ocarina** folder (the folder, not the file inside).
-3. The **Build My Local Game** button turns **blue**. Click it. If it stays grey, the line under it says why (missing game file, wrong folder…).
-4. **Wait.** A progress bar shows the current step and the time left. Keep the Mac **plugged in and awake** (don't close the lid) and don't do anything heavy meanwhile.
-5. You are done when the status says **Local build ready**.
-
-Building again later is much faster: it reuses what is still valid.
-
-### 5. Play
-
-1. In Bowshot, click **Open game folder**. A folder called **Bowshot-build** opens.
-2. Open **Ocarina of Time** inside it. **The first time, do the same: right-click → Open, close the pop-up, then Privacy & Security → Open Anyway.** If your Mac asks whether the app may access a folder, click **Allow**: it needs that for your saves.
-3. A settings window appears. You can leave it as it is and start the game.
-4. Play with the **keyboard or a controller** (Xbox, PlayStation and most Bluetooth pads work).
-5. To quit, press **⌘ Q**. **Save in the game first**, or your progress is lost.
-
-**While you play:**
+1. Open **Ocarina of Time** (in Applications, or in the **Bowshot-build** folder inside your game folder). The first time, right-click, **Open**, then **Open Anyway**, as for Bowshot.
+2. Allow access to a folder if your Mac asks. Saves need it.
+3. Click **Play** in the settings window.
+4. Use the **keyboard** or a **controller**.
+5. Press **⌘Q** to quit. **Save in the game first.**
 
 | Keys | What it does |
 |---|---|
@@ -123,29 +84,28 @@ Building again later is much faster: it reuses what is still valid.
 | **⌥ ⌘ P** | Show or hide the Performance HUD |
 | **⌥ ⌘ I** | Show the memory the game uses |
 
-**Tips for smooth play:** play **in a window** and keep it **visible** (don't cover it or drag it between screens); short stutters the first time you see a new area are normal; close other apps and stay plugged in; if it stutters, lower the **Render scale** (⌘ −).
+**For smooth play:** play in a window, keep it visible, close other apps, stay plugged in. Short stutters in a new area are normal. If it stutters, lower the **Render scale**.
 
 ## If something goes wrong
 
 | Problem | What to do |
 |---|---|
-| "The app cannot be opened" | Right-click it → **Open**, close the pop-up (don't move it to the Trash), then **System Settings → Privacy & Security → Open Anyway**. |
-| **Build My Local Game** stays grey | Read the line under it: wrong folder, game file missing, or the folder is in iCloud or a Git project. Redo step 3. |
-| A red line with `Missing prerequisite` or `uv is missing` | Redo step 2, then the check at the end of it. |
-| A red line about **Xcode 27.2** or the **Metal Toolchain** | You need exactly that version of Xcode. Open it once, then run `xcodebuild -downloadComponent MetalToolchain` again. |
-| `The supported Ocarina of Time v131072 RomFS image was not found` | Your folder doesn't have **update v131072**. This version works only with that update. |
-| The build stops | The red line in the log says why. The full log is `Ocarina/Bowshot-build/build.log` (and under **Show build log** in the window). Click **Build My Local Game** again: it picks up where it stopped. |
-| Black game window | Keep the window visible and in front, and don't use full screen. If it stays black, quit (⌘ Q) and reopen. |
+| "The app cannot be opened" | Right-click it, **Open**, then **Privacy & Security → Open Anyway**. |
+| **Build My Local Game** stays grey | Read the line under the folder. Wrong folder, missing game file, or a folder in iCloud or a Git project. |
+| A red line about a missing tool, **Xcode 27.2** or the **Metal Toolchain** | Go back to **Your Mac** and use the buttons there. |
+| `The supported Ocarina of Time v131072 RomFS image was not found` | Your folder lacks **update v131072**. This version needs it. |
+| The build stops | The red line says why. The full log is `Bowshot-build/build.log` in your game folder. Click **Try Again**: it resumes. |
+| Black game window | Keep the window visible, not in full screen. Quit with ⌘Q and reopen. |
 
-Still stuck? [Open an issue](https://github.com/xBritik/Bowshot/issues) with your Mac model, macOS version, and the error message. **Never attach game files, saves or keys.**
+Still stuck? [Open an issue](https://github.com/xBritik/Bowshot/issues) with your Mac model, macOS version and the error. **Never attach game files, saves or keys.**
 
 ## Disk space
 
-Each build frees what it will not use, and only what Bowshot itself made: the engine copies of older Bowshot versions, the `obsolete` folder inside `Bowshot-build`, and the idle Metal build folders in your user cache folder (they can reach several GB, and nothing else removes them). It never deletes your game files, other apps, or what the next build reuses: the extracted game and the shaders in `Bowshot-build/build` stay, which is what makes later builds fast. The Done screen shows how much was freed. To get that space back too, delete `Bowshot-build/build` (the next build then starts from zero).
+Each build frees what Bowshot made and nothing reads any more: old engine copies, the `obsolete` folder in `Bowshot-build`, and idle Metal build folders in your user cache. It never deletes your game files or what the next build reuses. To get that space back too, delete `Bowshot-build/build`. The next build then starts from zero.
 
 ## Keep it private
 
-**Never share, upload or publish** `Ocarina of Time.app`, the `Bowshot-build` folder, your game file or your saves. They contain game material and must stay on your Mac. Bowshot itself contains no game files.
+**Never share, upload or publish** `Ocarina of Time.app`, the `Bowshot-build` folder, your game file or your saves. They hold game material. Bowshot itself holds none.
 
 ---
 
@@ -168,7 +128,7 @@ Everything below is for people who want to understand, build or contribute to Bo
 
 ### Building Bowshot from source
 
-This makes the **game-free builder**, not a game. The Python tools need Python 3.12 or newer, which `uv` provides (macOS's own `python3` may be older). Install the tools of step 2 first, then:
+This makes the **game-free builder**, not a game. The Python tools need Python 3.14, which `uv` installs. Install the build tools first (the builder's first screen does it), then:
 
 ```sh
 git clone https://github.com/xBritik/Bowshot.git
@@ -208,9 +168,9 @@ Run `python3 tools/check_content.py --staged` before staging changes. Ignore rul
 
 - This is a builder, not a prebuilt copy of Zelda. Each player builds from their own files.
 - Performance and visual issues can come from the underlying engine. There is no guarantee of 60 FPS or glitch-free lighting.
-- A fresh machine needs the development tools of step 2; the .NET SDK is not needed.
+- A fresh machine needs Xcode and the build tools of the first screen. The .NET SDK is not needed.
 - The first local build is lengthy. Don't run a compiler-heavy build while judging gameplay performance.
-- The game's memory limit is set from your Mac's memory (2 GB less, between 8 and 48 GB). The game itself needs 13 to 16 GB while it runs, with short peaks when an area loads, so on a 16 GB Mac it can still close itself. Bowshot refuses to build on a Mac with less than 16 GB.
+- The game's memory limit is your Mac's memory minus 2 GB (minus 1 GB on a 16 GB Mac), between 8 and 48 GB. The game itself needs 13 to 16 GB while it runs, with short peaks when an area loads, so on a 16 GB Mac it can still close itself. Bowshot refuses to build on a Mac with less than 16 GB.
 - Upstream gameplay screenshots are omitted from this snapshot; some historical documentation still refers to that gallery.
 - Apple silicon Macs only.
 
