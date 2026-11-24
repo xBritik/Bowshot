@@ -12,10 +12,10 @@ export PATH="$SUPPORT_DIR/tools/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/b
 doctor() {
   [[ "$(uname -m)" == arm64 ]] || { echo 'ERROR: Apple silicon is required.'; return 1; }
   (( $(sysctl -n hw.memsize) / 1073741824 >= 16 )) || { echo 'ERROR: This Mac has less than 16 GB of memory. The game needs 13 to 16 GB while it runs, so Bowshot cannot build it here.'; return 1; }
-  command -v uv >/dev/null || { echo 'ERROR: A build tool is missing (uv). Open the builder window and use its setup steps (Install build tools).'; return 1; }
+  uv --version >/dev/null 2>&1 || { echo 'ERROR: A build tool is missing or does not start (uv). Open the builder window and use its setup steps (Install build tools).'; return 1; }
   xcrun --find metal >/dev/null 2>&1 || { echo 'ERROR: Install Xcode 27.2 and its Metal Toolchain: the builder window has the setup steps.'; return 1; }
   for tool in zstd glslangValidator; do   # xcodegen is only for iOS builds: the builder makes a Mac app
-    command -v "$tool" >/dev/null || { echo "ERROR: Missing build tool: $tool. Open the builder window and use its setup steps (Install build tools)."; return 1; }
+    "$tool" --version >/dev/null 2>&1 || { echo "ERROR: Missing build tool, or it does not start: $tool. Open the builder window and use its setup steps (Install build tools)."; return 1; }
   done
 }
 

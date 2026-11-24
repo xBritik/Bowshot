@@ -49,9 +49,13 @@ metal_state() {
   else echo "metal|missing|Apple's Metal Toolchain is not installed (a download of a few GB, needs Xcode first)."; fi
 }
 
+runs() {   # the tool is found on the PATH (Bowshot's own folder first) and starts: a copy that is there but broken (a Homebrew install that lost a library) counts as missing
+  command -v "$1" >/dev/null 2>&1 && "$1" --version >/dev/null 2>&1
+}
+
 tool_state() {   # id, executable, label
-  if [[ -x "$BIN/$2" ]] || command -v "$2" >/dev/null 2>&1; then echo "$1|ok|$3"
-  else echo "$1|missing|$3 is not installed."; fi
+  if runs "$2"; then echo "$1|ok|$3"
+  else echo "$1|missing|$3 is not installed, or does not start."; fi
 }
 
 MIN_RAM_GB=16
@@ -81,18 +85,18 @@ install_tools() {
   mkdir -p "$BIN"
   work="$(mktemp -d "${TMPDIR:-/tmp}/bowshot-setup.XXXXXX")"; trap 'rm -rf "$work"' EXIT
   [[ "$(uname -m)" == arm64 ]] || { echo 'ERROR: Apple silicon is required.'; return 1; }
-  if [[ ! -x "$BIN/uv" ]] && ! command -v uv >/dev/null 2>&1; then
+  if ! runs uv; then
     fetch "$UV_URL" "$UV_SHA" "$work/uv.tar.gz" || return 1
     tar xzf "$work/uv.tar.gz" -C "$work" && install -m 755 "$work/uv-aarch64-apple-darwin/uv" "$BIN/uv" && sign_if_needed "$BIN/uv" || { echo 'ERROR: Could not install uv.'; return 1; }
     echo "✓ uv $UV_VERSION"
   fi
-  if [[ ! -x "$BIN/glslangValidator" ]] && ! command -v glslangValidator >/dev/null 2>&1; then
+  if ! runs glslangValidator; then
     fetch "$GLSLANG_URL" "$GLSLANG_SHA" "$work/glslang.tar.gz" || return 1
     # In the archive bin/glslangValidator is a symlink to bin/glslang: unpacking the link alone leaves it dangling, so the real binary is unpacked and installed under the Validator's name
     tar xzf "$work/glslang.tar.gz" -C "$work" bin/glslang && install -m 755 "$work/bin/glslang" "$BIN/glslangValidator" && sign_if_needed "$BIN/glslangValidator" || { echo 'ERROR: Could not install glslangValidator.'; return 1; }
     echo "✓ glslang $GLSLANG_VERSION"
   fi
-  if [[ ! -x "$BIN/zstd" ]] && ! command -v zstd >/dev/null 2>&1; then
+  if ! runs zstd; then
     xcrun --find clang >/dev/null 2>&1 || { echo 'ERROR: Xcode must be installed and selected before zstd can be built.'; return 1; }
     fetch "$ZSTD_URL" "$ZSTD_SHA" "$work/zstd.tar.gz" || return 1
     tar xzf "$work/zstd.tar.gz" -C "$work" || { echo 'ERROR: Could not unpack zstd.'; return 1; }
@@ -102,6 +106,7 @@ install_tools() {
     install -m 755 "$work/zstd-$ZSTD_VERSION/programs/zstd" "$BIN/zstd" && sign_if_needed "$BIN/zstd" || { echo 'ERROR: Could not install zstd.'; return 1; }
     echo "✓ zstd $ZSTD_VERSION"
   fi
+  hash -r   # a tool found before its own copy was installed (a broken Homebrew one) would stay cached otherwise
   for t in uv zstd glslangValidator; do
     command -v "$t" >/dev/null 2>&1 && "$t" --version >/dev/null 2>&1 || { echo "ERROR: $t was installed but does not run."; return 1; }
   done
