@@ -1,6 +1,6 @@
 # Playing
 
-How to build and install a game: [README](../UPSTREAM_README.md#how-to-play).
+How to build and install a game: [README](../README.md).
 
 - **Settings:** a screen before the game starts sets frame rate, resolution, docked or handheld mode, language, rumble and more. Tap **Play**; your choices are remembered. What each one does: [Settings](settings.md).
 - **Saves and logs** are in the Files app, under the game's name: `save/` and `log.txt` (the previous run is `log.prev.txt`). When something goes wrong, send `log.txt`.
@@ -8,9 +8,9 @@ How to build and install a game: [README](../UPSTREAM_README.md#how-to-play).
 
 ## Touch controls
 
-The gear at the top centre opens the in-game menu: **Controller layout** switches between **2D** and **3D** (and **Tap**, every touch to the game, in handheld mode), and the settings that take effect at once are there too, such as **Picture**, **Console mode** and **Game rumble** ([In-game menu](settings.md#in-game-menu)). The app remembers your choices. Wonder, Engage, Dread, 13 Sentinels, Link's Awakening, Ace Attorney Investigations Collection, Unicorn Overlord, Rhythm Heaven Groove, Octopath Traveler 0, Pokémon Legends: Z-A, Cuphead, Absolum, Blasphemous 2, Brain Memory Training Academy, The Great Ace Attorney Chronicles, STEINS;GATE RE:BOOT, Big Brain Academy: Brain vs. Brain, Patrick's Parabox, Celeste, Raging Loop and Mario vs. Donkey Kong start in 2D, the other games in 3D (STEINS;GATE RE:BOOT's quick save is R3, in the 3D layout).
+The gear at the top centre opens the in-game menu: **Controller layout** switches between **2D** and **3D** (and **Tap**, every touch to the game, in handheld mode), and the settings that take effect at once are there too, such as **Picture**, **Console mode** and **Game rumble** ([In-game menu](settings.md#in-game-menu)). The app remembers your choices. Wonder, Engage, Dread, 13 Sentinels, Link's Awakening, another game, another game, another game, Octopath Traveler 0, another game, another game, another game, another game, another game, another game, another game, another game, another game, another game, another game and another game start in 2D, the other games in 3D (another game's quick save is R3, in the 3D layout).
 
-In 3D, the right stick (the camera in most games) is not drawn: swipe on the right third of the screen, starting anywhere off the buttons. In Super Mario Galaxy and Super Mario Galaxy 2, other touches outside the controls move the pointer; in Captain Toad: Treasure Tracker they touch the game's screen (touch blocks, stun enemies), and in Big Brain Academy: Brain vs. Brain too (its menus and activities).
+In 3D, the right stick (the camera in most games) is not drawn: swipe on the right third of the screen, starting anywhere off the buttons. In another game and another game, other touches outside the controls move the pointer; in another game they touch the game's screen (touch blocks, stun enemies), and in another game too (its menus and activities).
 
 A connected game controller hides the touch controls, all but the gear, and keeps every button.
 
@@ -28,7 +28,7 @@ A controller that supplies gyro data through Apple's controller support (DualSen
 
 Joy-Con 2 and Pro Controller 2 gyro come over Bluetooth LE ([Switch 2 controllers](#switch-2-controllers-mac)). Switch Pro Controller gyro on the Mac still needs the HID support being developed in [PR #296](https://github.com/seedds/nxnative/pull/296).
 
-**Shaking.** Shake the iPhone to shake the controller, in games that read its motion: Super Mario Odyssey's motion moves (such as the cap throw on a shake) need it, and Odyssey only takes them in its default docked mode. A light bump does not count; a sharp flick of the phone does.
+**Shaking.** Shake the iPhone to shake the controller, in games that read its motion: another game's motion moves (such as the cap throw on a shake) need it, and Odyssey only takes them in its default docked mode. A light bump does not count; a sharp flick of the phone does.
 
 ## Game language
 
@@ -36,7 +36,7 @@ English by default. Pick another when packing with `--language` (`-l`), by code 
 
 ## Settings in a file
 
-Lines like `DM_OPMODE=0` (handheld mode: lower resolution, higher frame rate) in `Documents/env.txt` win over the settings screen, which then shows them greyed out ([the full list](settings.md#settings-in-a-file)). `DM_FPS_TARGET=30` keeps Breath of the Wild, Tears of the Kingdom, Octopath Traveler 0 and Octopath Traveler II at their original 30 fps, which saves battery; `DM_PRESENT_INTERVAL=game` does the same for Monster Train 2. `DM_SHOW_FPS=1` shows the frame rate at the top left (`--show-fps` when packing turns it on from the start). `DM_LAUNCHER=0` skips the settings screen.
+Lines like `DM_OPMODE=0` (handheld mode: lower resolution, higher frame rate) in `Documents/env.txt` win over the settings screen, which then shows them greyed out ([the full list](settings.md#settings-in-a-file)). `DM_FPS_TARGET=30` keeps Breath of the Wild, Tears of the Kingdom, Octopath Traveler 0 and Octopath Traveler II at their original 30 fps, which saves battery; `DM_PRESENT_INTERVAL=game` does the same for another game. `DM_SHOW_FPS=1` shows the frame rate at the top left (`--show-fps` when packing turns it on from the start). `DM_LAUNCHER=0` skips the settings screen.
 
 ## Miis and console files
 
@@ -66,7 +66,7 @@ Joy-Con 2 and the Pro Controller 2 do not appear in macOS's Bluetooth settings: 
 1. **Pair a controller once, in the game.** While the game runs, hold the controller's small Sync button until its player lights sweep. The game pairs it and it plays; the log says `paired with this Mac`. A controller paired this way forgets the console it was paired with: pair it there again to use it with one.
 2. **From then on, press any button on it** while a game with the setting on is running: it wakes and connects, no Sync needed. A controller woken for a Switch 2 nearby is left alone.
 
-**Pairs and singles.** A left and a right Joy-Con 2 that connect play together as one pair. To make one of a pair a player of its own, held sideways, hold its **SL and SR** (the small rail buttons) for three seconds; to pair two single Joy-Cons again, hold **L** on the left one and **R** on the right one together for three seconds. The player lights show the new player numbers. A game that asks for more players than there are controllers splits a pair itself, as on a Switch (Super Mario Bros. Wonder's two-player screen). The game sees Joy-Cons as Joy-Cons: a pair is a dual controller with a sensor in each Joy-Con, a single one a sideways Joy-Con with its own sensor and rail buttons; a game that knows no Joy-Cons reads them as a Pro Controller. The gyro works, and so does rumble: each Joy-Con of a pair plays its side, a Joy-Con alone plays both, and **Game rumble**, **Rumble strength** and **Rumble cutoff** apply. Hold **Home** for two seconds for the quit prompt, as on other controllers. Each game app asks for Bluetooth access once. An app packed again asks again: macOS ties the answer to the app's signature, and the NSP script signs each build anew, so the same bundle ID does not carry it over. Not yet: the Joy-Con 2's mouse sensor. On a Pro Controller 2, pairing, every button, the sticks and Home are checked, and its rumble is [checked in Echoes of Wisdom](../dm/games/01008CF01BAAC000/README.md#controller-rumble); its gyro scale and axes are borrowed from the Joy-Con 2 and the Pro Controller, not measured on it.
+**Pairs and singles.** A left and a right Joy-Con 2 that connect play together as one pair. To make one of a pair a player of its own, held sideways, hold its **SL and SR** (the small rail buttons) for three seconds; to pair two single Joy-Cons again, hold **L** on the left one and **R** on the right one together for three seconds. The player lights show the new player numbers. A game that asks for more players than there are controllers splits a pair itself, as on a Switch (another game's two-player screen). The game sees Joy-Cons as Joy-Cons: a pair is a dual controller with a sensor in each Joy-Con, a single one a sideways Joy-Con with its own sensor and rail buttons; a game that knows no Joy-Cons reads them as a Pro Controller. The gyro works, and so does rumble: each Joy-Con of a pair plays its side, a Joy-Con alone plays both, and **Game rumble**, **Rumble strength** and **Rumble cutoff** apply. Hold **Home** for two seconds for the quit prompt, as on other controllers. Each game app asks for Bluetooth access once. An app packed again asks again: macOS ties the answer to the app's signature, and the NSP script signs each build anew, so the same bundle ID does not carry it over. Not yet: the Joy-Con 2's mouse sensor. On a Pro Controller 2, pairing, every button, the sticks and Home are checked, and its rumble is [checked in Echoes of Wisdom](../dm/games/<title ID>/README.md#controller-rumble); its gyro scale and axes are borrowed from the Joy-Con 2 and the Pro Controller, not measured on it.
 
 The mouse pointer hides when you press a key or a controller button, or move a stick, while it is over the game picture. Moving the mouse shows it again, as does switching to another window or app.
 

@@ -16,7 +16,7 @@ Do this before touching the host. Every item answers "what will break, and how m
 - a short list of what that means for a port;
 - the provisional profile keys `dm/games/profile_guess.py` reads off these facts, each with its reason.
 
-Fire Emblem Engage, for example, came out as:
+Another game, for example, came out as:
 - Unity 2020.3 IL2CPP on SDK 12.3.7 with NVN;
 - an extra `subsdk0` module (Nintendo's movie player);
 - 27,152 UnityFS bundles holding the shaders;
@@ -48,7 +48,7 @@ The tables below are what to check by hand afterwards.
 
 ## NVN surface
 
-- First check that the game draws with NVN at all. Importing `nvnBootstrapLoader` is not enough: Digimon Story Cyber Sleuth: Complete Edition imports it and EGL, makes an NVN device for a helper beside its movie player, and renders everything with NVIDIA's desktop OpenGL (`eglBindAPI(EGL_OPENGL_API)`, a glad loader asking `eglGetProcAddress` for 2,956 names). Read the graphics setup that calls `nvnBootstrapLoader` / `eglGetDisplay` / `vkCreateInstance`, and count which loaded entry points the code really reaches: for a glad or NVN C loader that stores each pointer in a global, the GOT slots of those globals that code outside the loader loads (Digimon: 79 GL functions, 30 NVN ones, all in that helper; Balatro's LÖVE: about 150 GL functions, whose globals its code reaches through registers, which `dm/tools/loader_census.py` follows). `profile_guess.py` decides `graphics gl` when `main` imports `eglCreateWindowSurface` and names `glShaderSource`; the host's GL layer is `dm/gfx/gl/hle_gl.m` ([04](04-graphics.md)).
+- First check that the game draws with NVN at all. Importing `nvnBootstrapLoader` is not enough: another game imports it and EGL, makes an NVN device for a helper beside its movie player, and renders everything with NVIDIA's desktop OpenGL (`eglBindAPI(EGL_OPENGL_API)`, a glad loader asking `eglGetProcAddress` for 2,956 names). Read the graphics setup that calls `nvnBootstrapLoader` / `eglGetDisplay` / `vkCreateInstance`, and count which loaded entry points the code really reaches: for a glad or NVN C loader that stores each pointer in a global, the GOT slots of those globals that code outside the loader loads (Digimon: 79 GL functions, 30 NVN ones, all in that helper; another game's LÖVE: about 150 GL functions, whose globals its code reaches through registers, which `dm/tools/loader_census.py` follows). `profile_guess.py` decides `graphics gl` when `main` imports `eglCreateWindowSurface` and names `glShaderSource`; the host's GL layer is `dm/gfx/gl/hle_gl.m` ([04](04-graphics.md)).
 - Find how the game obtains NVN entry points. Some games write the slots with `adrp`-to-slot code; Mario's loader (`main+0x1070910`) calls `GetProcAddress` per name and stores through the GOT (`dm/tools/nvn_slots_got.py <main.bin> <loader> <text end> <out tsv>`). The output lists every fetched function and every call site.
 - Mario fetched 534 functions and called 236 of them; 79 were new to the host (CommandBuffer 31, Texture 15, Buffer 10, Sampler 10). Names the host doesn't know at all go into `dm/gfx/nvn/names.txt` → `gen_protos.py`.
 

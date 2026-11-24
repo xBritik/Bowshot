@@ -37,6 +37,7 @@ static void merge_rumble_to(void (*sink)(const dm_haptic_state *));
 #include <signal.h>
 #include <math.h>
 #include <sys/stat.h>
+#include <mach/mach.h>
 
 static CAMetalLayer *g_layer;
 static uint64_t g_btn;
@@ -823,6 +824,63 @@ static void cheats_open_folder(void) {
 #endif
 int dm_render_scale_state(float *now);
 int dm_render_scale_step(int dir, float *now);
+// Bowshot: the message over the picture when ⌘= / ⌘- changes the render scale, and View > Show Memory Use (⌥⌘I) with only the memory: the scale with its name from the profile (render_scale_marks) and its size in pixels (render_base, of the
+// operation mode in use), and the memory the game uses beside the watchdog's limit (hle_nvn.c dm_mem_cap_gb), read again after a second and a half because the new size's render targets
+// are made over the next frames. It never takes the mouse
+// The memory watchdog's limit in GB, 0 = none: DM_MEM_CAP_GB as hle_nvn.c reads it, 24 GB on the Mac when the variable is unset (its DM_MEM_CAP_DEFAULT_GB); bowshot_build.sh always sets it
+static long dm_mem_cap_gb(void) { static long cap = -1; if (cap < 0) { const char *e = getenv("DM_MEM_CAP_GB"); cap = e ? atol(e) : 24; } return cap; }
+@interface DmToastHost : NSView @end
+@implementation DmToastHost
+- (NSView *)hitTest:(NSPoint)p { (void)p; return nil; }
+@end
+static NSView *g_scale_toast; static NSTextField *g_scale_toast_mem; static unsigned g_scale_toast_gen;
+static NSString *scale_toast_memory(void) {   // the footprint the watchdog compares with its limit (hle_nvn.c), now
+    task_vm_info_data_t vi; mach_msg_type_number_t cnt = TASK_VM_INFO_COUNT;
+    if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&vi, &cnt) != KERN_SUCCESS) return nil;
+    double gb = (double)vi.phys_footprint / 1073741824.0; long cap = dm_mem_cap_gb();
+    if (cap <= 0) return [NSString stringWithFormat:@"Memory %.1f GB (no limit)", gb];
+    return [NSString stringWithFormat:@"Memory %.1f of %ld GB (%.1f GB left)", gb, cap, (double)cap - gb];
+}
+static NSString *scale_toast_line(float v, int edge) {   // edge: -1 already at the smallest, 1 at the largest, 0 a change
+    NSString *name = nil;
+    for (NSString *m in [@(DM_GAME_RENDER_SCALE_MARKS) componentsSeparatedByString:@","]) {
+        NSArray<NSString *> *kv = [m componentsSeparatedByString:@"="];
+        if (kv.count == 2 && fabs(kv[0].doubleValue - v) < 1e-3) name = kv[1];
+    }
+    int bw = dm_opmode() ? DM_GAME_RENDER_BASE_DOCKED_W : DM_GAME_RENDER_BASE_HANDHELD_W, bh = dm_opmode() ? DM_GAME_RENDER_BASE_DOCKED_H : DM_GAME_RENDER_BASE_HANDHELD_H;
+    NSString *size = bw > 0 ? [NSString stringWithFormat:@"%ldx%ld", lround(bw * v), lround(bh * v)] : nil;
+    NSString *detail = size ? [NSString stringWithFormat:@"%ld %%, %@", lround(v * 100), size] : [NSString stringWithFormat:@"%ld %%", lround(v * 100)];
+    NSString *s = name ? [NSString stringWithFormat:@"Render scale: %@ (%@)", name, detail] : [NSString stringWithFormat:@"Render scale: %@", detail];
+    return edge ? [s stringByAppendingString:edge > 0 ? @", the largest" : @", the smallest"] : s;
+}
+static void scale_toast_show(NSString *line) {   // line nil: the memory alone (View > Show Memory Use)
+    NSView *cv = g_win.contentView; if (!cv) return;
+    [g_scale_toast removeFromSuperview];
+    CGFloat k = hq_scale(cv.bounds.size);
+    NSString *mem = scale_toast_memory(); if (!line) { line = mem ?: @"Memory not available"; mem = nil; }
+    NSTextField *a = hq_label(line, 20 * k, NSFontWeightSemibold, [NSColor colorWithWhite:1 alpha:0.92], 0);
+    NSTextField *b = hq_label(mem ?: @"", 16 * k, NSFontWeightRegular, [NSColor colorWithWhite:1 alpha:0.6], 0); b.hidden = !mem;
+    NSStackView *pill = [NSStackView stackViewWithViews:@[a, b]];
+    pill.orientation = NSUserInterfaceLayoutOrientationVertical; pill.spacing = 4 * k; pill.edgeInsets = NSEdgeInsetsMake(12 * k, 24 * k, 12 * k, 24 * k);
+    pill.translatesAutoresizingMaskIntoConstraints = NO; pill.wantsLayer = YES;
+    pill.layer.backgroundColor = [HQ_BACKGROUND colorWithAlphaComponent:0.92].CGColor; pill.layer.cornerRadius = 18 * k;
+    pill.layer.borderWidth = 1; pill.layer.borderColor = [NSColor colorWithWhite:1 alpha:0.12].CGColor;
+    NSView *host = [[DmToastHost alloc] initWithFrame:cv.bounds]; host.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [host addSubview:pill];
+    [NSLayoutConstraint activateConstraints:@[[pill.centerXAnchor constraintEqualToAnchor:host.centerXAnchor], [pill.bottomAnchor constraintEqualToAnchor:host.bottomAnchor constant:-48 * k]]];
+    host.accessibilityElement = YES; host.accessibilityRole = NSAccessibilityStaticTextRole; host.accessibilityLabel = line;
+    g_scale_toast = host; g_scale_toast_mem = mem ? b : nil;
+    [cv addSubview:host]; hq_fade(host, 1);
+    unsigned gen = ++g_scale_toast_gen;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (gen != g_scale_toast_gen || !g_scale_toast_mem) return;
+        NSString *m2 = scale_toast_memory(); if (m2) g_scale_toast_mem.stringValue = m2;
+    });
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (gen != g_scale_toast_gen) return;
+        hq_fade(g_scale_toast, 0); g_scale_toast = nil; g_scale_toast_mem = nil;
+    });
+}
 @interface DmViewMenu : NSObject <NSMenuItemValidation>
 @property (nonatomic, strong) NSMenuItem *hudItem;
 @property (nonatomic) BOOL hud;   // Apple's Metal HUD shown on the game layer
@@ -837,12 +895,15 @@ int dm_render_scale_step(int dir, float *now);
     LOG("front end: Performance HUD %s (View menu)", self.hud ? "shown" : "hidden");
 }
 - (void)step:(int)dir {
-    float v; int r = dm_render_scale_step(dir, &v);
+    float before = 0, v; dm_render_scale_state(&before);
+    int r = dm_render_scale_step(dir, &v);
     if (r != 1) { NSBeep(); return; }
+    scale_toast_show(scale_toast_line(v, fabsf(v - before) < 1e-4f && before > 0 ? dir : 0));
     NSUserDefaults *d = NSUserDefaults.standardUserDefaults;   // the settings window's choice at the next start; the default is not stored (docs/frontends.md, Saved choices)
     if (fabsf(v - DM_GAME_RENDER_SCALE_DEFAULT) < 1e-4f) [d removeObjectForKey:@"launcher.DM_RENDER_SCALE"];
     else [d setObject:[NSString stringWithFormat:@"%.4f", v] forKey:@"launcher.DM_RENDER_SCALE"];
 }
+- (void)showMemory:(id)sender { (void)sender; scale_toast_show(nil); }
 - (void)scaleUp:(id)sender { (void)sender; [self step:1]; }
 - (void)scaleDown:(id)sender { (void)sender; [self step:-1]; }
 - (BOOL)validateMenuItem:(NSMenuItem *)item {
@@ -1689,6 +1750,8 @@ void front_run(void (*guest)(void)) {
         [vm addItem:NSMenuItem.separatorItem];
         [vm addItemWithTitle:@"Increase Render Scale" action:@selector(scaleUp:) keyEquivalent:@"="].target = g_view;
         [vm addItemWithTitle:@"Decrease Render Scale" action:@selector(scaleDown:) keyEquivalent:@"-"].target = g_view;
+        NSMenuItem *memItem = [vm addItemWithTitle:@"Show Memory Use" action:@selector(showMemory:) keyEquivalent:@"i"];   // ⌥⌘I: the memory beside the limit, without changing anything
+        memItem.keyEquivalentModifierMask = NSEventModifierFlagCommand | NSEventModifierFlagOption; memItem.target = g_view;
         [[bar addItemWithTitle:@"View" action:nil keyEquivalent:@""] setSubmenu:vm];
         [[bar addItemWithTitle:@"Window" action:nil keyEquivalent:@""] setSubmenu:wm];
         [wm addItemWithTitle:@"Enter Full Screen" action:@selector(toggleFullScreen:) keyEquivalent:@"f"].keyEquivalentModifierMask = NSEventModifierFlagControl | NSEventModifierFlagCommand;
