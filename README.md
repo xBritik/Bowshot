@@ -30,11 +30,11 @@
 
 Bowshot is a Mac app that builds the game **on your Mac, from your own game file**. It is based on [nxnative](https://github.com/seedds/nxnative) and the Ocarina of Time work from [kid-with-sword-remake](https://github.com/cheemu21/kid-with-sword-remake). **No game files are included.** You can only play the copy you build yourself.
 
-> **Experimental preview, version 0.1.3.** Tested only with Ocarina of Time **update v131072**, on Apple silicon Macs.
+> **Experimental preview.** Tested only with Ocarina of Time **update v131072**, on Apple silicon Macs.
 >
 > 0.1.2 was **never released**. Its engine makes the game's GPU hang after a few minutes ([seedds/nxnative#3274](https://github.com/seedds/nxnative/issues/3274)). 0.1.3 keeps 0.1.1's engine, which plays. See the [changelog](CHANGELOG.md).
 
-**[Download Bowshot 0.1.3](https://github.com/xBritik/Bowshot/releases/tag/v0.1.3)**
+**[Download the latest Bowshot](https://github.com/xBritik/Bowshot/releases/latest)** (currently 0.1.4)
 
 ## Why Bowshot
 
@@ -43,7 +43,13 @@ Bowshot is a Mac app that builds the game **on your Mac, from your own game file
 - **In-game resolution change** with **⌘=** and **⌘-**. **Render scale** goes from 50 % to 100 %, and **Dynamic resolution** works at 100 %.
 - **Light on disk.** Each build frees what it will not use. The builder is about **60 MB**.
 
-## What's new in 0.1.3
+## What's new in 0.1.4
+
+- **Build tools install again** on a Mac without Homebrew. The setup screen's Install button failed on glslang and the build could not start.
+- **A broken tool is replaced.** The setup screen now runs each tool instead of trusting that its file exists, and installs its own copy of one that does not start.
+- **A failed install says so** on the Build tools line, with a pointer to the log.
+
+Nothing in the engine or the game changes since 0.1.3. Earlier highlights, from 0.1.3:
 
 - **Forecast** before a build, with a time estimate.
 - **Dynamic resolution** works at 100 % render scale. It was read from the code, not yet measured in play.
@@ -59,7 +65,7 @@ Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) and [0.1.0](CHANGELOG.md#0
 ## Contents
 
 - [Why Bowshot](#why-bowshot)
-- [What's new in 0.1.3](#whats-new-in-013)
+- [What's new in 0.1.4](#whats-new-in-014)
 - [What you need](#what-you-need)
 - [Install](#install)
 - [Play](#play)
@@ -80,9 +86,9 @@ Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) and [0.1.0](CHANGELOG.md#0
 
 ## Install
 
-1. **Download.** On the [release page](https://github.com/xBritik/Bowshot/releases/tag/v0.1.3), get **`Bowshot-0.1.3-macOS-arm64.zip`**. Not the files named *Source code*.
-2. **Install.** Open the zip. Drag **Bowshot 0.1.3** into **Applications**.
-3. **Open it.** Apple has not signed the app, so your Mac blocks it once. Open **Bowshot 0.1.3**, close the pop-up, then go to **System Settings → Privacy & Security**. Click **Open Anyway** next to Bowshot.
+1. **Download.** On the [latest release page](https://github.com/xBritik/Bowshot/releases/latest), get **`Bowshot-<version>-macOS-arm64.zip`**. Not the files named *Source code*.
+2. **Install.** Open the zip. Drag **Bowshot** into **Applications**.
+3. **Open it.** Apple has not signed the app, so your Mac blocks it once. Open **Bowshot**, close the pop-up, then go to **System Settings → Privacy & Security**. Click **Open Anyway** next to Bowshot.
 4. **Follow the screens.**
    - **Your Mac.** Bowshot checks Xcode 27.2, the Metal Toolchain and the build tools. Click the button next to each missing item. Xcode comes from the App Store.
    - **Game.** Put your game file in a folder of its own, outside Desktop, Documents and iCloud Drive. Choose that folder, then click **Build My Local Game**.
