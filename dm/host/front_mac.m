@@ -269,8 +269,41 @@ static int merge_pads_left(GCController *gone) {
     for (GCController *c in GCController.controllers) if (c.extendedGamepad && c != gone) return 1;
     return 0;
 }
+// DM_PAD_LAYOUT=auto: the layout of the pad found at start, asked for by main.c before the game's files are mounted (the overlay folders and the icon font follow it).
+// GameController lists a pad that is already connected only after the app's run loop runs (seconds later on the Mac: the log of a first try said "no controller yet"), so the start
+// reads the HID devices instead, which IOKit has at once: Sony 0x054C is PlayStation, Nintendo 0x057E the Switch, any other gamepad (Microsoft 0x045E, 8BitDo, ...) Xbox.
+int dm_pad_detect_layout(void) {
+    if (dm_pad_layout_setting() != DM_PAD_LAYOUT_AUTO) return -1;
+    int l = -1;
+    IOHIDManagerRef m = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+    if (m) {
+        IOHIDManagerSetDeviceMatchingMultiple(m, (__bridge CFArrayRef)@[
+            @{@kIOHIDDeviceUsagePageKey: @(kHIDPage_GenericDesktop), @kIOHIDDeviceUsageKey: @(kHIDUsage_GD_GamePad)},
+            @{@kIOHIDDeviceUsagePageKey: @(kHIDPage_GenericDesktop), @kIOHIDDeviceUsageKey: @(kHIDUsage_GD_Joystick)}]);
+        if (IOHIDManagerOpen(m, kIOHIDOptionsTypeNone) == kIOReturnSuccess) {
+            CFSetRef devs = IOHIDManagerCopyDevices(m);
+            if (devs) {
+                for (id d in (__bridge NSSet *)devs) {
+                    int vid = [(__bridge NSNumber *)IOHIDDeviceGetProperty((__bridge IOHIDDeviceRef)d, CFSTR(kIOHIDVendorIDKey)) intValue];
+                    l = vid == 0x054C ? DM_PAD_LAYOUT_PLAYSTATION : vid == 0x057E ? DM_PAD_LAYOUT_SWITCH : DM_PAD_LAYOUT_XBOX;
+                    if (l == DM_PAD_LAYOUT_PLAYSTATION) break;   // a PlayStation pad among several: its icons
+                }
+                CFRelease(devs);
+            }
+            IOHIDManagerClose(m, kIOHIDOptionsTypeNone);
+        }
+        CFRelease(m);
+    }
+    if (l < 0) l = dm_pad_auto_update(GCController.controllers, nil);
+    fprintf(stderr, "pad layout auto at start: %s\n", l == DM_PAD_LAYOUT_PLAYSTATION ? "PlayStation" : l == DM_PAD_LAYOUT_XBOX ? "Xbox" : l == DM_PAD_LAYOUT_SWITCH ? "Switch" : "no controller yet");
+    return l;
+}
 // Called at start and on every connect / disconnect (gone: the controller that was just removed, nil on a connect)
 static void pads_changed(GCController *gone) {
+    if (dm_pad_layout_setting() == DM_PAD_LAYOUT_AUTO && dm_pad_auto_layout < 0) {   // no pad was there at start: the first one that connects decides (the font may still follow it; the overlays were mounted without)
+        int now = dm_pad_auto_update(GCController.controllers, gone);
+        if (now >= 0) LOG("pad layout auto: decided by a pad that connected after the start: %d (0 Switch, 1 Xbox, 2 PlayStation)", now);
+    }
     if (g_merge) {
         int any = 0;
         for (GCController *c in GCController.controllers) if (jc1_gc_unread(c)) pad_keep_system_buttons(c);   // read from HID (pad_jc1_mac.h), a lone Joy-Con's too (no extended gamepad profile)
