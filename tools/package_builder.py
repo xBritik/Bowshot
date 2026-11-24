@@ -33,8 +33,8 @@ def main():
         raise SystemExit(json.dumps(errors, indent=2))
     version = (ROOT / 'VERSION').read_text().strip()
     if args.beta: version += f'-beta-{args.beta}'
-    dist = ROOT / 'dist'
-    dist.mkdir(exist_ok=True)
+    dist = ROOT / 'dist' / version   # one folder a version (dist/0.1.3, dist/0.1.3-beta-2): earlier ones stay as they were
+    dist.mkdir(parents=True, exist_ok=True)
     app = dist / f'Bowshot {version}.app'   # the name Finder shows, and the builder window's title (launcher/mac/main.swift)
     if app.exists():
         raise SystemExit(f'{app.relative_to(ROOT)} already exists. Keep the previous release and use a fresh output folder before packaging again.')
