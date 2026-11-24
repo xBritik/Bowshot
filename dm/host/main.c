@@ -115,7 +115,10 @@ static void pad_overlay_add(char *ov, size_t cap, const char *dir) {
     size_t cur = strlen(ov);
     snprintf(ov + cur, cap > cur ? cap - cur : 0, "%s%s", cur ? ":" : "", dir);
 }
+// DM_PAD_LAYOUT=auto before the front end runs: the Mac front end (front_mac.m) overrides this with the connected pad's layout, -1 where it has no controllers to ask (iOS)
+__attribute__((weak)) int dm_pad_detect_layout(void) { return -1; }
 static void pad_layout_env(void) {
+    if (dm_pad_layout_setting() == DM_PAD_LAYOUT_AUTO && dm_pad_auto_layout < 0) dm_pad_auto_layout = dm_pad_detect_layout();
     int layout = dm_pad_face_layout();
     if (layout == DM_PAD_LAYOUT_SWITCH) return;
     const char *lname = layout == DM_PAD_LAYOUT_PLAYSTATION ? "playstation" : "xbox", *cur = getenv("DM_ROMFS_OVERLAY"), *fd = getenv("DM_FONT_DIR"), *root = getenv("DM_ROOT");

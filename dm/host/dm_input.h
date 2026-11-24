@@ -75,17 +75,30 @@ extern void (*dm_pad_hook)(uint64_t now, uint64_t *buttons, int32_t *lx, int32_t
 // Controller layout (DM_PAD_LAYOUT) and per-button remap (DM_PAD_MAP), shared by GameController (pad_apple.h, front_mac.m) and raw HID gamepads (pad_hid.h).
 // switch (default): face buttons by position (right A, bottom B, top X, left Y). xbox / playstation: by the labels printed on the pad (A bottom, B right, X left, Y top;
 // Cross, Circle, Square, Triangle), and the shared font's button icons follow (hle_sdk16.c, make_ext_font.py --layout).
-enum { DM_PAD_LAYOUT_SWITCH = 0, DM_PAD_LAYOUT_XBOX = 1, DM_PAD_LAYOUT_PLAYSTATION = 2 };
+enum { DM_PAD_LAYOUT_SWITCH = 0, DM_PAD_LAYOUT_XBOX = 1, DM_PAD_LAYOUT_PLAYSTATION = 2, DM_PAD_LAYOUT_AUTO = 3 };
 #define DM_PAD_BTN_COUNT 16
 #define DM_PAD_MAP_NONE 0xffu
 
-static inline int dm_pad_face_layout(void) {
+// DM_PAD_LAYOUT=auto: the layout of the first controller the front end finds (Mac: front_mac.m, at start and on a connect; pad_apple.h dm_pad_layout_of), -1 until it has found one. It is set once and then kept for the session: the icons are loaded with it.
+// Weak, so every file that includes this header shares one copy.
+__attribute__((weak)) volatile int dm_pad_auto_layout = -1;
+
+static inline int dm_pad_layout_setting(void) {
     const char *l = getenv("DM_PAD_LAYOUT");
     if (!l || !*l) return DM_PAD_LAYOUT_SWITCH;
     if (!strcasecmp(l, "xbox")) return DM_PAD_LAYOUT_XBOX;
     if (!strcasecmp(l, "playstation")) return DM_PAD_LAYOUT_PLAYSTATION;
+    if (!strcasecmp(l, "auto")) return DM_PAD_LAYOUT_AUTO;
     return DM_PAD_LAYOUT_SWITCH;
 }
+// The layout in force: Switch, Xbox or PlayStation (auto: the connected pad's, the Switch's while none is known)
+static inline int dm_pad_face_layout(void) {
+    int l = dm_pad_layout_setting();
+    if (l != DM_PAD_LAYOUT_AUTO) return l;
+    int a = dm_pad_auto_layout;
+    return a == DM_PAD_LAYOUT_XBOX || a == DM_PAD_LAYOUT_PLAYSTATION ? a : DM_PAD_LAYOUT_SWITCH;
+}
+// Face buttons by their printed labels: when the layout in force is not the Switch's, so the buttons agree with the icons (auto: the layout found, the Switch's, positions, while none is known or where no front end finds one)
 static inline int dm_pad_labels_mode(void) { return dm_pad_face_layout() != DM_PAD_LAYOUT_SWITCH; }
 
 // Switch button names in NpadButton bit order (bits 0..15): shared by DM_PAD_MAP and DM_HID_MAP.
