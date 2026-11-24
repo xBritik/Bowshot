@@ -28,6 +28,12 @@ The source tree and the builder app carried the upstream project's other games a
 
 ## 0.1.2 (23 Nov 2026)
 
+### Known issue: Ocarina of Time is not playable with this version
+
+The game starts, then the GPU hangs after about one to four minutes (`kIOGPUCommandBufferCallbackErrorHang`), macOS stops the app's GPU work and the game quits with "The GPU stopped running The Legend of Zelda: Ocarina of Time". It repeated on every launch on an M3 Pro (18 GB), at render scale 0.6667, windowed, with a build made from scratch (all 42,847 shaders, the pipeline archive and the prewarm pipelines rebuilt). The same hang is reported on the engine commit this version pins, `0293739d`, by [seedds/nxnative#3274](https://github.com/seedds/nxnative/issues/3274) (M3 Pro too, entering Kakariko Graveyard), who played the same place on an older commit. The cause is open: the hung command buffers share the Hi-Z culling task `a5288d0a6c4971fd`, which is also found in clean runs, so its presence does not identify the fault. Nothing in this version's own changes (the builder, the cleanup) touches the engine's code outside comments, and a host built before the cleanup differs from this one only by rows of other games' tables.
+
+Until it is fixed, use [0.1.1](https://github.com/xBritik/Bowshot/releases/tag/v0.1.1) (engine `8c94bd1e`) to play. 0.1.1 itself has not been checked against this hang on the same Mac yet.
+
 ### Engine
 
 - Upstream nxnative main `0293739d` (23 Nov 2026), pinned as `bowshot-0.1.2-nxnative-0293739d`, 225 commits after the 0.1.1 pin. Ocarina of Time: a 40 fps option on a screen at a multiple of 120 Hz (the frame step now counts in ticks of 1/120 s), the dynamic resolution's threshold scaled to the frame rate target, the screen shape (Vert+) updated in place.

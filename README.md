@@ -7,6 +7,8 @@ Turn your own copy of **Zelda: Ocarina of Time (Switch 2)** into a native Mac ap
 Bowshot is a small Mac app that builds the game **on your Mac, from your own game file**. It is based on [nxnative](https://github.com/seedds/nxnative) and the Ocarina of Time work from [kid-with-sword-remake](https://github.com/cheemu21/kid-with-sword-remake). **No game files are included**, and you can only play the copy you build yourself.
 
 > **Experimental preview, version 0.1.2.** Tested only with Ocarina of Time **update v131072** on Apple silicon Macs.
+>
+> **Known issue in 0.1.2: the game is not playable.** The GPU hangs after a few minutes and macOS stops the game (the same hang is reported upstream, [seedds/nxnative#3274](https://github.com/seedds/nxnative/issues/3274)). Use [0.1.1](https://github.com/xBritik/Bowshot/releases/tag/v0.1.1) to play, until this is fixed. Details in the [changelog](CHANGELOG.md).
 
 **[Download Bowshot 0.1.2](https://github.com/xBritik/Bowshot/releases/tag/v0.1.2)**
 
