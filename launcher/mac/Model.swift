@@ -466,11 +466,44 @@ final class BuilderModel: ObservableObject {
 
     func fail(_ message: String) { failed = true; failure = message; step = .build }
 
+    // Stopping a build: the script and everything it started (the engine, the shader compilers) get SIGTERM, children first, and SIGKILL if they are still there after the wait
+    var cancelled = false
+    private func descendants(of root: pid_t) -> [pid_t] {
+        let ps = Process(); ps.executableURL = URL(fileURLWithPath: "/bin/ps"); ps.arguments = ["-axo", "pid=,ppid="]
+        let pipe = Pipe(); ps.standardOutput = pipe
+        guard (try? ps.run()) != nil else { return [] }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile(); ps.waitUntilExit()
+        var children: [pid_t: [pid_t]] = [:]
+        for line in String(decoding: data, as: UTF8.self).split(separator: "\n") {
+            let f = line.split(separator: " ").compactMap { pid_t($0) }
+            if f.count == 2 { children[f[1], default: []].append(f[0]) }
+        }
+        var found: [pid_t] = [], queue = [root]
+        while let next = queue.popLast() { for c in children[next] ?? [] { found.append(c); queue.append(c) } }
+        return found
+    }
+    /// Stops the running build and waits (at most 8 s) until it is gone. What the finished steps made is kept: the next build resumes from there
+    func stopBuild() {
+        guard let task = process else { return }
+        cancelled = true
+        let pids = descendants(of: task.processIdentifier) + [task.processIdentifier]
+        for pid in pids.reversed() { kill(pid, SIGTERM) }
+        let deadline = Date().addingTimeInterval(8)
+        while Date() < deadline && pids.contains(where: { kill($0, 0) == 0 }) { usleep(100_000) }
+        for pid in pids where kill(pid, 0) == 0 { kill(pid, SIGKILL) }
+    }
+
     func buildEnded(status: Int32) {
         process = nil; building = false
         ticker?.invalidate(); ticker = nil
         append("", flush: true)
         elapsed = Date().timeIntervalSince(buildStart)
+        if cancelled {   // stopped by the player: not a failure, back to the Game screen
+            cancelled = false; failed = false; failure = ""
+            appendLine("Build stopped. The steps that were finished are kept.")
+            step = .game
+            return
+        }
         if status == 0 {
             if appPart {
                 let sec = Int(Date().timeIntervalSince(stepStart))

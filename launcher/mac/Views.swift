@@ -318,7 +318,7 @@ struct StageList: View {
         switch s {
         case .running: return ("circle.dotted", .accentColor, "Running")
         case .reused: return ("checkmark.circle.fill", .green, "Reused")
-        case .rebuilt: return ("hammer.circle.fill", .orange, "Made")
+        case .rebuilt: return ("checkmark.circle.fill", .green, "Made")
         case .failed: return ("xmark.octagon.fill", .red, "Failed")
         }
     }

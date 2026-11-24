@@ -109,16 +109,31 @@ final class BuilderDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, 
     @objc func showCredits() {
         if let url = Bundle.main.resourceURL?.appendingPathComponent("Documentation/CREDITS.md") { NSWorkspace.shared.open(url) }
     }
+    /// A running build is stopped only after the player confirms; true when there is none or it was stopped
+    private func confirmStopBuild() -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Stop the build and close Bowshot?"
+        alert.informativeText = "Closing Bowshot stops the build. The steps that are finished are kept, and your next build resumes from there."
+        alert.addButton(withTitle: "Keep Building")
+        alert.addButton(withTitle: "Stop Build and Close")
+        guard alert.runModal() == .alertSecondButtonReturn else { return false }
+        model.stopBuild()
+        model.process = nil
+        return true
+    }
     func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if model.process != nil { return confirmStopBuild() }
         if model.busy { _ = applicationShouldTerminate(NSApp); return false }
         return true
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if model.process != nil { return confirmStopBuild() ? .terminateNow : .terminateCancel }
         guard model.busy else { return .terminateNow }
         let alert = NSAlert()
-        alert.messageText = model.process != nil ? "A local build is still running" : "A setup step is still running"
-        alert.informativeText = model.process != nil ? "Keep Bowshot open until it finishes. Closing the window does not cancel the engine's compiler jobs." : "Keep Bowshot open until it finishes."
+        alert.messageText = "A setup step is still running"
+        alert.informativeText = "Keep Bowshot open until it finishes."
         alert.addButton(withTitle: "Keep Going")
         alert.runModal()
         return .terminateCancel
