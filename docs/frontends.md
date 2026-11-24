@@ -33,7 +33,7 @@ The exit code is 0 for a finished build, 1 for a build that stopped on an error 
 A built app carries the settings its game supports, as the iPhone app's settings screen shows them ([Settings](settings.md)): `dm/launcher.json` in the app inside an IPA, `Contents/Resources/dm/launcher.json` in a Mac app. The Mac app's list leaves out the settings only the iPhone app reads (the frame-rate counter, touch feedback). `dm/games/settings.py` writes it from `dm/games/settings.tsv`, whose header describes the rows. Breath of the Wild's Mac list, shortened:
 
 ```json
-{"schema": 1, "game": "01007EF00011E000", "settings": [
+{"schema": 1, "game": "<title ID>", "settings": [
  {"env": "DM_FPS_TARGET", "kind": "choice", "section": "Game", "label": "Frame rate", "note": "…", "default": "60",
   "options": [["30", "30 fps"], ["60", "60 fps"]], "level": "basic"},
  {"env": "DM_RENDER_SCALE", "kind": "range", "section": "Game", "label": "Render scale", "note": "…", "default": "1.0", "min": 0.5, "max": 1.0, "step": 0.05},
