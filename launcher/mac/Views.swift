@@ -144,19 +144,40 @@ struct LogView: NSViewRepresentable {
     }
 }
 
+// A disclosure that opens and closes from its whole label line (SwiftUI's DisclosureGroup only answers to its small arrow)
+struct ClickDisclosure<Content: View>: View {
+    let title: String
+    @Binding var isExpanded: Bool
+    @ViewBuilder var content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button { isExpanded.toggle() } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0)).frame(width: 12)
+                    Text(title).font(.callout)
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+            if isExpanded { content }
+        }
+    }
+}
+
 struct LogDisclosure: View {
     @ObservedObject var m: BuilderModel
     @Binding var open: Bool
     var height: CGFloat = 150
     var body: some View {
-        DisclosureGroup(isExpanded: $open) {
+        ClickDisclosure(title: open ? "Hide details" : "Show details", isExpanded: $open) {
             LogView(storage: m.log)
                 .frame(height: height)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color(nsColor: .separatorColor)))
                 .padding(.top, 8)
-        } label: {
-            Text(open ? "Hide details" : "Show details").font(.callout)
         }
     }
 }
@@ -452,7 +473,7 @@ struct BuildScreen: View {
                 }
             } else {
                 Footer {
-                    Text("Closing the window does not stop the build.").font(.callout).foregroundStyle(.secondary)
+                    Text("Closing the window asks before it stops the build.").font(.callout).foregroundStyle(.secondary)
                 } trailing: { EmptyView() }
             }
         }
@@ -464,8 +485,11 @@ struct BuildScreen: View {
 
 struct DoneScreen: View {
     @ObservedObject var m: BuilderModel
+    @State private var showSteps = false
     var body: some View {
         VStack(spacing: 0) {
+            GeometryReader { geo in
+            ScrollView {   // the list of steps opens: the screen scrolls when it no longer fits
             VStack(spacing: margin) {
                 Spacer(minLength: 0)
                 ScreenHeader(image: "checkmark.seal.fill", tint: .green, title: "Your game is ready",
@@ -481,13 +505,15 @@ struct DoneScreen: View {
                 }
                 .frame(maxWidth: 560)
                 if !m.stages.isEmpty {
-                    DisclosureGroup("\(m.reusedCount) steps reused, \(m.rebuiltCount) made") { StageList(m: m).padding(.top, 6) }
+                    ClickDisclosure(title: "\(m.reusedCount) steps reused, \(m.rebuiltCount) made", isExpanded: $showSteps) { StageList(m: m).padding(.top, 6) }
                         .frame(maxWidth: 560, alignment: .leading)
                 }
                 Spacer(minLength: 0)
             }
             .padding(margin)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, minHeight: geo.size.height)   // centred while it fits
+            }
+            }
             Footer {
                 Button("Build Again") { m.buildAgain() }
             } trailing: {
