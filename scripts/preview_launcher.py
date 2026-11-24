@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Shows Ocarina of Time's settings window as the game app packs it, without the game and without a build: a small preview app made from this tree
-# (dm/mac/Launcher.swift with the shared rows, dm/ios/Sources/Launcher*.swift, and the launcher.json dm/games/settings.py writes for the Mac), with the rows
+# (dm/mac/Launcher.swift with its model and rows, and the launcher.json dm/games/settings.py writes for the Mac), with the rows
 # bowshot_build.sh's runtime.env fixes shown fixed, as in the packed app. Play and Quit close it. Its choices are kept apart from the game's (its own bundle ID).
 # Needs Xcode (clang, swiftc). Usage: python3 scripts/preview_launcher.py [<output folder>]   (default: /tmp/bowshot-launcher-preview)
 import json, os, plistlib, re, subprocess, sys, tempfile
@@ -47,7 +47,7 @@ def launcher_json(out):   # settings.py for the Mac, as the packer runs it: a re
     import settings, nso_syms
     nso_syms.audio_input_capable = lambda paths: True   # the game's modules are not here; Ocarina of Time's main has audio input
     with tempfile.TemporaryDirectory() as t:
-        (Path(t) / 'main.fixups.tsv').write_text('# RENDER_SCALE\t1\n# DYNAMIC_RESOLUTION\t1\n')   # Ocarina of Time v131072's frame step stub
+        (Path(t) / 'main.fixups.tsv').write_text('# RENDER_SCALE\t1\n# DYNAMIC_RESOLUTION\t1\n# FRAME_STEP_120\t1\n')   # Ocarina of Time v131072's frame step stub
         d = settings.build(GAME, t, Path(t) / 'control.nacp')
     out.write_text(json.dumps(d, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
     return d['settings']
@@ -70,14 +70,15 @@ def main():
     (contents / 'Info.plist').write_bytes(plistlib.dumps({
         'CFBundleName': NAME, 'CFBundleDisplayName': NAME, 'CFBundleIdentifier': 'local.bowshot.launcher-preview', 'CFBundleExecutable': 'launcher',
         'CFBundleShortVersionString': 'preview', 'CFBundleVersion': '1', 'CFBundlePackageType': 'APPL', 'CFBundleIconFile': 'AppIcon',
-        'LSMinimumSystemVersion': '26.6', 'NSHighResolutionCapable': True, 'DMTitleID': GAME, 'DMSettings': rules}))
+        'LSMinimumSystemVersion': '26.6', 'NSHighResolutionCapable': True, 'DMTitleID': GAME, 'DMSettings': rules,
+        'BowshotVersion': (ROOT / 'VERSION').read_text().strip()}))
     sdk = subprocess.run(['xcrun', '--sdk', 'macosx', '--show-sdk-path'], check=True, capture_output=True, text=True).stdout.strip()
     fixed = runtime_env()
     (base / 'preview_main.swift').write_text(MAIN % ', '.join(f'("{k}", "{v}")' for k, v in fixed), encoding='utf-8')
     run([xcrun('clang'), '-isysroot', sdk, '-arch', 'arm64', '-mmacosx-version-min=26.6', '-O2', '-I', ROOT / 'dm/host', '-c', '-o', base / 'save_sync.o', ROOT / 'dm/host/save_sync.c'])
     run([xcrun('swiftc'), '-sdk', sdk, '-target', 'arm64-apple-macos26.6', '-swift-version', '5', '-parse-as-library', '-module-cache-path', base / 'module-cache',
-         '-o', contents / 'MacOS/launcher', ROOT / 'dm/mac/Launcher.swift', ROOT / 'dm/ios/Sources/LauncherSettings.swift', ROOT / 'dm/ios/Sources/LauncherRow.swift',
-         ROOT / 'dm/ios/Sources/SaveSyncReport.swift', base / 'preview_main.swift', base / 'save_sync.o',
+         '-o', contents / 'MacOS/launcher', ROOT / 'dm/mac/Launcher.swift', ROOT / 'dm/mac/LauncherSettings.swift', ROOT / 'dm/mac/LauncherRow.swift',
+         ROOT / 'dm/mac/SaveSyncReport.swift', ROOT / 'dm/mac/UpdateCheck.swift', base / 'preview_main.swift', base / 'save_sync.o',
          '-framework', 'CoreFoundation', '-framework', 'AppKit', '-framework', 'SwiftUI', '-framework', 'AVFAudio', '-framework', 'CoreAudio'])
     print(f'\nPreview app: {app}\nFixed as in the game app (runtime.env): {", ".join(k for k, _ in fixed)}\n', flush=True)
     run([contents / 'MacOS/launcher'])

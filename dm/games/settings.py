@@ -17,6 +17,7 @@ SCHEMA = 1   # launcher.json's version (docs/launcher.schema.json); it grows onl
 META = {
     'level': r'basic',                       # a setting a front end shows first; without it, the front end decides
     'needs': r'DM_[A-Z0-9_]+=[^;=]+',        # <VAR>=<value>: a sub-setting, drawn only while the row that sets <VAR> has that value
+    'enabled': r'DM_[A-Z0-9_]+=[^;=]+',      # <VAR>=<value>: drawn always, greyed out (it cannot be changed) until the row that sets <VAR> has that value; the row's label says why
 }
 
 
@@ -108,11 +109,12 @@ def build(gid, patched, control, other_programs=()):
     out, table, base = [], {r[1][0]: takes(r[1][1], r[1][2]) for r in rows()}, render_base(g)
     for n, (var, kind, values, default, cond, section, label, note, extra) in rows():
         m = meta(extra, n)
-        if 'needs' in m:
-            need, want = m['needs'].split('=', 1)
-            if need not in table: sys.exit(f'settings.tsv:{n}: needs names a variable no row sets: {m["needs"]}')
-            can = table[need]
-            if can is not None and want not in can: sys.exit(f'settings.tsv:{n}: needs a value {need} never takes: {want} (it takes {", ".join(sorted(can))})')
+        for key in ('needs', 'enabled'):
+            if key in m:
+                need, want = m[key].split('=', 1)
+                if need not in table: sys.exit(f'settings.tsv:{n}: {key} names a variable no row sets: {m[key]}')
+                can = table[need]
+                if can is not None and want not in can: sys.exit(f'settings.tsv:{n}: {key} a value {need} never takes: {want} (it takes {", ".join(sorted(can))})')
         if not shown(cond, n): continue
         s = {'env': var, 'kind': kind, 'section': section, 'label': label, 'note': note, 'default': value(default, n), **m}
         if var == 'DM_RENDER_SCALE' and base: s['base'] = base   # the render scale in pixels, for the console mode chosen

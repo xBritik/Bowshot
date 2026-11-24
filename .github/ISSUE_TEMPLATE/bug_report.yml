@@ -24,7 +24,7 @@ body:
     attributes:
       label: Game, title ID and version
       description: The base game's title ID and the update you packed (display version or v-number), and DLC if any.
-      placeholder: "The Legend of Zelda: Breath of the Wild, 01007EF00011E000, 1.9.0 (v1114112)"
+      placeholder: "The Legend of Zelda: Ocarina of Time, 0400486024DEC000, v131072"
     validations:
       required: true
   - type: input

@@ -42,6 +42,7 @@ prod.keys
 title.keys
 env.txt
 runtime.env
+Bowshot-build/
 Bowshot-local/
 *_build/
 *_work/

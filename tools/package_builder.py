@@ -10,12 +10,21 @@ import zipfile
 from pathlib import Path
 from check_content import ROOT, check, publication_files
 
+# What the builder app does not carry: the project's tests and fuzz corpora, its developer documentation and contribution files. A build reads none of them (the setup, build and launcher scripts, the engine,
+# the host and shader sources, the game profile and the licences are what it runs), and they were most of the app's size next to the other games' profiles.
+NOT_IN_BUILDER_DIRS = {'tests', 'fuzz'}
+NOT_IN_BUILDER_TOP = {'docs', '.github', 'AGENTS.md', 'CONTRIBUTING.md', 'pyproject.toml'}
+
+def in_builder(rel):
+    return not (set(rel.parts[:-1]) & NOT_IN_BUILDER_DIRS or rel.parts[0] in NOT_IN_BUILDER_TOP)
+
 def run(*args):
     subprocess.run([str(x) for x in args], check=True)
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--skip-execution-check', action='store_true', help='Cross-compile on an Intel CI host; still verify the bundle signature')
+    ap.add_argument('--beta', type=int, metavar='N', help='A local test build: its version is <VERSION>-beta-<N> (the app name, the builder window title, the "Built with Bowshot" line of the games it builds); the VERSION file stays')
     args = ap.parse_args()
     paths = list(publication_files(ROOT))
     fixtures = json.loads((ROOT / 'tools/publish-fixtures.json').read_text())
@@ -23,11 +32,12 @@ def main():
     if errors:
         raise SystemExit(json.dumps(errors, indent=2))
     version = (ROOT / 'VERSION').read_text().strip()
-    dist = ROOT / 'dist'
-    dist.mkdir(exist_ok=True)
-    app = dist / 'Bowshot.app'
+    if args.beta: version += f'-beta-{args.beta}'
+    dist = ROOT / 'dist' / version   # one folder a version (dist/0.1.3, dist/0.1.3-beta-2): earlier ones stay as they were
+    dist.mkdir(parents=True, exist_ok=True)
+    app = dist / f'Bowshot {version}.app'   # the name Finder shows, and the builder window's title (launcher/mac/main.swift)
     if app.exists():
-        raise SystemExit('dist/Bowshot.app already exists. Keep the previous release and use a fresh output folder before packaging again.')
+        raise SystemExit(f'{app.relative_to(ROOT)} already exists. Keep the previous release and use a fresh output folder before packaging again.')
     contents = app / 'Contents'
     executable = contents / 'MacOS/Bowshot'
     resources = contents / 'Resources'
@@ -37,20 +47,22 @@ def main():
     docs.mkdir(parents=True)
     print('Copying checked source and compiler tools; no game inputs are accepted.', flush=True)
     for p in paths:
+        if not in_builder(p.relative_to(ROOT)): continue   # the source ZIP below keeps them; the builder app carries only what a build runs
         target = engine / p.relative_to(ROOT)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(p, target)
+    if args.beta: (engine / 'VERSION').write_text(version + '\n')   # the engine copy the builder runs says the beta too: the games it builds show it
     for name in ('README.md', 'CREDITS.md', 'AUTHORS.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md'):
         shutil.copy2(ROOT / name, docs / name)
     sound = ROOT / 'launcher/mac/BuildDone.mp3'   # played when a build finishes (the builder falls back to a system sound without it)
     if sound.exists():
         shutil.copy2(sound, resources / 'BuildDone.mp3')
-    run('xcrun', 'swiftc', '-swift-version', '5', '-O', '-target', 'arm64-apple-macos15.0', '-framework', 'AppKit', '-framework', 'SwiftUI', *sorted((ROOT / 'launcher/mac').glob('*.swift')), '-o', executable)   # main.swift (window, menus), Model.swift, Views.swift
+    run('xcrun', 'swiftc', '-swift-version', '5', '-O', '-target', 'arm64-apple-macos15.0', '-framework', 'AppKit', '-framework', 'SwiftUI', *sorted((ROOT / 'launcher/mac').glob('*.swift')), ROOT / 'dm/mac/UpdateCheck.swift', '-o', executable)   # UpdateCheck.swift is shared with the game app's settings window   # main.swift (window, menus), Model.swift, Views.swift
     info = {
-        'CFBundleName': 'Bowshot', 'CFBundleDisplayName': 'Bowshot',
+        'CFBundleName': f'Bowshot {version}', 'CFBundleDisplayName': f'Bowshot {version}',
         'CFBundleIdentifier': 'local.bowshot.builder', 'CFBundleExecutable': 'Bowshot',
         'CFBundlePackageType': 'APPL', 'CFBundleShortVersionString': version.split('-')[0],
-        'CFBundleVersion': '1', 'LSMinimumSystemVersion': '15.0',
+        'CFBundleVersion': '1', 'BowshotVersion': version, 'LSMinimumSystemVersion': '15.0',
         'NSHighResolutionCapable': True,
         'NSDownloadsFolderUsageDescription': 'Build a private local game from the dump folder you choose.',
         'NSDocumentsFolderUsageDescription': 'Build a private local game from the dump folder you choose.'
