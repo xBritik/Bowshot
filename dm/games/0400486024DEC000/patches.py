@@ -77,8 +77,10 @@ def dynamic_resolution(ctx):
 # upstream PR #1497), but that store and the size loop after it (main+0x31d3fd8, which clears the "scale changed" bit 3 of [x20+0xe2c] at main+0x31d40b4) run only in a frame
 # where the dynamic-resolution controller (bl main+0x805aa0) answers status 0, a new scale: at a steady 60 fps it never does, so a stub at the store alone changed nothing until
 # the game came under load. Two stubs: at the controller's answer (main+0x31d3ee4, ubfx of its status byte) a host scale below 1.0 that is not the stored one makes the status 0, so
-# that frame recomputes the sizes; at the store the host scale replaces the game's (seedds' fixed form of #1497's ceiling). The scale is then fixed and the dynamic resolution off;
-# 0, unset or over 1.0 run the game's own code; 1.0 itself is fixed at the full base (this game's slider, game.tsv render_scale). Registers and flags are kept but x8 (the status, as the game reads it next) and s0 (dead after the store: main+0x31d3f84 reloads it).
+# that frame recomputes the sizes; at the store the host scale replaces the game's (seedds' fixed form of #1497's ceiling). The scale is then fixed and the game's own dynamic resolution has no say;
+# 0, unset or over 1.0 run the game's own code; 1.0 itself is fixed at the full base (this game's slider, game.tsv render_scale) while the launcher's Dynamic resolution is off, and runs the
+# game's own code (its dynamic resolution, through the level stub below) while it is on: both stubs read the flag at state +0x40. Before that change the dynamic resolution had no effect at any
+# launcher scale, 1.0 included: the store replaced the game's scale every frame (found 2026-11-24 by reading the stubs; the game note, Dynamic resolution). Registers and flags are kept but x8 (the status, as the game reads it next) and s0 (dead after the store: main+0x31d3f84 reloads it).
 # Bowshot: the loader writes the launcher's Render scale there (DM_RENDER_SCALE, else the profile's render_scale_default: 2/3, Normal)
 # The scale is a fraction of the output (the size loop's cap at main+0x31d3fe8 is skipped on this path, bit 0x13 of +0xe20): docked, 0.75 is the game's usual 1920x1080 and 0.5
 # draws 1280x720, 0.9 2328x1310. The game picks its NDSR network by the ratio, and nvn_mtl.m's DM_NDSR replacement takes whichever follows the chain's third dispatch
@@ -86,11 +88,12 @@ _scale_status, _scale_store = 0x31d3ee4, 0x31d3f48
 
 def _bcond(frm, to, cond): return 0x54000000 | (((to - frm) >> 2) & 0x7ffff) << 5 | cond
 def _cbz_w(frm, to, rt): return 0x34000000 | (((to - frm) >> 2) & 0x7ffff) << 5 | rt
+def _cbnz_w(frm, to, rt): return 0x35000000 | (((to - frm) >> 2) & 0x7ffff) << 5 | rt
 
 def render_scale(ctx):
     here, emit = ctx.here, ctx.emit
     ctx.site(_scale_status, '089c60d3')   # ubfx x8,x0,#32,#8: the controller's status byte
-    s = here(); at = lambda k: s + 4 * k   # the stub's k-th word; done is word 16
+    s = here(); at = lambda k: s + 4 * k   # the stub's k-th word; done is word 20
     for k, w in enumerate((
             0xd3609c08,                       # ubfx x8,x0,#32,#8     the original
             0xa9be47f0,                       # stp x16,x17,[sp,#-32]!
@@ -98,15 +101,19 @@ def render_scale(ctx):
             0xf9000bf0,                       # str x16,[sp,#16]
             ADRP(16, at(4), ctx.state),
             0xb9401211,                       # ldr w17,[x16,#0x10]  the host scale's bits
-            _cbz_w(at(6), at(16), 17),        # cbz w17,done         unset
+            _cbz_w(at(6), at(20), 17),        # cbz w17,done         unset
             0x52a7f010,                       # mov w16,#0x3f800000
             0x6b10023f,                       # cmp w17,w16
-            _bcond(at(9), at(16), 0x8),       # b.hi done            over 1.0, negative or NaN: the game's own
-            0x7100051f,                       # cmp w8,#1
-            _bcond(at(11), at(16), 0x0),      # b.eq done            status 1, the game's other request (main+0x31d3f4c), is left alone
+            _bcond(at(9), at(20), 0x8),       # b.hi done            over 1.0, negative or NaN: the game's own
+            _bcond(at(10), at(14), 0x1),      # b.ne below           under 1.0: the host's scale
+            ADRP(16, at(11), ctx.state),      # the state page again (w16 held 1.0)
+            0xb9404210,                       # ldr w16,[x16,#0x40]  exactly 1.0: the dynamic resolution flag (DM_DYNAMIC_RESOLUTION, state +0x40)
+            _cbnz_w(at(13), at(20), 16),      # cbnz w16,done        on: the game's own dynamic resolution runs (off: 1.0 stays the fixed full size)
+            0x7100051f,                       # below: cmp w8,#1
+            _bcond(at(15), at(20), 0x0),      # b.eq done            status 1, the game's other request (main+0x31d3f4c), is left alone
             0xb94e5e90,                       # ldr w16,[x20,#0xe5c] the stored scale
             0x6b11021f,                       # cmp w16,w17
-            _bcond(at(14), at(16), 0x0),      # b.eq done            already the host's
+            _bcond(at(18), at(20), 0x0),      # b.eq done            already the host's
             0x52800008,                       # mov w8,#0            status 0: a new scale, so the sizes are recomputed
             0xf9400bf0,                       # done: ldr x16,[sp,#16]
             0xd51b4210,                       # msr nzcv,x16
@@ -116,7 +123,7 @@ def render_scale(ctx):
     ctx.put(_scale_status, [B(_scale_status, s)], 'dynamic-resolution status: a host render scale not yet stored asks for new 3D sizes (state +0x10)')
 
     ctx.site(_scale_store, '805e0ebd')    # str s0,[x20,#0xe5c]
-    s = here()   # original is word 11
+    s = here()   # original is word 14
     for k, w in enumerate((
             0xadbf7ffe,                       # stp q30,q31,[sp,#-32]!
             0xa9bf47f0,                       # stp x16,x17,[sp,#-16]!
@@ -124,18 +131,21 @@ def render_scale(ctx):
             0xd53b4211,                       # mrs x17,nzcv
             0xbd40121e,                       # ldr s30,[x16,#0x10]  the host scale
             0x1e2023c8,                       # fcmp s30,#0.0
-            _bcond(at(6), at(11), 0xd),       # b.le original        unset, negative or NaN
+            _bcond(at(6), at(14), 0xd),       # b.le original        unset, negative or NaN
             0x1e2e101f,                       # fmov s31,#1.0
             0x1e3f23c0,                       # fcmp s30,s31
-            _bcond(at(9), at(11), 0xc),       # b.gt original        over 1.0
-            0x1e2043c0,                       # fmov s0,s30          the host's fixed scale
+            _bcond(at(9), at(14), 0xc),       # b.gt original        over 1.0
+            _bcond(at(10), at(13), 0x1),      # b.ne fixed           under 1.0: the host's scale
+            0xb9404210,                       # ldr w16,[x16,#0x40]  exactly 1.0: the dynamic resolution flag (state +0x40)
+            _cbnz_w(at(12), at(14), 16),      # cbnz w16,original    on: the game's own scale (its dynamic resolution); off: 1.0 stays the fixed full size
+            0x1e2043c0,                       # fixed: fmov s0,s30   the host's fixed scale
             0xbd0e5e80,                       # original: str s0,[x20,#0xe5c]
             0xd51b4211,                       # msr nzcv,x17
             0xa8c147f0,                       # ldp x16,x17,[sp],#16
             0xacc17ffe)):                     # ldp q30,q31,[sp],#32
         assert here() == at(k); emit(w)
     emit(B(here(), _scale_store + 4))
-    ctx.put(_scale_store, [B(_scale_store, s)], 'final 3D view scale: the host render scale fixes it, up to 1.0 (over 1.0 = the game\'s own)')
+    ctx.put(_scale_store, [B(_scale_store, s)], 'final 3D view scale: the host render scale fixes it, up to 1.0 (over 1.0, or exactly 1.0 with the dynamic resolution on = the game\'s own)')
 
     ctx.render_scale = 1   # the loader takes DM_RENDER_SCALE up to 1.0 and the launcher offers the row (patch_nso.py RENDER_SCALE)
 
