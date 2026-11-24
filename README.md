@@ -12,6 +12,10 @@
 </p>
 
 <p align="center">
+  <a href="https://ko-fi.com/G8M72B0DPM"><img alt="Buy me a coffee on Ko-fi" src="https://img.shields.io/static/v1?label=BUY%20A%20COFFEE&amp;message=KO-FI&amp;color=F16B66&amp;labelColor=555555&amp;logo=ko-fi&amp;logoColor=white&amp;style=for-the-badge"></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/xBritik/Bowshot/releases">Releases</a> &middot;
   <a href="#why-bowshot">Features</a> &middot;
   <a href="#what-you-need">Requirements</a> &middot;
