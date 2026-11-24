@@ -2,7 +2,7 @@
 // app's Resources/dm/launcher.json (dm/games/settings.py with SETTINGS_PLATFORM=mac); the model and the rows are the iOS launcher's (dm/ios/Sources/LauncherSettings.swift, LauncherRow.swift),
 // and so is the store: launcher.<VAR> in the app's preferences, which launcher.c reads when the window is not shown (docs/frontends.md, Saved choices). Basic settings (level basic) come
 // first, the others under Advanced settings, each in the list's sections. Play puts the settings into this process's environment, which the host inherits; Quit and closing the window end the
-// app without the game. "Show this window at launch" off: no window unless Option is held at launch, and launcher.c applies the saved choices. The window never takes focus by itself: an app
+// app without the game. Bowshot: there is no "Show this window at launch" checkbox, so the window is always shown (DM_LAUNCHER=0 or --no-launcher skip it, launcher.c then applies the saved choices). The window never takes focus by itself: an app
 // opened in the background (open -g) keeps its window behind until the player switches to it
 import AppKit
 import AVFAudio
@@ -123,10 +123,10 @@ struct LauncherView: View {
     @ObservedObject var m: LauncherModel
     let done: (Bool) -> Void
     let fit: (CGFloat) -> Void
-    @AppStorage("window.show") private var show = true
     @AppStorage("window.advanced") private var advanced = false
     @State private var checking = false
     @State private var check = 0   // which Play the running check is for: one the player went on from without it is dropped
+    @State private var update: UpdateCheck.Release?   // Bowshot: a newer Bowshot than the one that built this app (UpdateCheck, once a day; DM_UPDATE_CHECK=0 in env.txt turns it off)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -144,13 +144,24 @@ struct LauncherView: View {
                 if m.values["DM_MIC"] == "1" { MicrophoneDevicePicker() }
                 Section("While you play") {   // Bowshot: the game window's View menu (front_mac.m)
                     if m.settings.contains(where: { $0.env == "DM_RENDER_SCALE" }) {
-                        LabeledContent("Render scale up / down") { Text("⌘=   ⌘−").monospaced().foregroundStyle(.secondary) }
+                        LabeledContent("Render scale up / down") { HStack(spacing: 6) { KeyCombo("⌘="); KeyCombo("⌘−") } }
                     }
-                    LabeledContent("Performance HUD") { Text("⌥⌘P").monospaced().foregroundStyle(.secondary) }
+                    LabeledContent("Performance HUD") { KeyCombo("⌥⌘P") }
+                    LabeledContent("Memory use") { KeyCombo("⌥⌘I") }
                 }
                 CloudSavesSection()
                 Section {
-                    DisclosureGroup("Advanced settings", isExpanded: $advanced) {}
+                    Button { advanced.toggle() } label: {   // the whole line opens it, not only the arrow of a DisclosureGroup
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+                                .rotationEffect(.degrees(advanced ? 90 : 0)).frame(width: 12)
+                            Text("Advanced settings")
+                            Spacer(minLength: 0)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityValue(advanced ? "Expanded" : "Collapsed")
                 }
                 if advanced {
                     settingSections(basic: false)
@@ -169,7 +180,10 @@ struct LauncherView: View {
                 fit(extraHeight)
             }
             HStack {
-                Toggle("Show this window at launch", isOn: $show).toggleStyle(.checkbox)
+                if let v = Bundle.main.object(forInfoDictionaryKey: "BowshotVersion") as? String, !v.isEmpty {   // Bowshot: the builder this app was made with
+                    Text("Built with Bowshot \(v)").font(.footnote).foregroundStyle(.secondary)
+                }
+                if let release = update { Link("Bowshot \(release.version) is available", destination: release.url).font(.footnote) }
                 Spacer()
                 if checking {
                     ProgressView().controlSize(.small)
@@ -182,6 +196,9 @@ struct LauncherView: View {
             .padding(20)
         }
         .frame(minWidth: 520, idealWidth: 560)
+        .onAppear {
+            UpdateCheck.automaticCheck(current: UpdateCheck.runningVersion) { outcome in if case .newer(let release) = outcome { update = release } }
+        }
     }
 
     /// The render scale against this Mac's memory: under 24 GB the game (13 to 16 GB at the lowest scale, more as the scale rises) can fill the Mac's memory and close itself above Potato (0.5)
@@ -224,6 +241,19 @@ struct LauncherView: View {
                 }
             }
         }
+    }
+}
+
+/// A key combination drawn as a key: the text in the primary colour on a filled, outlined plate, so it reads against the grouped form's background
+private struct KeyCombo: View {
+    let keys: String
+    init(_ keys: String) { self.keys = keys }
+    var body: some View {
+        Text(keys).font(.system(.body, design: .monospaced).weight(.medium)).tracking(3).foregroundStyle(.primary)
+            .padding(.leading, 8).padding(.trailing, 5)   // tracking adds 3 points after the last key too: the plate is even.padding(.vertical, 3)
+            .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color.primary.opacity(0.2)))
+            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(Color.primary.opacity(0.45), lineWidth: 0.75))
+            .accessibilityLabel(keys)
     }
 }
 
@@ -436,15 +466,11 @@ public func dmMacMicrophoneConsent() -> Int32 {
     return 0
 }
 
-// 1: Play (the window's settings are in the environment), 0: the player quit, 2: no window (no launcher.json, or "Show this window at launch" off): launcher.c applies the saved choices
+// 1: Play (the window's settings are in the environment), 0: the player quit, 2: no window (no launcher.json): launcher.c applies the saved choices
 @_cdecl("dm_mac_launcher")
 public func dmMacLauncher() -> Int32 {
     guard let url = Bundle.main.resourceURL?.appendingPathComponent("dm/launcher.json"), let data = try? Data(contentsOf: url) else { return 2 }
     guard let file = try? JSONDecoder().decode(SettingsFile.self, from: data), !file.settings.isEmpty else { fputs("[RED] launcher: dm/launcher.json cannot be read; starting the game\n", stderr); return 2 }
-    if (UserDefaults.standard.object(forKey: "window.show") as? Bool) == false && !NSEvent.modifierFlags.contains(.option) {
-        fputs("launcher: settings window off (hold Option at launch to show it)\n", stderr)
-        return SaveCheck.withoutWindow() ? 2 : 0
-    }
     let model = LauncherModel(file.settings)
     let app = NSApplication.shared, launcher = Launcher(model)
     app.setActivationPolicy(.regular)

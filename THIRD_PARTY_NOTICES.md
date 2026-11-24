@@ -6,7 +6,7 @@ Keep this file, `LICENSE`, `CREDITS.md`, `AUTHORS.md`, and the component licence
 |---|---|
 | nxnative / seedds | Root `LICENSE`; [upstream](https://github.com/seedds/nxnative) |
 | kid-with-sword-remake / cheemu21 | Root `LICENSE`, retained source notices and fork documentation |
-| d2r-mobile / jhaizhou-ops | Foundation credit in `UPSTREAM_README.md`; [project](https://github.com/jhaizhou-ops/d2r-mobile) |
+| d2r-mobile / jhaizhou-ops | Foundation credit; [project](https://github.com/jhaizhou-ops/d2r-mobile) |
 | Ryujinx | `dm/third_party/ryujinx/LICENSE.txt`, including the imported translator source |
 | Spv.Generator | `dm/third_party/ryujinx/src/Spv.Generator/LICENSE` |
 | SPIRV-Cross | `dm/gfx/tools/spirv_cross_bin/LICENSE` and `LICENSES/` |

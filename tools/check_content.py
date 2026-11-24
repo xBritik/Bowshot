@@ -15,6 +15,14 @@ FORBIDDEN_DIRS = {'romfs', 'exefs', 'romfs_overlay', 'romfs_overlay_mac', 'save'
 
 def publication_files(root):
     import os
+    root = Path(root)
+    if (root / '.git').exists():
+        # A checkout: the files Git tracks, and new ones it does not ignore. Never what a local build left in the tree (dm/host/gen, dm/host/tests/build, .DS_Store files)
+        out = subprocess.run(['git', '-C', str(root), 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], capture_output=True, check=True).stdout
+        for rel in sorted(set(out.decode().split('\0')) - {''}):
+            p = root / rel
+            if (p.is_file() or p.is_symlink()) and not any(part in OMIT_DIRS for part in Path(rel).parts): yield p
+        return
     for current, dirs, files in os.walk(root, followlinks=False):
         dirs[:] = sorted(d for d in dirs if d not in OMIT_DIRS)
         for name in sorted(files):

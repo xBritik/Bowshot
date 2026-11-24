@@ -91,8 +91,8 @@ def min_os(host):   # the host's deployment target (LC_BUILD_VERSION minos): the
     return m.group(1) if m else '14.0'
 
 
-def swift_sources():   # the settings window, with the iOS launcher's model, rows and cloud-save report
-    return [HERE / 'Launcher.swift', HERE.parent / 'ios/Sources/LauncherSettings.swift', HERE.parent / 'ios/Sources/LauncherRow.swift', HERE.parent / 'ios/Sources/SaveSyncReport.swift']
+def swift_sources():   # the settings window, with its model, rows and cloud-save report
+    return [HERE / 'Launcher.swift', HERE / 'LauncherSettings.swift', HERE / 'LauncherRow.swift', HERE / 'SaveSyncReport.swift', HERE / 'UpdateCheck.swift']
 
 
 def build_launcher(out, minos, clang, swiftc, sdk):   # launcher.c's main and the host's cloud-save code (its send after the host exits), linked by swiftc with the settings window (no Swift main: -parse-as-library)
@@ -122,6 +122,11 @@ def settings_rules(listed):   # DMSettings: what the launcher accepts as each se
     return rules
 
 
+def bowshot_version():   # the VERSION file at the root of the engine copy the builder runs from; none outside Bowshot
+    f = HERE.parent.parent / 'VERSION'
+    return f.read_text().strip() if f.is_file() else ''
+
+
 def info_plist(a, minos, icon):
     # LSSupportsGameMode off: macOS's Game Mode holds the GPU at its lowest clock while it is busy (docs/reference/frame-rate.md, macOS Game Mode holds the GPU at its lowest clock)
     p = {'CFBundleName': a.name, 'CFBundleDisplayName': a.name, 'CFBundleIdentifier': a.bundle_id or f'org.nxnative.{a.title_id.lower()}',
@@ -129,6 +134,7 @@ def info_plist(a, minos, icon):
          'CFBundleInfoDictionaryVersion': '6.0', 'LSMinimumSystemVersion': minos, 'LSArchitecturePriority': ['arm64'], 'NSHighResolutionCapable': True,
          'NSBluetoothAlwaysUsageDescription': 'Connect Switch 2 Joy-Con and Pro Controllers over Bluetooth.',
          'LSApplicationCategoryType': a.category or 'public.app-category.games', 'LSSupportsGameMode': False, 'DMTitleID': a.title_id.upper(), 'DMRomfsMarker': a.marker or '', 'DMLanguage': a.lang or 'en-US', 'DMSaveSyncChoice': 1}
+    if (v := bowshot_version()): p['BowshotVersion'] = v   # Bowshot: the version of the builder that packed this app, shown in the settings window
     if icon: p['CFBundleIconFile'] = 'AppIcon'
     if a.settings:
         listed = json.loads(Path(a.settings).read_text(encoding='utf-8'))['settings']
@@ -422,7 +428,7 @@ def pack(a):
             rows = inventory(Path(p))
             return [['.', *as_packed([p, *rows[0][1:]], last.get(p), moved)[1:]]] if Path(p).is_file() and len(rows) == 1 else rows
         romfs_rows = tree(a.romfs)
-        inputs = {'options': vars(a), 'files': [as_packed(file_row(p, True), last.get(str(p)), moved) if p in large else file_row(p) for p in files + sources],
+        inputs = {'options': vars(a), 'bowshot_version': bowshot_version(), 'files': [as_packed(file_row(p, True), last.get(str(p)), moved) if p in large else file_row(p) for p in files + sources],
                   'trees': [(p, romfs_rows if p == a.romfs else inventory(Path(p))) for p in (a.romfs, a.aoc, a.html, str(Path(a.romfs).parent / PROGRAM_ROMFS), *(str(x[1]) for x in programs), *(str(x[3]) for x in programs)) if p and Path(p).exists()],
                   'tools': [[str(c), c.stat().st_mode, c.stat().st_size, c.stat().st_mtime_ns, c.stat().st_ctime_ns, run([c, '--version']).strip()] for c in (clang, swiftc)] + [
                             str(sdk), run(['xcrun', '--sdk', 'macosx', '--show-sdk-version']).strip(),

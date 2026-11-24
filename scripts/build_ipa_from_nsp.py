@@ -460,6 +460,9 @@ def rmtree(p):
 NX_EXTRACT = 'dm/tools/nx_extract_bin/nx_extract'   # the committed native executable (dm/tools/native_tools.sh), built from dm/tools/nx_extract
 
 
+FIRST_START_S = 300   # a native tool copied a moment ago (the engine copy of a new version) can take a minute to start the first time while macOS checks it: 20 s the second time, over 60 s the first (a build failed with 'does not start' on the 60 s wait)
+
+
 def nx_extract_source_sha(repo):   # the same convention as nx_extract --source-sha: the sha256 of Program.cs and nx_extract.csproj, in that order, first 16 digits
     return hashlib.sha256(b''.join((repo / 'dm/tools/nx_extract' / f).read_bytes() for f in ('Program.cs', 'nx_extract.csproj'))).hexdigest()[:16]
 
@@ -476,7 +479,7 @@ def find_nx_extract(repo, env):
     """The committed nx_extract, a native executable (no .NET needed, GitHub issue #1853), once it has shown that it runs and that it was built from the in-repo source: after an edit
     to Program.cs the old executable would extract with the old code"""
     nx = repo / NX_EXTRACT
-    try: r = subprocess.run([str(nx), '--source-sha'], capture_output=True, text=True, env=env, timeout=60, errors='replace')
+    try: r = subprocess.run([str(nx), '--source-sha'], capture_output=True, text=True, env=env, timeout=FIRST_START_S, errors='replace')
     except (OSError, subprocess.SubprocessError) as e: raise BuildError(f'nx_extract does not start ({e}): {nx}') from e
     got, want = r.stdout.strip(), nx_extract_source_sha(repo)
     if r.returncode or not got: raise BuildError(f'nx_extract does not run ({(r.stderr.strip().splitlines() or [f"exit code {r.returncode}"])[0]}): {nx}')
@@ -656,7 +659,7 @@ def nsz_command(env):
         exe = shutil.which(name, path=env.get('PATH'))
         if not exe: continue
         exe = str(Path(exe).absolute())   # conversion runs in another cwd; PATH entries can be relative
-        try: help_result = subprocess.run([exe, '--help'], capture_output=True, text=True, errors='replace', timeout=60, env=env)
+        try: help_result = subprocess.run([exe, '--help'], capture_output=True, text=True, errors='replace', timeout=FIRST_START_S, env=env)
         except (OSError, subprocess.SubprocessError) as e:
             failures.append(f'{exe}: --help failed ({e})'); continue
         if help_result.returncode:
@@ -1304,7 +1307,7 @@ def check_ios_sdk(env):   # the iOS platform is a separate download in Xcode's C
 def check_translator(xlate, env):
     """The shader translator is a committed native executable (dm/tools/native_tools.sh, universal): one short run of `--source-sha`, which translates nothing, shows before the extraction
     that it starts (not missing, executable, not held back by macOS), where dmsh_build.py would stop at the shader step (tool_lock.py xlate_embedded reports the same failure there)"""
-    try: r = subprocess.run([str(xlate), '--source-sha'], capture_output=True, text=True, env=env, timeout=60, errors='replace')
+    try: r = subprocess.run([str(xlate), '--source-sha'], capture_output=True, text=True, env=env, timeout=FIRST_START_S, errors='replace')
     except (OSError, subprocess.SubprocessError) as e: raise BuildError(f'the shader translator does not start ({e}): {xlate}') from e
     if r.returncode == 0 and r.stdout.strip(): return
     why = (r.stderr.strip().splitlines() or r.stdout.strip().splitlines() or [f'exit code {r.returncode}'])[0]
@@ -2838,7 +2841,7 @@ def mac_host(py, repo, work, env, logs, g):
     return host, font
 
 
-def mac_run(work, game, patched, host, font, msl, aoc, gfx, lang, env, logs, g, env_file='', partial=False, parts=None, jit=False):
+def mac_run(work, game, patched, host, font, msl, aoc, gfx, lang, env, logs, g, env_file='', partial=False, parts=None, jit=False, run_prebuild=True):
     """The command that runs the game in a window with sound after a Mac-only build (PLATFORM 'mac'; docs/development.md, Build by hand (Mac), step 5): its save and temporary storage in
     <id>_build/run (kept from run to run), the extracted RomFS, the Mac shader libraries (msl), the DLC, the profile's shader map (a host outside dm/host does not find it beside itself;
     c1_full.tsv and cb_extent.tsv are read beside it), the game language, and the switches of an environment file (DM_ENV_FILE / --env-file). partial (--seen-shaders): the pipeline bases go into an
@@ -2856,7 +2859,9 @@ def mac_run(work, game, patched, host, font, msl, aoc, gfx, lang, env, logs, g, 
     if PROGRAM_INDEX and g.get('program_of', ''): renv['DM_PROGRAM'] = PROGRAM_INDEX   # the host over the application's programs runs this one (main.c dm_game_cur)
     renv.update(DM_LANG=lang, DM_WINDOW=1, DM_AUDIO=1)
     if env_file: renv.update(env_file_pairs(env_file))
-    if gfx == 'nvn' and g.table('shader_pairs.tsv').is_file():
+    if gfx == 'nvn' and g.table('shader_pairs.tsv').is_file() and not run_prebuild:
+        say('pipeline prebuild of the run command: skipped (--no-run-prebuild): a Mac app carries its own pipeline archive (the offline one and the prewarm pipelines, made in its own steps); the run command builds its bases on its first start')
+    if gfx == 'nvn' and g.table('shader_pairs.tsv').is_file() and run_prebuild:
         if not g.table('pso_pairs.tsv').is_file() and (work / 'shader/pso_pairs.tsv').is_file(): renv['DM_PSO_PAIRS'] = work / 'shader/pso_pairs.tsv'   # split_shaders' copy
         # The pipeline prebuild (docs/development.md, Hybrid pipelines): the pulling base of every shader pair into run/pso_archive, so the first run's draws have stand-ins instead
         # of waiting for the Metal compiler. The host's tool mode skips it when pso_archive/prebuilt.tsv matches (chain version, depth mode, pair list): Breath of the Wild's
@@ -3141,6 +3146,7 @@ def parse_args(argv):
                     'and bundle them with the app after the pipeline archive, so its first start builds none (Ocarina of Time: about 6,400 bases, 450-475 s on an M5 Max at the first start); minutes to hours when its inputs changed and '
                     'about 1.3 GB more app for such a list, made again only when its inputs change; needs the pipeline archive for this Mac\'s GPU; the other GPUs --gpu names get theirs from the host\'s pipelines scripts through metal-tt; '
                     '--no-prebake: the app builds them on its first start (default: the PREBAKE setting, on)')
+    ap.add_argument('--no-run-prebuild', action='store_true', help='--platform mac: leave out the pipeline prebuild of the run command (run/pso_archive, minutes to an hour on a first build): only the run command reads it, a Mac app carries its own archive')
     ap.add_argument('--seen-shaders', action=argparse.BooleanOptionalAction, help='--platform mac or mac-app: build only the shaders the profile\'s playtests used (its shader_seen.tsv) and those the last runs\' logs reported missing, not the whole map: '
                     'minutes instead of hours, but areas the list does not cover draw without the rest until this runs again (default: the SEEN_SHADERS setting, off)')
     ap.add_argument('--show-fps', action=argparse.BooleanOptionalAction, help='show the game\'s frame rate on the iPhone, frames on screen per second at the top left (default: the SHOW_FPS setting, on)')
@@ -3521,7 +3527,7 @@ def main(args=None):
         first = getattr(args, 'in_programs', None)   # a program packed with the application's first: its host, built over all of them, and its fonts
         host, font = (first['host'], first['font']) if first else mac_host(py, repo, work, env, logs, g)
         parts = {'font': font}
-        cmd = mac_run(work, game, patched, host, font, ios, aoc, gfx, lang, env, logs, g, env_file, partial=seen_shaders, parts=parts, jit=jit)
+        cmd = mac_run(work, game, patched, host, font, ios, aoc, gfx, lang, env, logs, g, env_file, partial=seen_shaders, parts=parts, jit=jit, run_prebuild=not args.no_run_prebuild)
         rmtree(work / 'tmp')
         if getattr(args, 'in_programs', False): return parts
         programs = None if PROGRAM_INDEX else mac_programs(args, g, parts)
