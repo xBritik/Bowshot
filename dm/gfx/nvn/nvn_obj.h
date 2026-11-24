@@ -56,7 +56,7 @@ _Static_assert(sizeof(view_t) <= 16, "view_t exceeds the newer SDKs' NVNtextureV
 // Sampler parameters (one copy shared by builder and object)
 typedef struct { uint8_t minf, magf, ws, wt, wr, cmp_mode, cmp_func, reduction; float lod_min, lod_max, lod_bias, aniso, border[4]; } samp_par;   // Enum values are all < 256; reduction takes the padding byte
 typedef struct { NVNdevice *dev; samp_par p; } samp_builder_t;                                FITS(samp_builder_t, NVNsamplerBuilder);
-// All of the state lies from byte 8 on, and nvnSamplerInitialize writes every byte of the record (docs/reference/nvn-objects.md): games hash a sampler from byte 8 to tell samplers apart. Super Mario Odyssey's sampler cache
+// All of the state lies from byte 8 on, and nvnSamplerInitialize writes every byte of the record (docs/reference/nvn-objects.md): games hash a sampler from byte 8 to tell samplers apart. Another game's sampler cache
 // (main+0x980e20) keys its entries by a CRC-16 of bytes 8-0x5f alone and reuses the ID of the entry whose CRC matches, so filter and wrap modes at bytes 4-7 made samplers that differ only in them one sampler
 typedef struct { uint32_t magic, zero; samp_par p; } samp_t;                                  FITS(samp_t, NVNsampler);
 _Static_assert(__builtin_offsetof(samp_t, p) == 8 && sizeof(samp_par) == 40, "sampler state from byte 8, with no padding");
@@ -123,7 +123,7 @@ typedef struct { uint32_t op, size; } op_hdr;
 // only GPU commands: the end of a recording and the link to its next piece when command memory ran out take no command memory, so they take none of what GetCommandMemoryUsed
 // reports and games size their command memory by (docs/reference/memory.md, "Model heaps sized by the host's command record sizes"). CallCommands copies the called list's
 // pieces into the caller's list, as the driver copies a command set's GPU FIFO entries: the called recording's control memory may be given out again once the call is recorded,
-// its command memory not before the caller has run (Donkey Kong Bananza resets the arena of its control memory twice per arena of command memory).
+// its command memory not before the caller has run (another game resets the arena of its control memory twice per arena of command memory).
 //   bits 63-62 kind: CTL_CHUNK records at addr, len bytes; CTL_LINK the list goes on at addr (its control memory ran out). Kinds 0 and 2 are never written.
 //   bit 61 CTL_LAST: the list ends after this entry (not on a LINK). bits 60-44 len / 8 (CTL_CHUNK: at most CTL_CHUNK_MAX bytes; CTL_ONE = one record, as long as its header says).
 //   bits 43-0 addr / 8 (every address is 8-aligned, below 2^47)
@@ -212,7 +212,7 @@ typedef struct { int32_t on; } p_depth_clamp;   // SetDepthClamp: depth outside 
 typedef struct { int32_t first, n; uint8_t sw[16][4]; } p_vp_swizzle;   // SetViewportSwizzles: per viewport the source of clip x, y, z, w (NVNviewportSwizzle) XOR the identity (0, 2, 4, 6), so 0 = unchanged
 typedef struct { const prog_t *prog; int32_t stages; } p_bind_program;
 // kind: 0 blend 1 color 2 chmask 3 ms 4 poly 5 ds. Recorded with the state object's own bytes only (hle_nvn.c bind_state): 16 bytes with the header for color, channel mask and polygon state,
-// 24 for blend, multisample and depth-stencil, instead of 40 for all. Readers take that kind's size from bytes. Games size display-list heaps by GetCommandMemoryUsed: Super Mario Odyssey's
+// 24 for blend, multisample and depth-stencil, instead of 40 for all. Readers take that kind's size from bytes. Games size display-list heaps by GetCommandMemoryUsed: another game's
 // "DisplayList" GPU heap (62 MB, a bump allocator, main+0x5e8280) filled while a kingdom loaded with 40-byte state binds (39% of its bytes), and every display list after that got no memory
 typedef struct { int32_t kind; uint8_t bytes[0x18]; } p_bind_state;
 typedef struct { int32_t first, n; uint32_t st[32]; } p_bind_vattr;
@@ -237,7 +237,7 @@ static inline const p_bind_buf *bind_buf_rec(uint32_t op, const void *a, p_bind_
 // defer / src: the handles of BindTexturesDeferred are read from src at execution time (h at recording time is only a fallback); the replay layer refreshes them with bh_fresh before reading the record (nvn_mtl.m)
 typedef struct { int32_t stage, first, n, defer; uint64_t src; uint64_t h[32]; } p_bind_handles; // Separate texture / sampler handles
 // nvnCommandBufferBindTexture (one combined handle) is laid out as the hardware's command: the handle 16 bytes from the start of the record, where an engine that patches its recorded commands
-// in place writes a new one. Luigi's Mansion 3 takes the command memory base + GetCommandMemoryUsed before each such bind (main+0x7c8964) and stores a handle there + 0x10 every frame
+// in place writes a new one. Another game takes the command memory base + GetCommandMemoryUsed before each such bind (main+0x7c8964) and stores a handle there + 0x10 every frame
 // (main+0xb7d0d4); in a p_bind_handles record that word is the count, and the replay read a handle as a count of 535 million. h is the handle as the game gives it (32 bits: texture ID |
 // sampler ID << 20, all a patch writes). All recorded handles remain relative to the pools active at execution, so this record is always 24 bytes with its header.
 // Read it with bind_rec, which gives a p_bind_handles
@@ -249,7 +249,7 @@ static inline const p_bind_handles *bind_rec(uint32_t op, const void *a, p_bind_
     t->h[0] = (uint32_t)b->h; return t;
 }
 // Texture slots of a stage: 0-127 nvnCommandBufferBindTexture's (combined handles), 128-255 the separate texture binds. The driver keeps the two in tables of their own (c2 DMSH_C2_TEX + 8 r and
-// DMSH_C2_SEPTEX + 8 r, dmsh_abi.h), which the shaders' reflection names as these slots, so a game may bind both kinds in the same frame (Monster Hunter Rise: BindTexture slot 0 beside separate slots 0-4)
+// DMSH_C2_SEPTEX + 8 r, dmsh_abi.h), which the shaders' reflection names as these slots, so a game may bind both kinds in the same frame (another game: BindTexture slot 0 beside separate slots 0-4)
 #define NVN_SEPTEX_SLOT0 DMSH_SEPTEX_SLOT0
 // Resource bindings have their own ray-tracing table. Raster/compute programs
 // still have six shader slots; NVN2 task/mesh resources share hull/domain.
@@ -276,7 +276,7 @@ typedef struct { const tex_t *tex; view_t view; uint8_t has_view, is_uint; NVNco
 typedef struct { int64_t stride; int image; } p_copy_stride;   // image: SetCopyImageStride (bytes per layer / depth slice) instead of SetCopyRowStride. Replayed from older captures only: the recorder no longer writes it
 // The copy strides of a buffer <-> texture copy. In NVN they are command buffer state that a copy reads when it is recorded, and setting them takes no command memory
 // (GetCopyRowStride reads them back). A copy record carries them after its texture snapshot only when one is set, so a copy with the default (tight) strides keeps its size.
-// Super Smash Bros. Ultimate records one upload in 256 bytes of command memory: SetCopyRowStride, SetCopyImageStride, CopyBufferToTexture, as two 24-byte records before the copy,
+// Another game records one upload in 256 bytes of command memory: SetCopyRowStride, SetCopyImageStride, CopyBufferToTexture, as two 24-byte records before the copy,
 // went past them and called the game's out-of-memory callback, which that command buffer never set (a jump to 0, docs/reference/nvn-objects.md "Copy strides are command buffer state")
 typedef struct { int64_t row, image; } p_copy_strides;
 #define COPY_STRIDES_OFF ((((sizeof(p_copy_b2t) + 7) & ~(size_t)7)) + sizeof(tex_t))   // payload offset: after the record and its one texture snapshot (REC_SNAP)

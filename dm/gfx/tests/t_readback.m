@@ -251,7 +251,7 @@ static void store_completion(void) {
 }
 
 // A texture ID outlives the game's memory pool object: the ID stays registered, the object is freed and its memory reused. What was there reads as anything, as x8 = pool->vp =
-// 0x2c33398156a0e722 did in nvn_sparse_protect after 22 minutes of FINAL FANTASY RESONANCE (GitHub issue #934). Nothing may be made or refreshed from such a texture's pool or storage.
+// 0x2c33398156a0e722 did in nvn_sparse_protect after 22 minutes of another game (GitHub issue #934). Nothing may be made or refreshed from such a texture's pool or storage.
 static void pool_object_reused(pool_t *o) { memset(o, 0x22, sizeof(NVNmemoryPool)); o->vp = (struct vpool *)0x2c33398156a0e722ull; }
 static id<MTLTexture> by_id(int tid) { os_unfair_lock_lock(&g_rmu); id<MTLTexture> t = tex_by_id(tid); os_unfair_lock_unlock(&g_rmu); return t; }
 static void stale_pools(void) {
@@ -311,7 +311,7 @@ static void stale_pools(void) {
     h_nvnMemoryPoolFinalize(mp2); munmap(phys, len); free(mp); free(mp2); free(sp);
 }
 
-// A texture the host uploads from its storage, filled by GPU copies a level of a layer at a time, as Star Fox streams its textures into BC7 arrays: each copy writes the host texture and,
+// A texture the host uploads from its storage, filled by GPU copies a level of a layer at a time, as another game streams its textures into BC7 arrays: each copy writes the host texture and,
 // stored on the GPU, the storage (gsb_store_buf), which page tracking does not see, so none of them uploads the texture again; a CPU write into it still does. While the command buffer
 // being encoded holds a store into it, the texture keeps its host texture (gsb_held: an upload batch runs before that command buffer), and a CPU write is uploaded at its next use after
 // the commit. Every level of every layer holds one byte value, so its layout does not matter

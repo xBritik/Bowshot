@@ -1,4 +1,4 @@
-// friends service unit test: presence is accepted (Twelve Minutes stops its start-up on a failed UserPresence::Initialize, seedds/nxnative#217) and the notification queue opens
+// friends service unit test: presence is accepted (another game stops its start-up on a failed UserPresence::Initialize, seedds/nxnative#217) and the notification queue opens
 // empty (Beach Buggy Racing 2 stops its start-up on a failed NotificationQueue::Initialize),
 // while the calls that would reach the service still fail. Expected results are hand-written, not taken from the implementation.
 #include "../hle_friends.c"

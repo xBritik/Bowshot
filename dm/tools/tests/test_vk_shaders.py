@@ -308,7 +308,7 @@ OpFunctionEnd
         self.assertEqual(res, ['u:0.0=0', 'p:0.0=1'])
         self.assertIn('constant PushBlock& pc [[buffer(1)]]', srcs[0])
 
-    def test_dual_source_variant_for_outputs_of_one_type(self):   # Super Mario Galaxy's GX shaders: two vec4 outputs, the second the blend source
+    def test_dual_source_variant_for_outputs_of_one_type(self):   # Another game's GX shaders: two vec4 outputs, the second the blend source
         key, _, _, srcs = self.translate(fragment(outs=('v4float', 'v4float')))
         self.assertEqual(len(srcs), 2)
         self.assertIn(f'vk_{key}_d(', srcs[1]); self.assertIn('[[color(0), index(1)]]', srcs[1])

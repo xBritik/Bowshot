@@ -211,7 +211,7 @@ int main(void) { @autoreleasepool {
         run("RGBA8 cube array", NVN_TEXTURE_TARGET_CUBEMAP_ARRAY, NVN_FORMAT_RGBA8, 64, 64, 12, 3, 0, direct);
         run("RGBA8 3D with levels", NVN_TEXTURE_TARGET_3D, NVN_FORMAT_RGBA8, 64, 64, 32, 4, 0, direct);
         run("RGB565 array", NVN_TEXTURE_TARGET_2D_ARRAY, NVN_FORMAT_RGB565, 256, 128, 4, 1, 0, direct);
-        // PRAGMATA's light-profile LUT: a 1D array is one row a layer; uploaded as height rows a layer, it was refused by validation and wrote past each slice without it
+        // Another game's light-profile LUT: a 1D array is one row a layer; uploaded as height rows a layer, it was refused by validation and wrote past each slice without it
         run("R16F 1D array", NVN_TEXTURE_TARGET_1D_ARRAY, NVN_FORMAT_R16F, 512, 64, 1, 1, 0, direct);
         run("RGBA8 1D array with levels", NVN_TEXTURE_TARGET_1D_ARRAY, NVN_FORMAT_RGBA8, 256, 8, 1, 4, 4096, direct);
     }

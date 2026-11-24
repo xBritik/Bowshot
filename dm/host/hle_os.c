@@ -71,7 +71,7 @@ uint64_t guest_ns_at_host_time(uint64_t host_ns) {
 }
 // The system counter on that clock: 19.2 MHz on the Switch, 31.25 MHz (32 ns a tick) on the Switch 2, whose SDK reads cntpct_el0 and converts with that rate
 // (nn::os::GetSystemTickFrequency answers 0x1dcd650, sdk 20.5.19 Ounce). Read at 19.2 MHz, every tick span a Switch 2 game measured came out 1.63 times too short, and the
-// same clock's GPU timestamps 1.63 times too late: Donkey Kong Bananza's frame-rate controller took its frame for seconds long and held it at 20 fps (present interval 3)
+// same clock's GPU timestamps 1.63 times too late: another game's frame-rate controller took its frame for seconds long and held it at 20 fps (present interval 3)
 uint64_t guest_ticks(void) { return dm_sdk_ounce() ? guest_ns() / 32 : guest_ns() * 12 / 625; }
 int dm_detclock_enabled(void) { return detclock_cfg() && atomic_load(&g_gdet_on); }
 void dm_guest_frame_tick(void) {
@@ -93,10 +93,10 @@ static void guest_clock_freeze_apply(int on) {
 // would release the clock early
 static pthread_mutex_t g_gfz_mu = PTHREAD_MUTEX_INITIALIZER; static unsigned g_gfz_reasons;
 // A suspended application does not run: Horizon suspends the whole process out of focus, iOS suspends a background app. The host freezes the guest clock in the background but its
-// guest threads go on until they block, so a guest reading the clock twice there saw no time pass. Super Mario Galaxy 2's frame pacing (main+0x5926a8) took the interval between two
+// guest threads go on until they block, so a guest reading the clock twice there saw no time pass. Another game's frame pacing (main+0x5926a8) took the interval between two
 // frames as its period, got 0, and the next frame's loop that steps by it (main+0x9abd0) never ended. The same stall on the render thread during the host's first-submission prepare
 // step or pipeline archive open (reasons 3 and 4: seconds on a slow disk or cold prebuild) let Vanillaware's main thread skip hundreds of frames and advance into texture teardown
-// before frame 1 finished (13 Sentinels: Aegis Rim, SIGSEGV at main+0x309128 / +0x309e28). Guest reads of the system counter (the cntpct gate, svc GetSystemTick) wait while any
+// before frame 1 finished (another game, SIGSEGV at main+0x309128 / +0x309e28). Guest reads of the system counter (the cntpct gate, svc GetSystemTick) wait while any
 // GFZ_WAIT_MASK reason holds; host work (dm_host_work: inside a submit or present, which the graphics suspend waits for) reads the frozen clock, as do the other reasons
 enum { GFZ_WAIT_MASK = (1u << 1) | (1u << 3) | (1u << 4) };
 static pthread_cond_t g_gfz_cv = PTHREAD_COND_INITIALIZER; static _Atomic int g_gfz_wait;
@@ -134,8 +134,8 @@ HLE("getentropy", int, g_getentropy, void *p, size_t n) {
     for (size_t i = 0; i < n; i += 8) { uint64_t v = dm_entropy64(); memcpy((uint8_t *)p + i, &v, n - i < 8 ? n - i : 8); }
     return 0;
 }
-// The SDK's own getentropy (Unicorn Overlord, SDK 16.2.4: std::random_device at nnMain) fills through nn::crypto::GenerateCryptographicallyRandomBytes, which opens the csrng service;
-// Pokémon Legends: Z-A (SDK 19) calls it first thing in nnMain (main+0x1734b4)
+// The SDK's own getentropy (another game, SDK 16.2.4: std::random_device at nnMain) fills through nn::crypto::GenerateCryptographicallyRandomBytes, which opens the csrng service;
+// Another game (SDK 19) calls it first thing in nnMain (main+0x1734b4)
 // (InitializeCsrng → sm::Initialize, the game aborted there). The call goes through the sdk's PLT, so the takeover gives it the same stream as getentropy above
 HLE_FORCE("_ZN2nn6crypto36GenerateCryptographicallyRandomBytesEPvm", "csrng service; host entropy (the getentropy stream)", void, g_csrng_bytes, void *p, size_t n) {
     g_getentropy(p, n);
@@ -143,7 +143,7 @@ HLE_FORCE("_ZN2nn6crypto36GenerateCryptographicallyRandomBytesEPvm", "csrng serv
 
 // ---------- getenv: the game profile's game_env ----------
 // Horizon gives a program no environment, and the SDK's C library starts with an empty environ. Runtimes that take their settings from the environment then run on defaults sized for the
-// Switch's 64 GB alias region: Absolum's .NET GC (NativeAOT) reserves 5 × its heap limit as its region range, 3.75 GB, unless DOTNET_GCRegionRange says otherwise.
+// Switch's 64 GB alias region: another game's .NET GC (NativeAOT) reserves 5 × its heap limit as its region range, 3.75 GB, unless DOTNET_GCRegionRange says otherwise.
 // The profile's game_env (KEY=VALUE, separated by spaces; DM_GAME_ENV overrides it, also from Documents/env.txt) answers getenv for those names; any other name goes to the SDK's own getenv
 static const char **g_env_kv;   // "KEY=VALUE" strings, NULL-terminated
 static void game_env_init(void) {
@@ -169,7 +169,7 @@ HLE_FORCE("getenv", "the game profile's game_env answers its names; the SDK's ow
 //   then cuts three ring heaps out of the pool at 64 KB alignment relative to the GPU address (main+0x30c118), and the pool size is exactly their sum (main+0x307adc). On the Switch a pool's GPU address is aligned to a big page;
 //   the host's GPU address is the CPU address, which is only 4 KB aligned, so up to 60 KB is lost at the start, the third ring heap (16 MB, used by the main thread's allocations while a command buffer is recorded) does not fit and keeps base 0,
 //   and the first allocation while recording writes through a null pointer (main+0x2fa9a0, when the prologue enters its first battle).
-// Unicorn Overlord 1.05 (main c841ffe2…), the same engine: operator new (main+0x5a55d4) takes the calling thread's ring heap (bump allocator main+0x5b8504: cursor +0x20 starts at the base) and one kept base 0.
+// Another game 1.05 (main c841ffe2…), the same engine: operator new (main+0x5a55d4) takes the calling thread's ring heap (bump allocator main+0x5b8504: cursor +0x20 starts at the base) and one kept base 0.
 //   Past the title screen the first allocation from it returned 0, which operator new's null check skipped, and the next returned 0x200; its constructor (main+0x5a3224 via main+0x4c754) wrote to 0x268.
 //   With the profile key, allocations of 64 KB or more are aligned to 64 KB (Allocate(size, 0x10000)), which puts the pool storage on a 64 KB boundary. Other games forward unchanged
 static void *(*g_sa_alloc)(void *, size_t), *(*g_sa_alloc_al)(void *, size_t, size_t);
@@ -183,7 +183,7 @@ static void sa_init(void) {
     g_sa_big_align = DM_GAME_ALLOC_BIG_ALIGN;
     if (g_sa_big_align) LOG("StandardAllocator::Allocate: allocations ≥ 64 KB are 64 KB aligned (game profile alloc_big_align: memory pool storage, see hle_os.c)");
 }
-HLE_FORCE("_ZN2nn3mem17StandardAllocator8AllocateEm", "passed straight to the SDK; with the profile's alloc_big_align (13 Sentinels, Unicorn Overlord) allocations ≥ 64 KB are 64 KB aligned (memory pool start)", void *, h_mem_SAAllocate, void *self, size_t size) {
+HLE_FORCE("_ZN2nn3mem17StandardAllocator8AllocateEm", "passed straight to the SDK; with the profile's alloc_big_align (13 Sentinels, another game) allocations ≥ 64 KB are 64 KB aligned (memory pool start)", void *, h_mem_SAAllocate, void *self, size_t size) {
     pthread_once(&g_sa_once, sa_init);
     return g_sa_big_align && size >= 0x10000 ? g_sa_alloc_al(self, size, 0x10000) : g_sa_alloc(self, size);
 }

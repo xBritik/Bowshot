@@ -74,7 +74,7 @@ static void check(int which) {
     *unity = which == 1 ? 60 : which == 4 ? -1 : which == 5 ? 0 : 30;
     uint8_t object[0x500] = {0};
     float *f = NULL; int32_t *sync = NULL;
-    if (which <= 5 && which != 3) g_mod[0].unity_target_fps = 0x4afc868;   // 0 to 5: Unity's targetFrameRate where the rewriter found it (Pokémon Brilliant Diamond 1.3.0); 3: nothing found
+    if (which <= 5 && which != 3) g_mod[0].unity_target_fps = 0x4afc868;   // 0 to 5: Unity's targetFrameRate where the rewriter found it (another game 1.3.0); 3: nothing found
     if (which >= 30 && which <= 37) {   // any build with the engine-derived interval: its adjacent previous value belongs to the engine
         g_mod[0].monolith_interval = 0x6000;
         sync = (int32_t *)(base + 0x6000);
@@ -122,8 +122,8 @@ static void check(int which) {
         *(uintptr_t *)(base + 0x7b32690 + 0x10) = (uintptr_t)(object + 16);
         f = (float *)object; f[0] = f[1] = 30;
         sync = (int32_t *)(object + 16); sync[0] = sync[1] = 2;
-    } else if (which == 22 || which == 23 || which == 24) {   // DRAGON BALL: Sparking! ZERO: GEngine->FixedFrameRate (+0x9c8), which the Switch frame pace sets to 30, and the present interval;
-        // bUseFixedFrameRate (bit 0x40 of +0x9c4) set, except in 24 (an engine stepping by the time that passed, Princess Peach: Showtime!)
+    } else if (which == 22 || which == 23 || which == 24) {   // Another game: GEngine->FixedFrameRate (+0x9c8), which the Switch frame pace sets to 30, and the present interval;
+        // bUseFixedFrameRate (bit 0x40 of +0x9c4) set, except in 24 (an engine stepping by the time that passed, another game)
         strcpy(g_mod[0].build_id, "0123456789abcdef0123456789abcdef");
         cvar(DM_GAME_UE_FPS_CVAR, 0x7c738d0); cvar("rhi.SyncInterval", 0x7b32690);   // t.MaxFPS registered but never set: 0 stays
         *(uintptr_t *)(base + 0x7b32690 + 0x10) = (uintptr_t)(object + 16);
@@ -132,10 +132,10 @@ static void check(int which) {
         *(uintptr_t *)(base + 0x9aefa30) = (uintptr_t)(object + 0x100) - 0x9c8;   // the engine object, placed so its field at +0x9c8 lands inside object
         f = (float *)(object + 0x100); *f = 30;
         g_mod[0].ue_fixed_flag = 0x9c4 << 8 | 0x40;
-        if (which != 24) object[0x100 - 4] = 0x47;   // the flag byte at +0x9c4, bit 0x40 set among others (Pikmin 4: 0x47)
+        if (which != 24) object[0x100 - 4] = 0x47;   // the flag byte at +0x9c4, bit 0x40 set among others (another game: 0x47)
         else object[0x100 - 4] = 0x07;
-    } else if (which >= 25 && which <= 29) {   // Unity, at the places the rewriter found through the internal-call table (The Rogue Prince of Persia 1.1.0): vSyncCount in quality
-        // level 1 of 0x100-byte levels, set to 2 (0 in 29, where the game paces by targetFrameRate), and targetFrameRate (-1; 60 in 26, 30 in 29); 28: Pokémon Brilliant Diamond's
+    } else if (which >= 25 && which <= 29) {   // Unity, at the places the rewriter found through the internal-call table (another game 1.1.0): vSyncCount in quality
+        // level 1 of 0x100-byte levels, set to 2 (0 in 29, where the game paces by targetFrameRate), and targetFrameRate (-1; 60 in 26, 30 in 29); 28: another game's
         // targetFrameRate field (found from code registration, Unity 2019.4), set to 30
         if (which != 28) strcpy(g_mod[0].build_id, "0123456789abcdef0123456789abcdef");
         g_mod[0].unity_target_fps = which == 28 ? 0x4afc868 : 0x8d33de8;
@@ -144,7 +144,7 @@ static void check(int which) {
         *(int32_t *)(object + 0x64) = 1; *(uintptr_t *)(object + 0x20) = (uintptr_t)(object + 0x100);   // two levels from object + 0x100: level 1's count at +0x288
         sync = (int32_t *)(object + 0x100 + 0x100 + 0x88); *sync = which == 29 ? 0 : 2; sync[-0x40] = 3;   // and level 0's, which the host must not touch
         if (which != 28) { int32_t *t = (int32_t *)(base + 0x8d33de8); *t = which == 26 ? 60 : which == 29 ? 30 : -1; }
-    } else if (which == 17 || which == 18 || which == 19 || which == 20) {   // Fire Emblem Fortune's Weave: the target the rewriter found, 30 in gameplay (17) or 60 in a menu (18, at DM_FPS_TARGET=30)
+    } else if (which == 17 || which == 18 || which == 19 || which == 20) {   // Another game: the target the rewriter found, 30 in gameplay (17) or 60 in a menu (18, at DM_FPS_TARGET=30)
         strcpy(g_mod[0].build_id, "0123456789abcdef0123456789abcdef");
         g_mod[0].fps_target_ptr = 0x21e60d8; g_mod[0].fps_target_field = 0x1dc;
         *(uintptr_t *)(base + 0x21e60d8) = (uintptr_t)object;

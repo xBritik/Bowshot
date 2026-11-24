@@ -86,7 +86,7 @@ int touch_fill_n(void *out, int max, uint64_t now_ns, int points) {
 int touch_fill(void *out, uint64_t now_ns) { return touch_fill_n(out, 16, now_ns, 1); }   // TouchScreenState<16>, 0x290 bytes
 
 // Gestures: nn::hid::GetGestureStates hands the game the newest entries of a gesture recognizer's history (newest first, 16 kept), which Horizon's hid builds from the touch screen.
-// Taiko Risshiden V DX reads its taps, pans and swipes only there (main+0x42f1ac acts on types 5–9; its GetTouchScreenState read only tracks the finger), so its menus took no touch while
+// Another game reads its taps, pans and swipes only there (main+0x42f1ac acts on types 5–9; its GetTouchScreenState read only tracks the finger), so its menus took no touch while
 // this answered 0 entries. The rules are yuzu's (hid_core gesture_handler.cpp): a new touch is Touch (IsNewTouch, unless the entry before is Cancel), one held still for 0.5 s
 // becomes Press, a moving one Pan (delta from the last entry's position, velocity over the time since it), two or more fingers whose spread changes by more than 0.5 px Pinch
 // (scale = new / old spread) or whose angle turns more than 0.015 rad Rotate (degrees), and a change in the finger count Cancel. On release Touch becomes Tap (IsDoubleTap within

@@ -2,7 +2,7 @@
 """Make the host's stand-ins for the six system shared fonts in one folder (hle_sdk16.c reads them from DM_FONT_DIR):
 types 0-4 (standard, Simplified Chinese, its extension, Traditional Chinese, Korean) as unhinted cuts of one source font, type 5 (Nintendo extension: button icons) from make_ext_font.py.
 A game sizes each nn::fontll font engine's work memory for Nintendo's font of that type, and what FSS_load_font needs grows with the font's hinting program and its outlines, not with its glyph count:
-Mario Tennis Fever's 50 KB engine needs 56-60 KB for macOS's Arial Unicode as it is (LoadFont 201, then a crash), 44-48 KB for it unhinted, at most 32 KB for an unhinted Japanese cut
+another game's 50 KB engine needs 56-60 KB for macOS's Arial Unicode as it is (LoadFont 201, then a crash), 44-48 KB for it unhinted, at most 32 KB for an unhinted Japanese cut
 (docs/reference/services.md, "Shared font stand-ins sized for the game's font engines"). So every cut drops the hinting (fpgm, prep, cvt and each glyph's instructions) and the layout tables but kerning, and
 holds the characters of its type only, as Nintendo's set splits them; each takes a name of its own, as a game can load several types into one engine.
 Usage: make_shared_fonts.py out_dir [source.ttf]; needs fontTools (pip install fonttools)"""

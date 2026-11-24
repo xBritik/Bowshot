@@ -31,7 +31,7 @@ class DiscardTests(unittest.TestCase):
     def test_storage_writes_need_a_discard_entry(self):
         self.assertTrue(scope['vs_writes'](SOURCE, [{'kind': 'sbuf', 'rw': True}]))
 
-    def test_image_stores_need_a_discard_entry(self):   # Metroid Prime Remastered's fog volume (1cbc19f806a08166): points write a 3D image
+    def test_image_stores_need_a_discard_entry(self):   # Another game's fog volume (1cbc19f806a08166): points write a 3D image
         src = 'struct spvDescriptorSetBuffer0 { texture3d<float, access::write> vp_i_8 [[id(0)]]; };'
         self.assertTrue(scope['vs_writes'](src, [{'kind': 'img', 'reg': 0}]))
 

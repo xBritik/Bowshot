@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_dmsh_ampere_mem import EXIT, Translated, inst
 
-STORE = (0x000fe8000000c800, 0x0000080609008388)   # STS.U32 [R9 * 16 + 8], R6 (Mario Kart World f94552a2a2bff505): the sink, R9 the thread index
+STORE = (0x000fe8000000c800, 0x0000080609008388)   # STS.U32 [R9 * 16 + 8], R6 (another game f94552a2a2bff505): the sink, R9 the thread index
 
 
 # The 64-bit address of storage buffer 0 in R8:R9, as agl's analysis shaders and Bananza's muck normal pass take theirs
@@ -16,7 +16,7 @@ MOV_R8_UR4, MOV_R9_UR5 = (0x000fe20008000000, 0x0000000400087c02), (0x000fe20008
 
 
 def waiting(i): return (i[0] | 0x3f << 52, i[1])   # the instruction waits on every scoreboard (control bits 116..121): it reads what an S2R before it wrote
-def s2r_tid(rd): return (0x000e260000002100, 0x0000000000007919 | rd << 16)   # S2R Rd, SR_TID.X (Mario Kart World's encoding, write barrier 0)
+def s2r_tid(rd): return (0x000e260000002100, 0x0000000000007919 | rd << 16)   # S2R Rd, SR_TID.X (another game's encoding, write barrier 0)
 
 
 class Alu(Translated):
@@ -52,7 +52,7 @@ class FloatRed(Translated):
 
 
 class HalfRed(Translated):
-    """RED.E.ADD.F16x2.FTZ.RN (0x98e, type 4 at bits 73..75): Donkey Kong Bananza's muck normal pass (be71d8f78b52e62f, e5f7ed151822e560) adds each face normal into its vertices'
+    """RED.E.ADD.F16x2.FTZ.RN (0x98e, type 4 at bits 73..75): another game's muck normal pass (be71d8f78b52e62f, e5f7ed151822e560) adds each face normal into its vertices'
     half4 normal, two halves per word. Dropped with a log line, the normals stayed the zeros the mesh pass writes, and normalizing them made NaN: black blots in the scene"""
     RED = (FloatRed.RED[0] & ~(7 << 9) | 4 << 9, FloatRed.RED[1])   # RED.F16x2.FTZ.RN [R8], R6
 
@@ -326,8 +326,8 @@ class DirectedRounding(Alu):
 
 
 class Frnd(Alu):
-    """FRND rounds a float to an integer value; FRND.F16 does so on a half (PRAGMATA: 65 shaders did not translate). The half is rounded in 32 bits and packed, which is
-    exact. PRAGMATA's encodings (000ff000001008000000000400057307 and, with .FLOOR, 000e2600001048000000000c00257307) with the registers of this file"""
+    """FRND rounds a float to an integer value; FRND.F16 does so on a half (another game: 65 shaders did not translate). The half is rounded in 32 bits and packed, which is
+    exact. Another game's encodings (000ff000001008000000000400057307 and, with .FLOOR, 000e2600001048000000000c00257307) with the registers of this file"""
     F16 = (0x000fe20000100800, 0x0000001300067307)        # FRND.F16 R6, R19
     F16_FLOOR = (0x000fe20000104800, 0x0000001300067307)  # FRND.F16.FLOOR R6, R19
     F32 = (0x000fe20000201000, 0x0000001300067307)        # FRND R6, R19
@@ -347,7 +347,7 @@ class Frnd(Alu):
 
 
 class I2fImmediate(Alu):
-    """I2F of an immediate (form 4): bits 32..63 are the value, so 60..62 select no byte. PRAGMATA's I2F.F16.S32 of -2 (000e620000200c00fffffffe000f7906, 3 compute
+    """I2F of an immediate (form 4): bits 32..63 are the value, so 60..62 select no byte. Another game's I2F.F16.S32 of -2 (000e620000200c00fffffffe000f7906, 3 compute
     shaders) was refused as a byte select of a 32-bit source"""
     I2F_F16_M2 = (0x000fe20000200c00, 0xfffffffe00067906)   # I2F.F16.S32 R6, -2
 
@@ -356,7 +356,7 @@ class I2fImmediate(Alu):
 
 
 class CompareFtz(Alu):
-    """FSETP / FSET .FTZ (bit 80): a denormal operand compares as zero, as on NVIDIA; Apple's GPUs keep denormals. Mario Kart World's deferred lighting 635061c90d75a8d1
+    """FSETP / FSET .FTZ (bit 80): a denormal operand compares as zero, as on NVIDIA; Apple's GPUs keep denormals. Another game's deferred lighting 635061c90d75a8d1
     normalises its four depth-weighted samples by 1 / sum only where FSETP.NEU.FTZ says sum != 0: a denormal sum passed, its reciprocal overflowed, and the NaN came out
     of a min(x, 1.0) as a fully lit dot. test_dmsh_maxwell_ftz.py has Maxwell's"""
     FSETP = (0x000fca0003f1d000, 0x800000141300720b)   # FSETP.NEU.FTZ.AND P0, PT, R19, -R20, PT (the game's guard, there on R35 and -R10)
@@ -379,7 +379,7 @@ class CompareFtz(Alu):
 
 class Vote(Alu):
     """VOTEU (0x886) writes the uniform predicate UPd and leaves the lane predicate of that number alone; VOTE (0x806) writes the lane predicate. nvdisasm reads 0x886 as
-    VOTEU.ANY UP0, P0 (CuAssembler's sm_86 records) and NAK encodes it with a uniform destination at 81..84. Yoshi and the Mysterious Book's cbd80cb96ad38a61 votes P0 into
+    VOTEU.ANY UP0, P0 (CuAssembler's sm_86 records) and NAK encodes it with a uniform destination at 81..84. Another game's cbd80cb96ad38a61 votes P0 into
     UP0, guards a handle's bounds mask on !UP0 and its TEX on !P0: written to P0, UP0 stayed undefined and every lane's guard became the subgroup's"""
     VOTEU = (0x000fe20000000100, 0x00000000003f7886)   # VOTEU.ANY UP0, P0 (the game's, destination register URZ)
     VOTE = (0x000fe20000000100, 0x0000000000ff7806)    # VOTE.ANY P0, P0 (destination register RZ)

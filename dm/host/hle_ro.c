@@ -1,6 +1,6 @@
 // nn::ro (loading NRO modules at run time): on the real device it connects to the ldr:ro service. The host has no such service; running the SDK's Initialize as is reads a null session in InitializeWithPortName and crashes (Engage).
 // Engage (Unity) imports 8 ro interfaces but its RomFS has no .nro / .nrr: at startup it only calls Initialize, and symbol lookups go through LookupSymbol.
-// Super Smash Bros. Ultimate loads its fighters' code as NROs (98 in data.arc, registered by .nrr/cross2_*.nrr). The service's only part in the SDK's LoadModule is mapping the image
+// Another game loads its fighters' code as NROs (98 in data.arc, registered by .nrr/cross2_*.nrr). The service's only part in the SDK's LoadModule is mapping the image
 // (SDK 8.2.1 LoadModuleInternal, sdk+0x347460: ldr:ro LoadNro; then the SDK zeroes bss, relocates through rtld's module lists, calls the module's init and binds the earlier modules'
 // variables). The host replaces rtld, so it takes over the whole call: the NROs were rewritten offline and mapped at start (loader.c "NRO modules"); LoadModule finds the one whose
 // SHA-256 is the image's (what the NRR registers), relocates it against the modules loaded now and calls its DT_INIT, as the SDK does. The image and buffer the game passes stay unused
@@ -67,7 +67,7 @@ static module_t *module_from(const ro_module *rm) {
 
 HLE_FORCE("_ZN2nn2ro18LookupModuleSymbolEPmPKNS0_6ModuleEPKc", "look up a definition by name in one loaded NRO", Result, h_ro_LookupModuleSymbol, uintptr_t *out, const void *mod, const char *name) {
     module_t *m = module_from(mod); void *p = m && name ? module_sym(m, name) : NULL;
-    // A name the loaded module does not define fails on Horizon too (ldr:ro's not-found result), and games probe for one: Portal's Source engine asks each module for BuiltDebug, which
+    // A name the loaded module does not define fails on Horizon too (ldr:ro's not-found result), and games probe for one: another game's Source engine asks each module for BuiltDebug, which
     // only its debug builds define. Only a module the host does not know is wrong
     if (!p && m) { static int n; if (n++ < 8) LOG("ro::LookupModuleSymbol %s: not defined in that module (failure, as on Horizon)", name ? name : "(null)"); return RO_FAIL; }
     if (!p) { static int red; if (!red++) LOG("[RED] ro::LookupModuleSymbol %s: not a loaded module", name ? name : "(null)"); return RO_FAIL; }
@@ -83,7 +83,7 @@ HLE_FORCE("_ZN2nn2ro13GetBufferSizeEPmPKv", "the bss size from the NRO header, a
     return 0;
 }
 
-// A game may decode a module at run time, so that no file holds it for dm/tools/nro_collect.py (Mario Tennis Fever: main is a boot stub, nxboot, whose threads decode the game's one NRO out of
+// A game may decode a module at run time, so that no file holds it for dm/tools/nro_collect.py (another game: main is a boot stub, nxboot, whose threads decode the game's one NRO out of
 // main's data segment). DM_NRO_CAPTURE=<dir> writes the image of a LoadModule the host has no rewritten copy of to <dir>/<SHA-256>.nro and ends the run; the NSP script rewrites it like any NRO
 static void capture_nro(const uint8_t *h, uint32_t n, const uint8_t sha[32]) {
     const char *dir = getenv("DM_NRO_CAPTURE");
@@ -104,7 +104,7 @@ HLE_FORCE_DIRECT("_ZN2nn2ro10LoadModuleEPNS0_6ModuleEPKvPvmi", "load an NRO rewr
     uint32_t n = *(const uint32_t *)(h + 0x18);
     uint8_t sha[32]; CC_SHA256(h, n, sha);
     char hx[17]; for (int k = 0; k < 8; k++) snprintf(hx + 2 * k, 3, "%02x", sha[k]);
-    // Online SDKs are never loaded, whatever the game (dm/tools/nro_collect.py ONLINE_SDKS: Epic Online Services, known by its export EOS_Platform_Create). Hades and Hades II load
+    // Online SDKs are never loaded, whatever the game (dm/tools/nro_collect.py ONLINE_SDKS: Epic Online Services, known by its export EOS_Platform_Create). Another game and another game load
     // rom:/nro/EOSSDK-Switch-Shipping.nro for Epic-account cross-save (Auth, Connect, PlayerDataStorage), which the host cannot serve; the real SDK would at best fail its login and at
     // worst wait on time-outs or contact Epic's servers. Refused, the game's EOS_Platform_Create stays a stub, it logs "[EOS] Failed to create platform" and plays offline with local
     // saves, as before the host loaded NROs. The pack leaves such an NRO out (a "refused" row in nro.tsv); an older nro.tsv that has it is caught by the export below
@@ -124,7 +124,7 @@ HLE_FORCE_DIRECT("_ZN2nn2ro10LoadModuleEPNS0_6ModuleEPKvPvmi", "load an NRO rewr
     return 0;
 }
 
-// SDK 19 adds a bool after the bind flag (Hades II imports only this form, for its Epic Online Services NRO)
+// SDK 19 adds a bool after the bind flag (another game imports only this form, for its Epic Online Services NRO)
 HLE_FORCE_DIRECT("_ZN2nn2ro10LoadModuleEPNS0_6ModuleEPKvPvmib", "load an NRO rewritten offline (as the form without the bool)", Result, h_ro_LoadModule2, void *m, const void *image, void *buf, size_t size, int flag, int b) {
     (void)b; return h_ro_LoadModule(m, image, buf, size, flag);
 }
@@ -146,10 +146,10 @@ HLE_FORCE_DIRECT("_ZN2nn2ro12UnloadModuleEPNS0_6ModuleE", "unload an NRO: its fi
 HLE_FORCE("_ZN2nn2ro18RegisterModuleInfoEPNS0_16RegistrationInfoEPKv", "register an NRR: nothing to check, the host's NROs were collected by its hashes", Result, h_ro_RegisterModuleInfo, void *info, const void *nrr) {
     const uint8_t *r = nrr;
     if (!r || memcmp(r, "NRR0", 4)) return RO_FAIL;
-    // Version 1 (the byte at +5; the Switch 2's: Mario Tennis Fever) has a header 0x180 bytes longer, the same fields after it: program ID +0x4b0, size +0x4b8, hash table +0x4c0, count +0x4c4
+    // Version 1 (the byte at +5; the Switch 2's: another game) has a header 0x180 bytes longer, the same fields after it: program ID +0x4b0, size +0x4b8, hash table +0x4c0, count +0x4c4
     size_t hdr = r[5] == 1 ? 0x4c0 : 0x340; uint32_t off = *(const uint32_t *)(r + hdr), cnt = *(const uint32_t *)(r + hdr + 4), refused = 0;
     for (uint32_t i = 0; i < cnt; i++) refused += nro_refused(r + off + 32 * i);
-    // An NRR that registers only online SDKs the host refuses (Hades and Hades II: game.nrr with the one EOS SDK hash) fails as every registration did before the host loaded NROs,
+    // An NRR that registers only online SDKs the host refuses (another game and another game: game.nrr with the one EOS SDK hash) fails as every registration did before the host loaded NROs,
     // so such a game takes the path it took then (it never asked for the module)
     if (cnt && refused == cnt) { LOG("ro::RegisterModuleInfo: refused an NRR that registers only online SDKs (%u hashes), as before NROs were loaded; the game plays offline", cnt); return RO_FAIL; }
     static int n; if (n++ < 20) LOG("ro::RegisterModuleInfo: NRR with %u hashes", cnt);

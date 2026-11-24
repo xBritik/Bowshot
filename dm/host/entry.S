@@ -52,7 +52,7 @@ _dm_gate_stubs:
     .p2align 2
 _dm_gate:
     // The register frame (800 bytes) goes at the top of the gate stack, not below the guest's sp: on Horizon an SVC leaves the thread's stack as it was, including the words below sp.
-    // A collector that records a thread's sp before a blocking call and then scans from there finds pointers its callees left below their returned frames: Streets of Rage 4's BRUTE
+    // A collector that records a thread's sp before a blocking call and then scans from there finds pointers its callees left below their returned frames: another game's BRUTE
     // garbage collector parks a thread in Thread.Sleep with the caller's x20 only in such a word (main+0x2ff4c80's frame), which the old frame here overwrote, so a live array was freed.
     // Layout as before: x0..x30 at +0 (x30 = the return point), q0..q31 at +256, nzcv / fpsr / fpcr at +768 / +776 / +784, and at +792 the gate block's sp
     // (the guest's x29 / x30 the block pushed; the guest's stack follows at +16)

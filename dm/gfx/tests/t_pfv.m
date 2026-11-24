@@ -19,7 +19,7 @@ static int read_texel(id<MTLTexture> t, float out[4]) {
     [en dispatchThreadgroups:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)]; [en endEncoding]; [cb commit]; [cb waitUntilCompleted];
     memcpy(out, o.contents, 16); return cb.status == MTLCommandBufferStatusCompleted;
 }
-// A colour render target view of another class (R32_UI) over a colour texture of the same texel size. Nintendo Switch Sports Resort's NDSR upscaler input is an RGB9E5F texture
+// A colour render target view of another class (R32_UI) over a colour texture of the same texel size. Another game's NDSR upscaler input is an RGB9E5F texture
 // written through an R32_UI view by a fragment shader whose output is the packed bits as uint: attach attaches the R32Uint view, so the pipeline takes the uint output and the stored
 // bits are the shader's (before, the base RGB9E5Float texture was attached, the shader's float entry wrote the bits' float value, and the upscaled picture came out red). An RGB9E5F
 // texture has the format-view usage from its creation; another format is upgraded to it at its first such pass. Returns the number of failed checks

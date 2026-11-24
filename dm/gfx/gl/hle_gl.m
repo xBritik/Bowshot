@@ -1,5 +1,5 @@
-// OpenGL → Metal layer for games that render with OpenGL through EGL (Digimon Story Cyber Sleuth: Complete Edition: Media.Vision's MVGL engine on NVIDIA's desktop GL 4.5 core
-// driver, subsdk0, which the host does not load; Balatro: LÖVE 11.4 on SDL, the same driver). main imports the EGL functions, which bind to the ones here through the host's import
+// OpenGL → Metal layer for games that render with OpenGL through EGL (another game: Media.Vision's MVGL engine on NVIDIA's desktop GL 4.5 core
+// driver, subsdk0, which the host does not load; another game: LÖVE 11.4 on SDL, the same driver). main imports the EGL functions, which bind to the ones here through the host's import
 // table (hle.h swhle). GL functions use that same table for direct imports and eglGetProcAddress (a glad loader asks for 2,956 names; Digimon's code calls 79 of them,
 // LÖVE's about 150, counted with dm/tools/loader_census.py). Only those are implemented; every other loader name gets a null pointer (DM_GL_STUBS=1: a stub that reports its first call).
 // LÖVE takes the core profile's paths (GL_CONTEXT_PROFILE_MASK): its vertex streams are persistently mapped buffers (glBufferStorage, glMapBufferRange) that fences
@@ -391,7 +391,7 @@ typedef struct {
 } tex_t;
 NAMES(tex_t, g_texs, g_ntexs, g_captexs)
 static tex_t *tex_of(GLuint n) { return n && n < g_ntexs ? g_texs[n] : NULL; }
-// A sampler object (glGenSamplers): its parameters only; glBindSampler puts it on a unit (Mega Man Legacy Collection sets its filters and wraps on one per unit, none on its textures)
+// A sampler object (glGenSamplers): its parameters only; glBindSampler puts it on a unit (another game sets its filters and wraps on one per unit, none on its textures)
 typedef struct { samp_p sp; } so_t;
 NAMES(so_t, g_sos, g_nsos, g_capsos)
 static so_t *so_of(GLuint n) { return n && n < g_nsos ? g_sos[n] : NULL; }
@@ -672,7 +672,7 @@ static void *pixels_convert(const void *src, uint32_t w, uint32_t h, GLenum form
         cv = CV_EXPAND_RG;
     size_t sp = (size_t)(S.unpack_row ? S.unpack_row : w) * comps * tbytes; sp = (sp + S.unpack_align - 1) / S.unpack_align * S.unpack_align;
     const uint8_t *source = src;
-    // GL_UNPACK_SWAP_BYTES: each 2- or 4-byte element of the source in the other byte order (DOOM 3's light images are RGB565 stored big-endian), swapped into a copy
+    // GL_UNPACK_SWAP_BYTES: each 2- or 4-byte element of the source in the other byte order (another game's light images are RGB565 stored big-endian), swapped into a copy
     // of the rows as given, each row without its alignment padding
     uint8_t *swapped = NULL;
     if (S.unpack_swap && tbytes > 1 && h) {
@@ -1179,7 +1179,7 @@ static id<MTLDepthStencilState> dss_get(void) {
 }
 
 // ---------- Fixed function ----------
-// OpenGL 1.x draws with no program current. UnMetal (Unepic Games' engine, SDK 14.3) does nothing else: its loader asks eglGetProcAddress for 26 GL names, and its code calls
+// OpenGL 1.x draws with no program current. Another game (Unepic Games' engine, SDK 14.3) does nothing else: its loader asks eglGetProcAddress for 26 GL names, and its code calls
 // glVertexPointer / glColorPointer / glTexCoordPointer on client arrays, glMatrixMode / glLoadIdentity / glRotatef, glTexEnvi / glTexEnvf and glDrawArrays, and never
 // glCreateShader (dm/tools/loader_census.py). The arrays are attributes of the vertex array at NVIDIA's aliased numbers (0 the vertex, 2 the normal, 3 the colour, 8 + n texture
 // unit n's coordinates), as its compatibility driver keeps them, so a draw reads them as it reads any attribute (client memory copied per draw, a buffer bound as it is), and a
@@ -1318,7 +1318,7 @@ static void enc_state(void) {
     id<MTLDepthStencilState> ds = dss_get();
     if ((__bridge void *)ds != E.dss) { E.dss = (__bridge void *)ds; [e setDepthStencilState:ds]; }
 }
-// A named uniform block's buffer and offset: the range at its binding point. A range shorter than the block (DOOM 3 binds only a skinned model's joints out of its 6,528-byte
+// A named uniform block's buffer and offset: the range at its binding point. A range shorter than the block (another game binds only a skinned model's joints out of its 6,528-byte
 // matrices_ubo), or a buffer that ends before the block does, is copied with zeros after it, so the shader reads no memory outside the buffer
 static id<MTLBuffer> blk_buffer(const pblk_t *b, size_t *mo) {
     buf_t *x = buf_of(S.ubo[b->binding].buf);
@@ -1733,10 +1733,10 @@ GL(glSampleMaski, void, GLuint index, GLbitfield mask) {
 }
 GL(glCullFace, void, GLenum m) { S.cull_face = m; }
 GL(glFrontFace, void, GLenum m) { if (m == GL_CW || m == GL_CCW) S.front = m; }
-// Points are as big as the vertex shader's point size output says (Metal has no fixed size). Wireframe is Metal's triangle fill mode, for both faces (DOOM 3 sets it once while it
+// Points are as big as the vertex shader's point size output says (Metal has no fixed size). Wireframe is Metal's triangle fill mode, for both faces (another game sets it once while it
 // puts its state in order); points for polygons and a mode for one face only are not implemented
 GL(glPointSize, void, GLfloat s) { S.psize = s; }
-// Metal draws lines one pixel wide; Fate/hollow ataraxia REMASTERED sets 1 before its draws
+// Metal draws lines one pixel wide; another game sets 1 before its draws
 GL(glLineWidth, void, GLfloat w) { if (w != 1) RED1("glLineWidth(%g): lines are drawn one pixel wide", w); }
 GL(glPolygonMode, void, GLenum face, GLenum mode) {
     if (mode != 0x1b02 /* FILL */ && mode != 0x1b01 /* LINE */) { RED1("glPolygonMode(%#x) not implemented (filled)", mode); return; }
@@ -1744,9 +1744,9 @@ GL(glPolygonMode, void, GLenum face, GLenum mode) {
     S.lines = mode == 0x1b01;
 }
 GL(glHint, void, GLenum target, GLenum mode) { (void)target; (void)mode; }
-// The compatibility profile's shading model applies to the fixed pipeline's colours; GLSL programs interpolate smoothly unless a varying says flat (DOOM 3 sets GL_SMOOTH)
+// The compatibility profile's shading model applies to the fixed pipeline's colours; GLSL programs interpolate smoothly unless a varying says flat (another game sets GL_SMOOTH)
 GL(glShadeModel, void, GLenum mode) { if (mode != 0x1d01 /* SMOOTH */) RED1("glShadeModel(%#x): only GL_SMOOTH is implemented", mode); }
-// Two-sided stencil: DOOM 3's shadow volumes count front and back faces the other way in one draw (GL_ATI_separate_stencil, GL 2.0's glStencilOpSeparate)
+// Two-sided stencil: another game's shadow volumes count front and back faces the other way in one draw (GL_ATI_separate_stencil, GL 2.0's glStencilOpSeparate)
 static int st_faces(GLenum face, const char *fn) {   // bit 0 front, bit 1 back
     if (face == GL_FRONT) return 1; if (face == GL_BACK) return 2; if (face == GL_FRONT_AND_BACK) return 3;
     gl_error_at(GL_INVALID_ENUM, fn); return 0;
@@ -1788,7 +1788,7 @@ GL(glGetError, GLenum, void) { GLenum e = g_gl_error; g_gl_error = GL_NO_ERROR; 
 // Everything recorded so far runs to its end (LÖVE when the window changes)
 // glFlush: hand the commands encoded so far to the GPU without waiting. The layer commits at the frame's end, so a game that flushes in the middle of a frame
 // (GameMaker's runner does, before a menu or a surface read) would otherwise see nothing but the pointer: eglGetProcAddress returned null for a name it only
-// asks for, the guest called it and jumped to address 0 (Well Dweller's `CRASH sig=11 addr=0 pc=0 lr=main+0x3409a78`, at the pause menu).
+// asks for, the guest called it and jumped to address 0 (another game's `CRASH sig=11 addr=0 pc=0 lr=main+0x3409a78`, at the pause menu).
 GLB(glFlush, void, void) { if (g_pend_clear.bits) clears_flush(); dm_gfx_enter(); cb_commit(); dm_gfx_leave(); }
 GLB(glFinish, void, void) { if (g_pend_clear.bits) clears_flush(); dm_gfx_enter(); id<MTLCommandBuffer> cb = cb_get(); cb_commit(); [cb waitUntilCompleted]; dm_gfx_leave(); }
 
@@ -1902,7 +1902,7 @@ GL(glObjectLabel, void, GLenum id, GLuint name, GLsizei len, const GLchar *label
 static const char *const g_exts[] = {"GL_ARB_ES3_2_compatibility", "GL_ARB_ES3_compatibility", "GL_ARB_texture_compression_bptc", "GL_ARB_texture_compression_rgtc",
     "GL_EXT_texture_compression_s3tc", "GL_EXT_texture_filter_anisotropic", "GL_ARB_vertex_array_object", "GL_ARB_direct_state_access", "GL_ARB_half_float_vertex",
     "GL_ARB_framebuffer_object", "GL_ARB_texture_float", "GL_EXT_texture_sRGB", "GL_KHR_texture_compression_astc_ldr", "GL_NV_shadow_samplers_cube",
-    // core in GL 4.5, named by a renderer that checks for them (DOOM 3 stops with "<name> not available" without the ones it needs); their functions are the core ones (gl_lookup)
+    // core in GL 4.5, named by a renderer that checks for them (another game stops with "<name> not available" without the ones it needs); their functions are the core ones (gl_lookup)
     "GL_ARB_multitexture", "GL_ARB_texture_compression", "GL_ARB_vertex_buffer_object", "GL_ARB_map_buffer_range", "GL_ARB_draw_elements_base_vertex",
     "GL_ARB_uniform_buffer_object", "GL_ARB_buffer_storage", "GL_ARB_sync", "GL_ARB_seamless_cube_map", "GL_ARB_copy_image",
     "GL_ATI_separate_stencil", "GL_ARB_fragment_program"};
@@ -2080,7 +2080,7 @@ GL(glFlushMappedBufferRange, void, GLenum target, GLintptr off, GLsizeiptr len) 
 // ---------- Sync objects ----------
 // A fence is the serial of the command buffer being recorded when it was made, signalled when that command buffer completes (g_ev). LÖVE fences each third of its stream
 // buffers at the end of a frame and waits for the fence three frames later, before it writes that third again
-// magic: a sync this layer made and has not deleted (glIsSync; DOOM 3 asks before it waits on or deletes one)
+// magic: a sync this layer made and has not deleted (glIsSync; another game asks before it waits on or deletes one)
 #define SYNC_MAGIC 0x676c7379u
 typedef struct { uint32_t magic; uint64_t serial; } sync_t;
 GL(glFenceSync, void *, GLenum cond, GLbitfield flags) { (void)cond; (void)flags; sync_t *s = zalloc(sizeof *s); s->magic = SYNC_MAGIC; s->serial = g_serial; return s; }
@@ -2291,7 +2291,7 @@ static int samp_param(samp_p *s, GLenum p, const float *v) {
         case GL_TEXTURE_MAX_ANISOTROPY: s->aniso = f; return 1;
         case GL_TEXTURE_COMPARE_MODE: s->cmode = i != 0; return 1;   // COMPARE_REF_TO_TEXTURE or NONE
         case GL_TEXTURE_COMPARE_FUNC: s->cfunc = i; return 1;
-        case GL_TEXTURE_LOD_BIAS: s->lodbias = f; return 1;   // LÖVE sets −(mipmap sharpness), 0 by default; DOOM 3 0.5 on some images
+        case GL_TEXTURE_LOD_BIAS: s->lodbias = f; return 1;   // LÖVE sets −(mipmap sharpness), 0 by default; another game 0.5 on some images
         case GL_TEXTURE_MIN_LOD: s->minlod = f; return 1; case GL_TEXTURE_MAX_LOD: s->maxlod = f; return 1;
         case GL_TEXTURE_BORDER_COLOR: memcpy(s->border, v, sizeof s->border); return 1;
     }
@@ -2634,7 +2634,7 @@ GL(glCompressedTexImage3D, void, GLenum target, GLint level, GLenum format, GLsi
 GL(glCompressedTexSubImage3D, void, GLenum target, GLint level, GLint x, GLint y, GLint z, GLsizei w, GLsizei h, GLsizei d, uint64_t format, uint64_t size, const void *data) {
     compressed_call((compressed_args){target, (GLenum)format, level, x, y, z, 0, w, h, d, (GLsizei)size, data, 1, 3});
 }
-// DOOM 3 streams its DXT images a part at a time (glCompressedTexSubImage2DARB)
+// Another game streams its DXT images a part at a time (glCompressedTexSubImage2DARB)
 GL(glCompressedTexSubImage2D, void, GLenum target, GLint level, GLint x, GLint y, GLsizei w, GLsizei h, GLenum format, GLsizei size, const void *data) {
     compressed_call((compressed_args){target, format, level, x, y, 0, 0, w, h, 1, size, data, 1, 2});
 }
@@ -2962,7 +2962,7 @@ GL(glCopyImageSubData, void, GLuint sn, GLenum st, GLint sl, GLint sx, GLint sy,
     ((void (*)(const copy_image_args *))(const void *)copy_image_impl_bs)(&a);
 }
 // glCopyTexSubImage2D: a rectangle of the read framebuffer's colour image into a texture level, in command order (a blit after the draws so far). Both are stored bottom row
-// first, so the rows go across as they are; the part outside the framebuffer is left as it was (GL leaves it undefined). DOOM 3 copies each frame's lit picture into its
+// first, so the rows go across as they are; the part outside the framebuffer is left as it was (GL leaves it undefined). Another game copies each frame's lit picture into its
 // _currentRender texture this way and draws it back for the post effects, which cover the screen in black without the copy
 static void tex_copy(GLenum target, GLint level, GLint xo, GLint yo, GLint zo, GLint x, GLint y, GLsizei w, GLsizei h) {
     tex_t *t = bound_tex(target);
@@ -3287,7 +3287,7 @@ GL(glGetShaderiv, void, GLuint sh, GLenum p, GLint *v) {
     RED1("glGetShaderiv(%#x) not implemented", p); *v = 0;
 }
 GL(glGetShaderInfoLog, void, GLuint sh, GLsizei size, GLsizei *len, GLchar *log) { (void)sh; if (len) *len = 0; if (log && size > 0) log[0] = 0; }
-GL(glGetShaderSource, void, GLuint sh, GLsizei size, GLsizei *len, GLchar *src) {   // the source glShaderSource kept (Fate/hollow ataraxia REMASTERED reads it back after compiling)
+GL(glGetShaderSource, void, GLuint sh, GLsizei size, GLsizei *len, GLchar *src) {   // the source glShaderSource kept (another game reads it back after compiling)
     if (!SP_CHECK(sh, 0)) return;
     if (size < 0) { gl_error(GL_INVALID_VALUE); return; }
     shader_t *s = shader_of(sh);
@@ -3339,7 +3339,7 @@ GLB(glLinkProgram, void, GLuint pr) {
     prog_t *p = prog_of(pr);
     prog_clear(p);
     shader_t *vs = shader_of(p->vs), *fs = shader_of(p->fs);
-    // A program with a vertex shader alone links in desktop GL: its draws rasterize and write depth and stencil, their colour is undefined (DOOM 3's shadow volumes,
+    // A program with a vertex shader alone links in desktop GL: its draws rasterize and write depth and stencil, their colour is undefined (another game's shadow volumes,
     // drawn with colour writes off). Its fragment stage is the empty one here, and its pipelines have no fragment function and write no colour (pso_get)
     if (!vs || !vs->fn || (fs && !fs->fn)) {
         RED1("program %u: a shader is missing from the library, its draws are skipped", pr);
@@ -3489,7 +3489,7 @@ GL(glGetShaderPrecisionFormat, void, GLenum stage, GLenum prec, GLint *range, GL
     if (range) { range[0] = fl ? 127 : 31; range[1] = fl ? 127 : 30; }
     if (precision) *precision = fl ? 23 : 0;
 }
-// No uniform has location 0, though GL allows it: a game may take 0 for "not found" (Mega Man Legacy Collection loads u_flip's location and skips its glUniform1f when it is 0,
+// No uniform has location 0, though GL allows it: a game may take 0 for "not found" (another game loads u_flip's location and skips its glUniform1f when it is 0,
 // main+0x77b28, so its pictures stayed upside down while u_flip was a program's first uniform)
 static GLint uni_loc(int i, int el) { return (i + 1) * 4096 + el; }
 static int uni_of(const prog_t *p, GLint loc, int *el) {   // the uniform index of loc in p, or -1; el: its array element
@@ -3528,7 +3528,7 @@ GL(glGetActiveUniformBlockiv, void, GLuint pr, GLuint index, GLenum pname, GLint
     }
     RED1("glGetActiveUniformBlockiv(%#x) not implemented", pname);
 }
-// ARB assembly programs (GL_ARB_fragment_program, reported because DOOM 3 stops without it): DOOM 3 draws with GLSL and never calls these; a game that does is told in a red line,
+// ARB assembly programs (GL_ARB_fragment_program, reported because another game stops without it): another game draws with GLSL and never calls these; a game that does is told in a red line,
 // its programs get names but no code, and its draws go on with the current GLSL program
 GL(glGenProgramsARB, void, GLsizei n, GLuint *out) { static GLuint next = 1; for (GLsizei i = 0; i < n; i++) out[i] = next++; }
 GL(glDeleteProgramsARB, void, GLsizei n, const GLuint *v) { (void)n; (void)v; }
@@ -3658,7 +3658,7 @@ static void frame_end(void) {
 EGL(eglGetDisplay, EGLDisplay, void *native) { (void)native; dev_init(); return (EGLDisplay)&g_egl; }
 EGL(eglInitialize, EGLBoolean, EGLDisplay d, EGLint *major, EGLint *minor) { (void)d; dev_init(); g_egl.init = 1; if (major) *major = 1; if (minor) *minor = 5; return EGL_TRUE; }
 EGL(eglTerminate, EGLBoolean, EGLDisplay d) { (void)d; return EGL_TRUE; }
-// SDL binds 0 (its API before it has chosen one) when it makes the window again (Balatro's love.window.setMode): nothing to change
+// SDL binds 0 (its API before it has chosen one) when it makes the window again (another game's love.window.setMode): nothing to change
 EGL(eglBindAPI, EGLBoolean, EGLenum api) { if (api && api != 0x30a2) RED1("eglBindAPI(%#x): only desktop OpenGL (0x30a2) is implemented", api); return EGL_TRUE; }
 // One configuration: RGBA8, depth 24 (32F here), stencil 8, a window surface, desktop OpenGL; it matches the game's attributes
 EGL(eglChooseConfig, EGLBoolean, EGLDisplay d, const EGLint *attr, EGLConfig *cfg, EGLint n, EGLint *num) {
@@ -3808,8 +3808,8 @@ EGL(eglSwapBuffers, EGLBoolean, EGLDisplay d, EGLSurface s) {
 }
 // eglGetProcAddress: GL and EGL names from the same table as direct imports; anything else is null (the game's loader asks for every name it knows).
 // An extension's name of a function GL already has gets that function's entry when the registry says the two are the same (gl_aliases.h, written by
-// dm/gfx/tools/gl_aliases.py from Khronos gl.xml and a reviewed GL ES list): DOOM 3's renderer asks for its buffer, multitexture and vertex attribute functions only by their
-// ARB names (glBindBufferARB), Fate/hollow ataraxia REMASTERED for its framebuffer functions by their EXT names (glGenFramebuffersEXT). A suffix is not stripped on its own:
+// dm/gfx/tools/gl_aliases.py from Khronos gl.xml and a reviewed GL ES list): another game's renderer asks for its buffer, multitexture and vertex attribute functions only by their
+// ARB names (glBindBufferARB), another game for its framebuffer functions by their EXT names (glGenFramebuffersEXT). A suffix is not stripped on its own:
 // glVertexAttribPointerNV takes other arguments than glVertexAttribPointer, glGetProgramivARB asks about an ARB assembly program
 static void *gl_entry(const char *name) {
     static const hle_ent *sec; static unsigned long sz;
@@ -3840,7 +3840,7 @@ extern const char gl_stubs[];   // 8 bytes a stub
 static void *gl_stub(const char *name) {
     static int on = -1; if (on < 0) on = getenv("DM_GL_STUBS") && atoi(getenv("DM_GL_STUBS"));
     if (!on || g_nstub == NSTUB) return NULL;
-    g_stub_name[g_nstub] = strdup(name);   // a copy: a loader may put each name together in one buffer (Fate/hollow ataraxia REMASTERED), which the next name overwrites
+    g_stub_name[g_nstub] = strdup(name);   // a copy: a loader may put each name together in one buffer (another game), which the next name overwrites
     return (void *)(gl_stubs + 8 * g_nstub++);
 }
 // A name the loader asks for and the layer does not implement gets a null pointer, which is the documented meaning of "not there" (many loaders ask for the

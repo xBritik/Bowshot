@@ -5,10 +5,10 @@
 #   base/exefs/ (main, main.npdm, sdk, rtld, subsdk*), base/romfs/   (base/romfs is optional when an update has its RomFS: that one is whole, and nothing packs the base's for it)
 #   updates/<version>/exefs/, updates/<version>/romfs/   (optional; <version> is the title version as a decimal number, 458752 = 0x70000)
 #   dlc/<DLC title ID>/<n>/romfs/   (optional; the DLC title ID in hex)
-#   A dump may have no base/ when it holds an update: the update's folder is the whole game (below), so the base game adds nothing to it (Fire Emblem Fortune's Weave: updates/131072 only).
+#   A dump may have no base/ when it holds an update: the update's folder is the whole game (below), so the base game adds nothing to it (another game: updates/131072 only).
 #   exefs/ and romfs/ directly in the folder count as base/: one version of the game, as `nup extract` writes it (issue #1265).
 # An update's RomFS in such a dump is the patched RomFS (base + the update's BKTR patch, the tree the game sees), not a patch: it is packed on its own, never laid over the base
-# (Donkey Kong Bananza 458752 drops 42 base files, among them the Product.100 tables its Product.200 ones replace).
+# (another game 458752 drops 42 base files, among them the Product.100 tables its Product.200 ones replace).
 # Writes, under the build folder (<dump folder>/<title ID>_build unless --work-dir names another):
 #   extract/v<version>/ExeFS/   the newest version's code modules (APFS clones, or copies on another volume)
 #   extract/v<version>/RomFS.img   its RomFS as one image (dm/tools/romfs_image.py: the host's DM_ROMFS, the IPA's romfs.img)

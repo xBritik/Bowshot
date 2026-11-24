@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """dmsh_rewrite.py bit0_mask: the 0 / -1 mask of a tested bit 0 is written from the bit (`-(x & 1)`), not from its compare (`b ? -1 : 0`), so the compare keeps one user,
 its branch. Apple's GPU compiler for applegpu_g15 and later otherwise can pick a jump it cannot encode (`LLVM ERROR: Failed to encode.`), which ends the compiler service when
-a pipeline with the shader is built: PRAGMATA's pixel shader c4ac3ca598cea32e. With DMSH_TEST_METAL=1 the reduced shader below goes through the Metal compiler and the
+a pipeline with the shader is built: another game's pixel shader c4ac3ca598cea32e. With DMSH_TEST_METAL=1 the reduced shader below goes through the Metal compiler and the
 offline GPU compiler (applegpu-nt, the chain's flags): as translated it must fail to encode (skipped where a later toolchain compiles it), rewritten it must compile."""
 from pathlib import Path
 import json

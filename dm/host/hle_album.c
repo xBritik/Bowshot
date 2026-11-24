@@ -2,9 +2,9 @@
 // Destination: DM_ALBUM_DIR (Mac apps default to ~/Pictures/nxnative/<title ID> in dm/mac/launcher.c; iOS apps default to Documents/album in dm/ios/Sources/main.m),
 // else <DM_ROOT>/album, else <dirname(DM_SAVE)>/album. The directory is created lazily on the first save, and files are written via a temporary file + hard link so no
 // half-written PNG is ever visible and rapid saves never overwrite one another.
-// Verified on Pokemon Pokopia (0400A3A01EE4C000, SDK 20.5.25: main+0x10fedc0 decodes its gallery JPEG with nn::image::JpegDecoder's default PixelFormat_Rgba32 into 0x7e9000 bytes
-// and calls the 4-arg SaveScreenshot with ImageSize = 1 = 1920x1080), Pikmin 4 (Switch 1: BGRA->RGBA8888 loop at main+0x1e1b2bc + 4-arg SaveScreenshot with ImageSize = 0 = 1280x720),
-// and Resident Evil 4 / PRAGMATA (Switch 2: 5-arg SaveScreenshot with ImageOrientation).
+// Verified on another game (<title ID>, SDK 20.5.25: main+0x10fedc0 decodes its gallery JPEG with nn::image::JpegDecoder's default PixelFormat_Rgba32 into 0x7e9000 bytes
+// and calls the 4-arg SaveScreenshot with ImageSize = 1 = 1920x1080), another game (Switch 1: BGRA->RGBA8888 loop at main+0x1e1b2bc + 4-arg SaveScreenshot with ImageSize = 0 = 1280x720),
+// and another game / another game (Switch 2: 5-arg SaveScreenshot with ImageOrientation).
 // Offline/system-only album features (SaveCurrentScreenshot compositor capture, SaveAndShareScreenshot social upload, ShowAlbumFiles system applet) still return failure.
 #include "hle.h"
 #include <CoreFoundation/CoreFoundation.h>
@@ -24,7 +24,7 @@
 // nn::album Result values (module 214 = 0xd6; Pokopia SDK 20.5.25 nn::album::ConvertCapsrvResult, sdk+0x1a08a0)
 #define ALBUM_RES_UNKNOWN 0xcad6u   // module 214, desc 101: general I/O or encode failure
 #define ALBUM_RES_INVALID 0xccd6u   // module 214, desc 102: unsupported/invalid arguments or unconfigured album folder
-#define ALBUM_RES_FULL    0xced6u   // module 214, desc 103: storage full (ENOSPC / EDQUOT; RE4 main+0x9cb2790, PRAGMATA main+0x7134c08)
+#define ALBUM_RES_FULL    0xced6u   // module 214, desc 103: storage full (ENOSPC / EDQUOT; RE4 main+0x9cb2790, another game main+0x7134c08)
 
 static pthread_mutex_t g_album_mu = PTHREAD_MUTEX_INITIALIZER;
 
@@ -267,7 +267,7 @@ HLE_FORCE("_ZN2nn5album22SaveAndShareScreenshotEPKvmNS0_9ImageSizeENS0_16ImageOr
     (void)p; (void)n; (void)size; (void)orient; (void)report; (void)uid; (void)text;
     return RES_FAIL;
 }
-// The SDK 20 overload that hands back a share ID, and the URL of the last post (Animal Crossing: New Horizons 3.0.3)
+// The SDK 20 overload that hands back a share ID, and the URL of the last post (another game 3.0.3)
 HLE_FORCE("_ZN2nn5album22SaveAndShareScreenshotEPNS0_7ShareIdEPKvmNS0_9ImageSizeENS0_17AlbumReportOptionERKNS_7account3UidEPKc",
           "save and share a picture: offline, fails", Result, h_album_ShareId,
           void *id, const void *p, size_t n, int size, int report, const void *uid, const char *text) {
@@ -279,7 +279,7 @@ HLE_FORCE("_ZN2nn5album21GetSharePostedLastUrlEPcmRKNS0_7ShareIdE",
     (void)id; if (url && n) url[0] = 0; return RES_FAIL;
 }
 HLE_FORCE("_ZN2nn5album14ShowAlbumFilesEv", "album applet: not shown", Result, h_album_Show, void) { return RES_FAIL; }
-// Pokemon Legends: Z-A (SDK 19), Xenoblade Chronicles X DE, Fast Fusion: compositor frame capture (not a caller-supplied pixel buffer)
+// Pokemon Legends: Z-A (SDK 19), Xenoblade Chronicles X DE, another game: compositor frame capture (not a caller-supplied pixel buffer)
 HLE_FORCE("_ZN2nn5album21SaveCurrentScreenshotENS0_17AlbumReportOptionE",
           "screenshot of the current compositor frame (capsrv): not implemented, fails", Result, h_album_SaveCur, int report) {
     (void)report; LOG("album::SaveCurrentScreenshot (not implemented)"); return RES_FAIL;

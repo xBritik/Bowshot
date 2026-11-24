@@ -9,7 +9,7 @@ different values join) and a chain of operations applied to it (a 32-bit truncat
 possible low 12 bits. A guard (cmp / b.cond, tst / b.cond, cbz, tbz) refines the root, so every register derived from it narrows at once: the bound reaches the index whether the
 test comes before the mask (ULTRA STREET FIGHTER II: tbnz w17,#3; and x18,x17,#0xf), after it (Manual Samuel: and w13,w17,#7; tbnz w17,#2), on a copy made earlier (DRAGON QUEST
 XI S: mov w0,w18 ... cmp w18,#4; b.hi), on a masked copy made in another block (FINAL FANTASY CRYSTAL CHRONICLES: and x6,x17,#0x7ff there; and w18,w17,#0x7ff; cmp w18,#3; b.hi
-here), or before a complement (Return of the Obra Dinn: tst w17,#7; b.eq; mvn w17,w17; and x18,x17,#7). An output that depends only on its root's low 12 bits (any chain with an
+here), or before a complement (another game: tst w17,#7; b.eq; mvn w17,w17; and x18,x17,#7). An output that depends only on its root's low 12 bits (any chain with an
 and of at most 0xfff) is computed exactly.
 
 Control enters a function at its start, at the entries the caller names (direct branches from other functions, targets of tables elsewhere), all with every register
@@ -17,7 +17,7 @@ unknown, and at its C++ exception landing pads (from the LSDA), with what the ca
 index into a guarded run makes the bound fail by itself. Calls and system calls clobber x0-x18 and x30. A dispatch through any register counts: its targets are edges (a byte
 or halfword table whose index stays unbounded lands on every pad it can). A br that reads no table (an indirect tail call) leaves the function, and code that nothing above
 reaches is dead to the analysis, as both are to the rewriter's own sites. A number (mov) inside page zero is never a table base: Horizon never maps page zero, so no path of a
-working game carries it to a load (Cuphead 1.3.7 main+0x59dc90 interleaves four dispatch loops that share x12 as a base and as the constant 1).
+working game carries it to a load (another game 1.3.7 main+0x59dc90 interleaves four dispatch loops that share x12 as a base and as the constant 1).
 
 There are two readings (solve). The first knows every number the code writes and gives the control flow. The second reads the br x18 tables again on that control flow with
 those numbers unknown, so that each table's size is what its guards allow however control reaches it.
@@ -106,14 +106,14 @@ ZERO = ('c', frozenset((0,)), frozenset((0,)))
 
 def _addresses(v):
     """The constants of v that can be a table's base: a number inside page zero cannot (Horizon never maps page zero, so no path of a working game carries it to a
-    table load: Cuphead 1.3.7 main+0x59dc90 uses x12 as one loop's base and as another's constant 1)"""
+    table load: another game 1.3.7 main+0x59dc90 uses x12 as one loop's base and as another's constant 1)"""
     return frozenset(x for x in v[1] if x not in v[2] or x >= 0x1000)
 
 def _default(root): return (0, M64 if len(root) == 1 else _mask(root[-1]), FULL, 0, M32)
 
 def _widen(old, new, root):
     """new, with each part that grew since old (the range, the low 12 bits, the low 32 bits' range) made unknown and the others kept: a guard on the low 32 bits
-    holds while the full range keeps growing (ASTRAL CHAIN main+0x6db1a4: cmp w18,#3 on w12 - 2, joined from four blocks inside a loop)"""
+    holds while the full range keeps growing (another game main+0x6db1a4: cmp w18,#3 on w12 - 2, joined from four blocks inside a loop)"""
     if new == old: return new
     d = _default(root)
     lo, hi = new[:2] if new[:2] == old[:2] else d[:2]
@@ -459,7 +459,7 @@ class Function:
                 if m == 'mvn' and len(ops) == 2 and ops[1].shift.value == 0: return self.op(st, k, dst, v, ('not', dst[1]))
                 if m in ('uxtb', 'uxth') and len(ops) == 2: return self.op(st, k, dst, v, ('and', 0xff if m == 'uxtb' else 0xffff))
                 if m == 'ubfx' and len(ops) == 4 and ops[2].imm == 0: return self.op(st, k, dst, v, ('and', (1 << ops[3].imm) - 1))
-                if (m == 'lsr' and len(ops) == 3 and ops[2].type == ARM64_OP_IMM) or (m == 'ubfx' and len(ops) == 4):   # a new value, bounded by the shift (ASTRAL CHAIN main+0x6db104: lsr x17,x11,#32; cmp w17,#5)
+                if (m == 'lsr' and len(ops) == 3 and ops[2].type == ARM64_OP_IMM) or (m == 'ubfx' and len(ops) == 4):   # a new value, bounded by the shift (another game main+0x6db104: lsr x17,x11,#32; cmp w17,#5)
                     s = ops[2].imm; top = _mask(dst[1]) >> s if m == 'lsr' else (1 << ops[3].imm) - 1
                     a = _eval(st, v); nv = self.fresh(st, k, dst[0], dst[1])
                     lo, hi = (a.lo >> s, min(a.hi >> s, top)) if a is not None and m == 'lsr' else (0, top)
@@ -506,7 +506,7 @@ class Function:
     # The fixpoint
     def join(self, a, b, k, visits):
         """The state at instruction k: a (stored) joined with b (incoming). Registers that hold the same chain of one root on each side keep their chains of one
-        shared phi root, so a copy or a mask stays tied to its source through a loop (Mario + Rabbids Kingdom Battle subsdk0+0x7340b8: x18 copied from w17 at the
+        shared phi root, so a copy or a mask stays tied to its source through a loop (another game subsdk0+0x7340b8: x18 copied from w17 at the
         loop's head, w17 checked again in every case block)"""
         regs, cons, widen = [], {}, visits > WIDEN
         phis, pairs, assigned = set(), {}, set()
@@ -684,7 +684,7 @@ def solve(insl, img, code_ok, entries=(), outside=(), landing=None, unwound=True
     register (Manual Samuel's x17 tables, a byte table whose index is a csel of constants). The second reads the rewriter's br x18 tables again on that control
     flow with those numbers unknown, so that each table's size is what its guards allow, however control reaches it: a path the analysis cannot see then still
     finds its entry (Manual Samuel main+0x2e8174: cmp w18,#6 allows 7 entries where the constants on the known paths reach 2). Only a br x18 that no guard bounds
-    keeps the first reading's table (a base that is the constant 1 on another path, Cuphead)"""
+    keeps the first reading's table (a base that is the constant 1 on another path, another game)"""
     if not insl: return {}, {}
     insl = [Ins(p) for p in insl]
     x18 = {p.address for p in insl if p.mnemonic == 'br' and p.op_str == 'x18'}

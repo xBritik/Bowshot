@@ -366,7 +366,7 @@ int main(int argc, char **argv) { @autoreleasepool {
         EXPECT("real QueuePresent: a window without a crop queues the layer crop",1,got);
         h_nvnWindowFinalize((NVNwindow *)&w2);
     }
-    {   // The crop only picks texels; the picture has the layer's shape (Super Mario Galaxy 2's storybook cutscenes: 1200x960 of a 1920x1080 swapchain, shown at 16:9, issue #949)
+    {   // The crop only picks texels; the picture has the layer's shape (another game's storybook cutscenes: 1200x960 of a 1920x1080 swapchain, shown at 16:9, issue #949)
         const int W=64,H=36,TW=64,TH=36;MTLTextureDescriptor *td=[MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:TW height:TH mipmapped:NO];td.storageMode=MTLStorageModeShared;td.usage=MTLTextureUsageShaderRead;
         id<MTLTexture> sw=[g_dev newTextureWithDescriptor:td];uint8_t *sp=malloc(TW*TH*4);
         const int crop54[4]={0,0,40,32};   // 5:4 in the top-left corner: red inside, green outside

@@ -158,7 +158,7 @@ static void same_cell(pool_t *pool) {
     CHECK(m[0].heap!=m[2].heap,"an offset 16 KB further in the same cell is another family");
     for (int i=0;i<4;i++) mtl_tex_release(&t[i]);
 }
-// A resolution family member read after another size wrote the shared storage sees that size's texels, misplaced but of the same format, as on the console (ASTRAL CHAIN, issue #1935)
+// A resolution family member read after another size wrote the shared storage sees that size's texels, misplaced but of the same format, as on the console (another game, issue #1935)
 static void cross_size_read(void) {
     void *mem=NULL; posix_memalign(&mem,16384,16<<20); memset(mem,0,16<<20);
     pool_t pool={.magic=MAGIC('P','O','O','L'), .flags=NVN_MEMORY_POOL_FLAGS_CPU_NO_ACCESS|NVN_MEMORY_POOL_FLAGS_GPU_CACHED|NVN_MEMORY_POOL_FLAGS_COMPRESSIBLE, .mem=mem, .size=16<<20};

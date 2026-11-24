@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Media.Vision's MVGL archives (MDB1, little-endian, no encryption on the Switch):
-#   · Legacy layout (Digimon Story Cyber Sleuth: Complete Edition, DSDB*.nx64.mvgl):
+#   · Legacy layout (another game, DSDB*.nx64.mvgl):
 #       +0x00 'MDB1', u16 tree entries, u16 name entries, u32 data entries, u32 data start, u32 archive size (0x14 bytes)
 #       +0x14 tree entries, 8 bytes each: u16 compare bit, u16 data index (0xffff for the root and inner nodes), u16 left, u16 right (a Patricia tree over the names)
 #       then name entries, 0x40 bytes each, by tree index: char[4] extension (space-padded), char[0x3c] name ('\'-separated path without extension)
 #       then data entries, 12 bytes each: u32 offset (from data start), u32 length, u32 stored length; stored < length is doboz-compressed (version 0)
-#   · Wide layout (Digimon Story Time Stranger, app_*.nx64.mvgl / nx_patch_*.nx64.mvgl):
+#   · Wide layout (another game, app_*.nx64.mvgl / nx_patch_*.nx64.mvgl):
 #       +0x00 'MDB1', u32 tree entries, u32 name entries, u32 data entries, u64 data start, u64 archive size (0x20 bytes)
 #       +0x20 tree entries, 16 bytes each: u32 compare bit, u32 data index (0xffffffff for the root and inner nodes), u32 left, u32 right
 #       then name entries, 0x80 bytes each: char[4] extension (space-padded), char[0x7c] name

@@ -2,7 +2,7 @@
 """Unreal Engine 4 / 5's engine address region in main, found by the engine's own code, without a build ID: patch_nso.py puts observation gate OBS_UE_REGION on the store of the
 region's size right before nninitStartup reserves it, and the host gives the region what the alias region has room for there (dm/host/hle_svc.c "Unreal's engine region"). The
 engine reserves 62 GB by default (16 GB in Unreal Engine 4.18), sized for the Switch's 64 GB alias region. -SwitchVirtualAddressSpaceSize= sets the size, but it is no general way
-to give it: UE 4.26's nninitStartup reserves the region only when the option is absent (its size variable is also its "reserved" flag; Pikmin 4), so the base stays 0 with it.
+to give it: UE 4.26's nninitStartup reserves the region only when the option is absent (its size variable is also its "reserved" flag; another game), so the base stays 0 with it.
 
 The chain, each link unique or nothing is gated:
 - the option's name, "SwitchVirtualAddressSpaceSize" (ASCII), in ro: a main without it has no engine region of this kind;
@@ -10,10 +10,10 @@ The chain, each link unique or nothing is gated:
 - in that function, the one bl to the PLT stub of nn::os::AllocateAddressRegion(uintptr_t *, size_t) whose straight-line code (back to the branch before it) sets x0 to the region's
   base variable (adrp + add, or a mov of one) and stores the size in the word after it, the region's size variable: the last str xS, [xB, #lo + 8] before the call. x1 at the call
   is that size (S = 1, or x1 and xS set from one constant), and nothing after the store writes x1. The gate goes on the store, the register S passed in the gate number's upper bits.
-The forms found: a csel of the default and the option's size rounded up to 4 KB, then str x1 (Unreal Engine 4.27 and 5: DRAGON QUEST VII Reimagined, OCTOPATH TRAVELER 0,
-FINAL FANTASY RESONANCE, SHIN MEGAMI TENSEI V: Vengeance); the default stored only when the variable is 0, then rounded up into x1 and stored again (OCTOPATH TRAVELER II, 4.27);
-str x8 of the default with x1 set from the same constant, reached only when the variable is 0 (Pikmin 4, 4.26), the constant set before the store or after it (TRIANGLE STRATEGY, 4.27:
-the rewriter then makes that mov x1, x8, so the request takes the gate's size); str x1 of the 16 GB default, reached only when the variable is 0 (DRAGON QUEST XI S, 4.18). OCTOPATH TRAVELER (4.18 without virtual address memory) has the same code; its nninitStartup never reaches it.
+The forms found: a csel of the default and the option's size rounded up to 4 KB, then str x1 (Unreal Engine 4.27 and 5: another game, another game,
+another game, another game); the default stored only when the variable is 0, then rounded up into x1 and stored again (another game, 4.27);
+str x8 of the default with x1 set from the same constant, reached only when the variable is 0 (another game, 4.26), the constant set before the store or after it (another game, 4.27:
+the rewriter then makes that mov x1, x8, so the request takes the gate's size); str x1 of the 16 GB default, reached only when the variable is 0 (DRAGON QUEST XI S, 4.18). Another game (4.18 without virtual address memory) has the same code; its nninitStartup never reaches it.
 Usage on its own: ue_region.py <module>... (what the chain finds in each)"""
 import bisect, re, struct, sys, os
 from capstone.arm64 import ARM64_OP_IMM, ARM64_OP_MEM, ARM64_OP_REG
@@ -107,7 +107,7 @@ def find(img, text_end, ro_off, data_off):
     if not stubs: return None, None, None, '[RED] Unreal\'s engine region option but no nn::os::AllocateAddressRegion import'
     word = lambda a: struct.unpack_from('<I', img, a)[0]
     target = lambda a: a + (((word(a) & 0x3FFFFFF) ^ 0x2000000) - 0x2000000) * 4
-    # Function starts: the targets of every bl and the defined symbols. A function here runs from its start to the next one (many have no FDE: DRAGON QUEST VII Reimagined's
+    # Function starts: the targets of every bl and the defined symbols. A function here runs from its start to the next one (many have no FDE: another game's
     # nninitStartup is not among the 32,152 functions its FDEs describe)
     starts = {o for o, n in syms.values() if n and o < text_end}
     for m in re.finditer(rb'[\x94-\x97]', img[:text_end]):

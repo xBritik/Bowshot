@@ -39,11 +39,11 @@ def context(at):   # GetManagerFromContext(K) at at + 8: mov w0, #11; b there; a
     return [movz(0, 11), B(at + 4, at + 8), ADRP(8, at + 8, CTX), ADDI(8, 8, CTX & 0xfff), ldr_idx(0, 8, 0), RET]
 
 
-def context2019(at):   # Unity 2019.4 (Pokémon Brilliant Diamond): a framed getter, stp; mov x29, sp; mov w0, #11; bl H; ldp; ret, with H as in context
+def context2019(at):   # Unity 2019.4 (another game): a framed getter, stp; mov x29, sp; mov w0, #11; bl H; ldp; ret, with H as in context
     return [0xA9BF7BFD, 0x910003FD, movz(0, 11), bl(at + 12, at + 24), 0xA8C17BFD, RET, ADRP(8, at + 24, CTX), ADDI(8, 8, CTX & 0xfff), ldr_idx(0, 8, 0), RET]
 
 
-def context2017(at):   # Unity 2017.4 (Return of the Obra Dinn): framed, and H adds the index first: add x8, x8, w0, sxtw #3; ldr x0, [x8, #0xc0]
+def context2017(at):   # Unity 2017.4 (another game): framed, and H adds the index first: add x8, x8, w0, sxtw #3; ldr x0, [x8, #0xc0]
     return [0xA9BF7BFD, 0x910003FD, movz(0, 11), bl(at + 12, at + 24), 0xA8C17BFD, RET, ADRP(8, at + 24, CTX), ADDI(8, 8, CTX & 0xfff), 0x8B20CD08, LDRX(0, 8, 0xc0 // 8), RET]
 
 

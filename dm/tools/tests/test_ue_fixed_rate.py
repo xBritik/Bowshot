@@ -1,6 +1,6 @@
 """Unreal's UEngine::FixedFrameRate and bUseFixedFrameRate found by their reflection entries and GEngine where FEngineLoop::Init makes the engine (dm/tools/ue_fixed_rate.py), on
-synthetic images, no game files: the offset after the array size (UE 4.22-5.0, Pikmin 4) and after a setter and a getter (UE 5.1+, DRAGON BALL: Sparking! ZERO), the name shared with
-bUseFixedFrameRate's tail, the flag from its set-bit function, GEngine as a page plus offset (Pikmin 4) and through a GOT slot (Sparking! ZERO, the key the tail of "UGameEngine"), a store
+synthetic images, no game files: the offset after the array size (UE 4.22-5.0, another game) and after a setter and a getter (UE 5.1+, another game), the name shared with
+bUseFixedFrameRate's tail, the flag from its set-bit function, GEngine as a page plus offset (another game) and through a GOT slot (Sparking! ZERO, the key the tail of "UGameEngine"), a store
 with no reload or virtual call after it (not taken), two creations naming different globals (red), and an entry of another kind (not taken)."""
 import struct
 import sys
@@ -54,7 +54,7 @@ class FindTest(unittest.TestCase):
         g, f, fl, why = find(image(creations=((GENGINE, True),), tail=True))
         self.assertEqual((g, f, fl), (GENGINE, FIELD, 0x9c4 << 8 | 0x40), why)
 
-    def test_ue4_layout_page_and_offset(self):   # Pikmin 4: str x0, [x19, #0x880] with x19 the page
+    def test_ue4_layout_page_and_offset(self):   # Another game: str x0, [x19, #0x880] with x19 the page
         g, f, fl, why = find(image(ue51=False))
         self.assertEqual((g, f, fl), (GENGINE, FIELD, 0x9c4 << 8 | 0x40), why)
 

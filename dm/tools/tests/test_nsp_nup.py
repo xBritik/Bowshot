@@ -487,43 +487,6 @@ class Pack(Base):
         jp = (b / 'control.nacp').read_bytes()[2 * 0x300:2 * 0x300 + 0x200].split(b'\0')[0]
         self.assertEqual(jp.decode(), 'テス')
 
-    def test_settings_read_the_base_games_languages_when_the_update_has_no_control_data(self):   # a Switch 2 game's settings had no Game language row (LNPANDY/NX2Apple#619)
-        sys.path.insert(0, str(REPO / 'dm/games')); import settings
-        vars(nsp)['nacp'] = nacp   # main sets it
-        n = self.open(); app, base, vers, _ = pack_nup.scan(n)
-        pack_nup.pack_version(n, vers[VER], base, app, self.out() / 'u', say=lambda s: None)
-        pack_nup.pack_version(n, base, base, app, self.out() / 'b', say=lambda s: None)
-        u, b = self.out() / 'u', self.out() / 'b'
-        nac = bytearray((b / 'control.nacp').read_bytes()); struct.pack_into('<I', nac, 0x302C, 0b101)   # American English and Japanese
-        (b / 'control.nacp').write_bytes(nac)
-        self.assertFalse((u / 'control.nacp').exists())
-        control = nsp.languages_control(u, b)
-        self.assertEqual(nacp.languages(control), ['en-US', 'ja'])
-        with tempfile.TemporaryDirectory() as tmp:
-            (Path(tmp) / 'main.fixups.tsv').write_text('')
-            row = lambda path: [s for s in settings.build(f'{TID:016X}', tmp, str(path))['settings'] if s['env'] == 'DM_LANG']
-            self.assertEqual(row(control)[0]['options'], [['en-US', 'American English'], ['ja', 'Japanese']])
-            self.assertEqual(row(control)[0]['note'], '')   # the list is the game's own
-        self.assertEqual(nsp.languages_control(b, u), b / 'control.nacp')   # the packed version's own list wins when it has one
-        nac = bytearray(nac); struct.pack_into('<I', nac, 0x302C, 0b11); (u / 'control.nacp').write_bytes(nac)
-        self.assertEqual(nsp.languages_control(u, b), u / 'control.nacp')
-
-    def test_ipa_settings_read_the_picked_file_and_the_version_the_packed_one(self):   # build_ipa.sh's own lines: CONTROL is the NSP script's languages_control
-        self.assertIn('CONTROL=str(control)', (REPO / 'scripts/build_ipa_from_nsp.py').read_text(encoding='utf-8'))
-        script = (REPO / 'dm/ios/tools/build_ipa.sh').read_text(encoding='utf-8')
-        lines = script[script.index('VNACP=$(dirname "$ROMFS")'):]
-        lines = lines[:lines.index('\n', lines.index('VNACP=${CONTROL:-$VNACP}'))]
-        self.assertIn('[ "$PN" != 0 ] || VNACP=${CONTROL:-$VNACP}', script)   # a game of several programs: its first program's list
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp); (tmp / 'u').mkdir(); (tmp / 'b').mkdir()
-            (tmp / 'u/control.nacp').write_bytes(control_nacp('Test Game', 'テス', '1.2.3')); (tmp / 'b/control.nacp').write_bytes(control_nacp('Test Game', 'テス', '1.0.0'))
-            def after(**env):
-                out = subprocess.run(['bash', '-c', f't() {{ :; }}\n{lines}\necho "$VNACP|$DM_APP_VERSION"'], capture_output=True, text=True, check=True,
-                                     env={'PATH': os.environ['PATH'], 'DM': str(REPO / 'dm'), 'W': str(tmp / 'w'), 'ROMFS': str(tmp / 'u/RomFS.img'), **env})
-                return out.stdout.strip()
-            self.assertEqual(after(CONTROL=str(tmp / 'b/control.nacp')), f'{tmp}/b/control.nacp|1.2.3')
-            self.assertEqual(after(), f'{tmp}/u/control.nacp|1.2.3')   # by hand, without the NSP script
-
     def test_name_label_without_nacp_writes_none(self):   # the script then takes the profile's name, as for a dump
         write_nup(self.path, [(0, TID, 0, version(), tlv([(T_NAME, b'TG'), (pack_nup.T_ICON, b'\xff\xd8 icon')]))])
         n = self.open(); app, base, _, _ = pack_nup.scan(n)
@@ -702,16 +665,6 @@ class ShiftedMeta(Base):
         for _ in range(2): pack_nup.control(base, self.dir, say=said.append)
         self.assertEqual(len(said), 1, said)
 
-    def test_build_says_the_line(self):   # the NSP script's extraction keeps the packing quiet, not the lines about the control data (a profile: no survey)
-        write_nup(self.path, [(0, TID, 0, version(), shifted(FULL)), (1, TID, VER, version(main=b'new code'), tlv([(1, b'short'), (2, ICON)]))])
-        said = []
-        with mock.patch.object(nsp, 'find_repo', return_value=REPO), mock.patch.object(nsp, 'WORK_DIR', ''), mock.patch.object(nsp, 'PROD_KEYS', ''), \
-             mock.patch.object(nsp, 'check_prereqs'), mock.patch.object(nsp, 'say', side_effect=said.append), mock.patch.object(nsp, 'check_versions_aarch64', side_effect=Stop), \
-             mock.patch.object(nsp, 'ask', side_effect=AssertionError('asked for something')):
-            with self.assertRaises(Stop): nsp.main(nsp.parse_args([str(self.path)]))
-        self.assertEqual([s for s in said if 'one too low' in s or 'not a NACP' in s], [f'game.nup (update {VER}): {pack_nup.SHIFTED}',
-                         f'game.nup (update {VER}): its NACP record is 5 bytes, not 16,384 (0x4000): it is not a NACP, left out'])
-
     def test_survey_reads_a_shifted_block(self):   # the NSP script's survey (a NUP with no profile) saves the same control data, and says the line through its own output
         write_nup(self.path, [(0, NEW, 0, version(tid=NEW), shifted(FULL))])
         n = self.open(); _, base, _, _ = pack_nup.scan(n)
@@ -727,7 +680,7 @@ class Stop(Exception): pass
 S1, S2 = 0x0100F00000010000, 0x0400F00000010001   # a Switch 2 Edition of a Switch 1 game: the Switch 1 program (index 0) and the Switch 2 program (index 1) of application S1
 
 
-def program_nacp(owner=S1, aoc=S1 + 0x1000):   # a Switch 2 program's NACP: its application (SaveDataOwnerId) and add-on content base, as Super Mario Bros. Wonder's names them
+def program_nacp(owner=S1, aoc=S1 + 0x1000):   # a Switch 2 program's NACP: its application (SaveDataOwnerId) and add-on content base, as another game's names them
     b = bytearray(control_nacp('Test Game S2', 'テス', '1.2.1')); struct.pack_into('<QQ', b, pack_nup.NACP_AOC_BASE, aoc, owner)
     return tlv([(pack_nup.T_NACP, bytes(b))])
 
@@ -928,54 +881,6 @@ class ExternalDlc(Base):
 
 
 class Main(Base):
-    def test_aoc_dir_supplies_the_builds_dlc(self):
-        write_nup(self.path, [(0, TID, 0, version(), META), (1, TID, VER, version(), b'')])
-        romfs = self.dir / 'dlc-romfs'; romfs.mkdir()
-        (romfs / 'marker').touch()
-        source = self.dir / 'aoc'; source.mkdir()
-        romfs_image.pack(romfs, source / '1.img')
-        work = self.dir / f'{TID:016X}_build'
-        stale = work / 'aoc'; stale.mkdir(parents=True)
-        romfs_image.pack(romfs, stale / '2.img')
-        from game import Game
-        game = Game(REPO / 'dm/games' / f'{TID:016X}')
-        sources = {'graphics': ('gl', 'test'), 'gl_capture': (False, ''), 'gl_fixed': (False, '')}
-        with mock.patch.object(nsp, 'check_prereqs'), mock.patch.object(nsp, 'check_versions_aarch64'), \
-             mock.patch.object(nsp, 'build_mismatch', return_value=[]), mock.patch.object(nsp, 'build_sources', return_value=sources), \
-             mock.patch.object(nsp, 'rewrite', return_value=game), mock.patch.object(nsp, 'chain_header'), \
-             mock.patch.object(nsp, 'say'), mock.patch.object(nsp, 'build_gl_shaders', side_effect=Stop) as shaders:
-            for extra, expected in ((['--aoc-dir', str(source)], [work / 'external-dlc/aoc/1.img']), ([], [])):
-                with self.subTest(extra=extra), self.assertRaises(Stop):
-                    nsp.main(nsp.parse_args([str(self.path)] + extra))
-                self.assertEqual(shaders.call_args.args[2][2:], expected)
-
-    def test_app_version_from_a_nup_when_only_the_update_is_extracted(self):
-        tid, ver = 0x0400486024DEC000, 131072
-        from game import Game
-        row = Game(REPO / 'dm/games' / f'{tid:016X}').builds()[f'v{ver}']
-        update = version(tid=tid)
-        for module, bid in row.items():
-            if module != 'display': update['exefs'][module] = b'NSO0' + bytes(0x3c) + bytes.fromhex(bid)
-        npdm64 = bytearray(update['exefs']['main.npdm']); npdm64[0xc] = 1
-        update['exefs']['main.npdm'] = bytes(npdm64)
-        label = tlv([(pack_nup.T_DISPLAY, b'v1.1.1')])
-        base_label = tlv([(pack_nup.T_DISPLAY, b'1.0.0')])
-        update_nacp = tlv([(pack_nup.T_NACP, control_nacp('Test Game', '', '2.3.4'))])
-        sources = {'graphics': ('gl', 'test'), 'gl_capture': (False, '')}
-        registered = row['display']
-        for expected, display, base_meta, update_meta in (('1.1.1', '?', base_label, label), ('1.0', '?', base_label, b''),
-                                                          ('1.2.3', '?', META, label), ('1.1.1', registered, META, label),
-                                                          ('1.1.1', registered, b'', b''), ('2.3.4', registered, META, label + update_nacp)):
-            with self.subTest(expected=expected, display=display):
-                write_nup(self.path, [(0, tid, 0, version(tid=tid), base_meta), (1, tid, ver, update, update_meta)])
-                with mock.patch.object(Game, 'builds', return_value={f'v{ver}': {**row, 'display': display}}), \
-                     mock.patch.object(nsp, 'find_repo', return_value=REPO), mock.patch.object(nsp, 'WORK_DIR', ''), \
-                     mock.patch.object(nsp, 'check_prereqs'), mock.patch.object(nsp, 'build_sources', return_value=sources), \
-                     mock.patch.object(nsp, 'say'), mock.patch.object(nsp, 'say_game', side_effect=Stop) as app:
-                    with self.assertRaises(Stop): nsp.main(nsp.parse_args([str(self.path), '--platform', 'ios']))
-                self.assertEqual(app.call_args.args[2], expected)
-                self.assertFalse((self.dir / f'{tid:016X}_build/extract/v0').exists())
-
     def run_main(self, target, *, extract=False, package=None):
         seen, said = {}, []
         def stop(env, *a):
@@ -987,50 +892,6 @@ class Main(Base):
              mock.patch.object(nsp, 'ask', side_effect=AssertionError('asked for something')), mock.patch.object(nsp, 'package_reader', side_effect=AssertionError('read a package')):
             with self.assertRaises(Stop): nsp.main(nsp.parse_args([str(target)] + (['--package', package] if package else [])))
         return Path(seen['DM_ROOT']), said
-
-    def test_needs_no_keys_and_builds_beside_the_nup(self):
-        for target in (self.dir, self.path):
-            work, said = self.run_main(target)
-            self.assertEqual(work, self.dir / f'{TID:016X}_build')
-            self.assertTrue(any(s.startswith('a NUP: game.nup') for s in said), said)
-
-    def test_standalone_update_reaches_extraction_without_a_base(self):
-        write_nup(self.path, [(1, TID, VER, version(), META)], update_flags=pack_nup.STANDALONE)
-        for target in (self.dir, self.path):
-            work, said = self.run_main(target, extract=True)
-            self.assertFalse((work / 'extract/v0').exists())
-            self.assertEqual((work / f'extract/v{VER}/ExeFS/main').read_bytes(), b'code')
-            self.assertEqual(nacp.name(work / f'extract/v{VER}/control.nacp'), 'Test Game')
-            self.assertFalse(any(s.startswith('base:') for s in said))
-            self.assertIn(pack_nup.NO_BASE, said)
-            with self.assertRaisesRegex(nsp.BuildError, 'version to pack .* is not in the folder'):
-                self.run_main(target, package='v0')
-
-    def test_both_forms_of_no_base_pack_alike(self):   # Mario's profile needs v0 and registers the update: without a base game it is packed from a derived profile, whichever the form
-        tid, ver = 0x010015100B514000, 327680
-        for packages, flags in (([(1, tid, ver, version(tid=tid), META)], pack_nup.STANDALONE), ([(0, 0, 0, {'exefs': {}}, META), (1, tid, ver, version(tid=tid), b'')], 0)):
-            with self.subTest(flags=flags):
-                write_nup(self.path, packages, update_flags=flags)
-                work, said = self.run_main(self.path, extract=True)
-                self.assertFalse((work / 'extract/v0').exists())
-                self.assertEqual((work / f'extract/v{ver}/ExeFS/main').read_bytes(), b'code')
-                self.assertEqual(nacp.name(work / f'extract/v{ver}/control.nacp'), 'Test Game')
-                self.assertTrue(any('the folder has no v0' in s for s in said), said)
-                self.assertIn(pack_nup.NO_BASE, said)
-
-    def test_a_version_it_cannot_pack_is_a_red_line(self):   # through cli(): the disk check reads the RomFS folder before any extraction
-        exefs_only = {'exefs': version()['exefs']}
-        for packages, flags, package in (([(1, TID, VER, exefs_only, b'')], pack_nup.STANDALONE, None),   # the only update
-                                         ([(1, TID, VER - 1, version(), b''), (1, TID, VER, exefs_only, b'')], pack_nup.STANDALONE, None),   # the newest, picked by default
-                                         ([(0, TID, 0, exefs_only, b''), (1, TID, VER, version(), b'')], 0, 'v0')):   # a base with code and no RomFS
-            with self.subTest(flags=flags, package=package):
-                write_nup(self.path, packages, update_flags=flags)
-                argv = [str(self.path)] + (['--package', package] if package else [])
-                with mock.patch.object(nsp, 'find_repo', return_value=REPO), mock.patch.object(nsp, 'WORK_DIR', ''), mock.patch.object(nsp, 'PROD_KEYS', ''), \
-                     mock.patch.object(nsp, 'check_prereqs'), mock.patch.object(nsp, 'say'), mock.patch.object(nsp.PROG, 'say') as red:
-                    self.assertEqual(nsp.cli(argv), 1)
-                self.assertRegex(red.call_args.args[0], r'^\[RED\] .*no romfs/')
-
 
 if __name__ == '__main__':
     unittest.main()

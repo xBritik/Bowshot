@@ -34,7 +34,7 @@ def archive(*records):
     return b'BERG' + struct.pack('<I', 22) + bytes(48) + b''.join(records)
 
 
-def cache(raw, kind=0x13c):   # a bare .mcache file (South Park: The Fractured But Whole): its 0xabcd00d4 head, then the body
+def cache(raw, kind=0x13c):   # a bare .mcache file (another game): its 0xabcd00d4 head, then the body
     return struct.pack('<5I', 0xabcd00d4, kind, 0, len(raw), len(raw)) + raw
 
 

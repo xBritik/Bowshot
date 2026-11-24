@@ -98,7 +98,7 @@ static NSString *const SHIM = @R"JS(
     if (el && el !== document.body && el !== document.documentElement && el.setAttribute) el.setAttribute('data-dm-focus', '');
   };
   // The button icons in any font: on the Switch a character no font of the page's list has comes from the system's fonts, the extension font among them, so a page may name
-  // a family that does not exist (Mario Kart 8 Deluxe's footer: "none,NintendoExt0003") or its own font without the icons ("FontB",NintendoExt003). WebKit falls back to macOS's
+  // a family that does not exist (another game's footer: "none,NintendoExt0003") or its own font without the icons ("FontB",NintendoExt003). WebKit falls back to macOS's
   // fonts instead, which have no such glyphs (an empty box). Each family the page names that is its own (@font-face) or not installed here gets the host's extension font for
   // U+E000-E1FF as a face of that family, before the page's rules, so a page font that has the glyph still draws it; installed fonts (Arial, Helvetica) are left alone
   var GENERIC = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|math|emoji|fangsong|-apple-system|ui-.*|inherit|initial|unset|revert|revert-layer)$/i;
@@ -154,7 +154,7 @@ static NSString *const SHIM = @R"JS(
   try { Object.defineProperty(Navigator.prototype, 'getGamepads', {configurable: true, value: function () { return [pad(), null, null, null]; }}); } catch (e) {}
 
   // The Switch browser's spatial navigation: the D-pad moves the focus to the nearest focusable element in its direction, as the default action of the arrow key, so a page
-  // that prevents the key (Mario Kart 8 Deluxe's Info pages turn Left / Right off) or moves the focus in its own handler (their wrap from the last entry to the first) keeps
+  // that prevents the key (another game's Info pages turn Left / Right off) or moves the focus in its own handler (their wrap from the last entry to the first) keeps
   // what it did. With nothing in that direction the box the focus is in, or the page, scrolls. A synthetic key event has no default action in WebKit, so the host does it.
   // At load the first element in tab order takes the focus when the page gave it to none, as on the Switch, where there is always a focused element for A to press
   var FOCUSABLE = 'a[href],area[href],button,input,select,textarea,iframe,summary,[tabindex],[contenteditable]';

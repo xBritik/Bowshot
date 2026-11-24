@@ -121,7 +121,7 @@ CASES = [
     ('cas_runtime_pred', 'cas', dict(runtime_pred=True, compare=INIT[0], value=99), (HI, LO), 1),
     ('cas_runtime_pred_false', 'cas', dict(runtime_pred=True, compare=INIT[0], value=99, runs=False), (HI, LO), 0),
     ('cas_32bit_address', 'cas', dict(extended=False, compare=INIT[0], value=99), (0, LO), 1),
-    ('cas_rd_is_ra', 'cas', dict(rd=2, rb=8, compare=INIT[0], value=99), (HI, LO), 1),   # EA SPORTS FC 27's form: ATOM.E.CAS R6, [R6], R8, R9
+    ('cas_rd_is_ra', 'cas', dict(rd=2, rb=8, compare=INIT[0], value=99), (HI, LO), 1),   # Another game's form: ATOM.E.CAS R6, [R6], R8, R9
     ('cas_rd_is_rb', 'cas', dict(rd=6, compare=INIT[0], value=99), (HI, LO), 1),
     ('cas_rd_is_rb1', 'cas', dict(rd=7, compare=INIT[0], value=99), (HI, LO), 1),
     ('cas_rd_rz', 'cas', dict(rd=255, compare=INIT[0], value=99), (HI, LO), 1),

@@ -1,5 +1,5 @@
 """A vertex shader's far fact (dm/gfx/tools/dmsh_reflect.py far_plane, raster_facts): whether main0 puts every vertex on the far plane (gl_Position z = w), which the host draws
-with a depth bias towards the far value and depth clamping (nvn_mtl.m draw; docs/reference/rendering.md, Depth on the far plane). Mario Kart 8 Deluxe's sky in Sky-High Sundae
+with a depth bias towards the far value and depth clamping (nvn_mtl.m draw; docs/reference/rendering.md, Depth on the far plane). Another game's sky in Sky-High Sundae
 showed red blocks where Apple's rasterizer gave it depths just below 1. No game files, no Metal compiler."""
 from pathlib import Path
 import sys

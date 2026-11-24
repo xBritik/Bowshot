@@ -206,7 +206,7 @@ int main(void) {
     dm_focus_set(1); dm_set_opmode(0); dm_focus_set(3); dm_set_opmode(1);
     CHECK(pop_is(15) && pop_is(30) && pop_is(31) && empty(), "after wrapping across 32 slots still deduplicated by 15,30,31 in first-seen order");
     CHECK(child_burst(3), "new change after the consumer pops and before it queries: the new resume is not missed, final focus 1 / mode 0");
-    // The notification event follows the queue, as the am service's does: signalled while a message is queued, cleared when the last one is popped. Monster Hunter Rise's
+    // The notification event follows the queue, as the am service's does: signalled while a message is queued, cleared when the last one is popped. Another game's
     // MessageSuperviseThread (main+0x6bc8fc4) waits on it with WaitAny, which does not clear it, then pops until the queue is empty: a signal left behind made it spin on a core
     reset(); g_ntf_opmode = g_ntf_perfmode = 1;
     h_oe_GetMsgEv();
@@ -219,7 +219,7 @@ int main(void) {
     CHECK(pop_is(30) && ev_sig && pop_is(31) && !ev_sig, "notification event: cleared only when the queue is empty");
     ev_sig = 1;
     CHECK(empty() && !ev_sig, "notification event: a pop from an empty queue clears a signal left behind");
-    // Focus handling modes 0 and 3 get no focus notifications (the system suspends the game instead); 1 and 2 do. Super Mario Galaxy 2 sets 3 and deadlocked in its own pause on focus 2
+    // Focus handling modes 0 and 3 get no focus notifications (the system suspends the game instead); 1 and 2 do. Another game sets 3 and deadlocked in its own pause on focus 2
     reset(); g_ntf_opmode = g_ntf_perfmode = 1; h_oe_SetFocusMode(3);
     dm_focus_set(2); dm_focus_set(3);
     CHECK(empty() && h_oe_GetFocus() == 3, "focus mode 3: focus changes queue nothing, the state is still queried as 3");

@@ -1,4 +1,4 @@
-"""rpf6.py: Rockstar RPF6 archives (Red Dead Redemption). No game files: a synthetic archive (header, entry table, name table) encrypted with a made-up key, and a synthetic
+"""rpf6.py: Rockstar RPF6 archives (another game). No game files: a synthetic archive (header, entry table, name table) encrypted with a made-up key, and a synthetic
 key setup function for key_from_setup, both laid out as the module's comment describes."""
 import ctypes
 import os

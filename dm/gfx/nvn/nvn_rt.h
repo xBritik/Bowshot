@@ -1,5 +1,5 @@
 // The computation a thread that carries a frame declares in its time-constraint (real-time) policy (hle_nvn.c rt_tick): the CPU time it needs per presented frame.
-// The scheduler and the performance controller take the declaration as the thread's need: under it the thread is held up each frame (DARK SOULS: REMASTERED's render
+// The scheduler and the performance controller take the declaration as the thread's need: under it the thread is held up each frame (another game's render
 // thread, declared at 2.5 ms where one or two frames in 120 needed 4.4, stalled 30-60 ms about once a second), and the clock is set so that it fits the period.
 // So the declaration covers the window's peak as well as its 90th percentile: the larger of 1.25 x the p90 and 1.1 x the peak of the last RT_WIN frames, between 1 ms and
 // 0.9 x the period; it is declared again only when it moves by more than 15%. Pure logic, no system calls (dm/gfx/tests/t_thread_rt.c).

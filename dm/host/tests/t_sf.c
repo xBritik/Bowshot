@@ -1,6 +1,6 @@
 // Host service sessions (hle_sf.c) without a guest: a CMIF request on a served service (olsc:u; mnpp:app with its PID / Uid and input buffer; notif:a as a domain) succeeds with zeroed output and no special header; the camera context of the Switch 2
 // (nn::camera::sdk::CreateCameraContext) is a host session with no camera: Initialize's command 3 and Finalize's 4 succeed, 21 copies an event's read end to the client in the special header,
-// and the device commands (QueryDeviceConnection's 29, any other) fail with 0x7c4, "no camera device" (Star Fox's camera module and its game code read it so; the earlier 0xdc4 read as "no camera support")
+// and the device commands (QueryDeviceConnection's 29, any other) fail with 0x7c4, "no camera device" (another game's camera module and its game code read it so; the earlier 0xdc4 read as "no camera support")
 #include "../hle.h"
 #undef HLE_FORCE
 #define HLE_FORCE(mangled, why, ret, cname, ...) static ret cname(__VA_ARGS__)

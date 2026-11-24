@@ -155,7 +155,7 @@ def geometry_header(passthrough=True, vertices=1, topology=7, invocations=1):
 
 
 class TopologyPointer(unittest.TestCase):
-    def test_a_helper_function_gets_the_table_as_a_pointer(self):   # Kirby Air Riders: SPIRV-Cross makes a helper of a block the shader reaches from several places, and passes the table to it
+    def test_a_helper_function_gets_the_table_as_a_pointer(self):   # Another game: SPIRV-Cross makes a helper of a block the shader reaches from several places, and passes the table to it
         src = ('struct spvDescriptorSetBuffer0 { texture_buffer<float> trb_data [[id(16)]]; };\n'
                'void _97(texture_buffer<float> trb_data) { float a = trb_data.read(uint(1)).x; }\n'
                'kernel void main0(constant spvDescriptorSetBuffer0& spvDescriptorSet0) { float b = spvDescriptorSet0.trb_data.read(uint(f(2))).x; _97(spvDescriptorSet0.trb_data); }\n')
@@ -462,7 +462,7 @@ class MeshPassthrough(unittest.TestCase):
                 self.assertEqual(r.returncode, 0, r.stderr[-2000:])
 
     def test_large_vertices_take_fewer_triangles(self):
-        # Donkey Kong Bananza's vertex output: 24 float4 and the point size, 388 bytes; 32 triangles (37,248 bytes) exceed Metal's 32 KB
+        # Another game's vertex output: 24 float4 and the point size, 388 bytes; 32 triangles (37,248 bytes) exceed Metal's 32 KB
         self.assertEqual(dmsh_mesh.out_bytes('struct main0_out\n{\n' + ''.join(f'    float4 m_{i} [[user(locn{i})]];\n' for i in range(23)) +
                                              '    float4 gl_Position [[position, invariant]];\n    float gl_PointSize;\n};'), 388)
         self.assertEqual(dmsh_mesh.prims_for(388), 16)

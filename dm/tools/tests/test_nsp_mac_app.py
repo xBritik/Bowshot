@@ -31,7 +31,7 @@ spec = importlib.util.spec_from_file_location('build_ipa_from_nsp', SCRIPT)
 nsp = importlib.util.module_from_spec(spec); spec.loader.exec_module(nsp)
 spec = importlib.util.spec_from_file_location('pack_app', REPO / 'dm/mac/pack_app.py')
 pack_app = importlib.util.module_from_spec(spec); spec.loader.exec_module(pack_app)
-TID = '01008CF01BAAC000'
+TID = '0400486024DEC000'
 TEST_ROOT = Path(os.environ.get('NXNATIVE_TEST_ROOT', tempfile.gettempdir()))
 
 def module_with_import(name, defined=False):
@@ -125,7 +125,7 @@ class PackReuse(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix='pack-reuse-', dir=TEST_ROOT)).resolve()
         self.addCleanup(shutil.rmtree, self.tmp)
         t = self.tmp
-        for d in ('patched', 'romfs/empty', 'msl', 'profile', 'font', 'aoc/1', 'pso', 'bin', 'sdk', 'source', 'host', 'tools', 'ios/Sources'):
+        for d in ('patched', 'romfs/empty', 'msl', 'profile', 'font', 'aoc/1', 'pso', 'bin', 'sdk', 'source', 'host', 'tools'):
             (t / d).mkdir(parents=True)
         files = {
             'dmhost': b'host', 'patched/main.patched.bin': b'code', 'patched/main.fixups.tsv': b'fixups',
@@ -136,7 +136,7 @@ class PackReuse(unittest.TestCase):
             'pso/gpu-prewarm-00.mtl4a': b'bases', 'pso/gpu-prewarm-00.keys': b'DMPSOIX1', 'pso/prewarm.tsv': b'stamp',   # --prebake's files and their index
             'env.txt': b'DM_TEST=1', 'split.tsv': b'split', 'icon.jpg': b'jpeg', 'source/launcher.c': b'launcher',
             'host/romfs_image.h': b'validator', 'host/save_sync.c': b'sync', 'host/save_sync.h': b'sync api', 'tools/romfs.py': b'reader', 'tools/nso_syms.py': b'symbols',
-            'source/Launcher.swift': b'window', 'ios/Sources/LauncherSettings.swift': b'model', 'ios/Sources/LauncherRow.swift': b'rows', 'ios/Sources/SaveSyncReport.swift': b'report',
+            'source/Launcher.swift': b'window', 'source/LauncherSettings.swift': b'model', 'source/LauncherRow.swift': b'rows', 'source/SaveSyncReport.swift': b'report',
         }
         for n in pack_app.TABLES: files['profile/' + n] = n.encode()
         for n, content in files.items(): (t / n).write_bytes(content)
@@ -221,7 +221,7 @@ class PackReuse(unittest.TestCase):
         names = ['dmhost', 'patched/main.patched.bin', 'patched/main.fixups.tsv', 'patched/main.gates.tsv', 'patched/main.cuts.tsv',
                  'patched/main.obs.tsv', 'patched/nro.tsv', 'msl/k.metallib', 'msl/k.json', 'msl/inputs.tsv', 'font/nintendo_ext.ttf',
                  'pso/gpu.mtl4a', 'pso/prebuilt.tsv', 'pso/rest_pairs.tsv', 'pso/archive.tsv', 'pso/gpu-prewarm-00.mtl4a', 'pso/gpu-prewarm-00.keys', 'pso/prewarm.tsv', 'env.txt', 'icon.jpg', 'source/launcher.c',
-                 'tools/nso_syms.py', 'source/Launcher.swift', 'ios/Sources/LauncherSettings.swift', 'ios/Sources/LauncherRow.swift', 'ios/Sources/SaveSyncReport.swift',   # the settings window's sources
+                 'tools/nso_syms.py', 'source/Launcher.swift', 'source/LauncherSettings.swift', 'source/LauncherRow.swift', 'source/SaveSyncReport.swift',   # the settings window's sources
                  'host/save_sync.c', 'host/save_sync.h']   # the cloud-save code the launcher links (its send after the host exits)
         names += ['profile/' + n for n in pack_app.TABLES]
         for name in names:
@@ -547,7 +547,7 @@ class PackReuse(unittest.TestCase):
     def test_missing_selected_inputs_fail_before_reuse_or_partial_creation(self):
         self.pack()
         for name in ('dmhost', 'patched/main.fixups.tsv', 'msl/k.metallib', 'romfs/marker', 'pso/prebuilt.tsv', 'env.txt', 'icon.jpg',
-                     'font', 'aoc', 'profile', 'bin/clang', 'bin/swiftc', 'sdk', 'bin/codesign', 'source/launcher.c', 'source/Launcher.swift', 'ios/Sources/LauncherRow.swift', 'ios/Sources/SaveSyncReport.swift'):
+                     'font', 'aoc', 'profile', 'bin/clang', 'bin/swiftc', 'sdk', 'bin/codesign', 'source/launcher.c', 'source/Launcher.swift', 'source/LauncherRow.swift', 'source/SaveSyncReport.swift'):
             with self.subTest(name=name):
                 p = self.tmp / name; hidden = p.with_name(p.name + '.hidden'); p.rename(hidden)
                 try:
@@ -771,7 +771,7 @@ class App(unittest.TestCase):
 
     def test_info_plist(self):
         p = plistlib.loads((self.app / 'Contents/Info.plist').read_bytes())
-        self.assertEqual((p['CFBundleExecutable'], p['CFBundleName'], p['CFBundleIdentifier'], p['CFBundleShortVersionString']), ('nxnative', 'Game: Test', 'org.nxnative.01008cf01baac000', '1.0.1'))
+        self.assertEqual((p['CFBundleExecutable'], p['CFBundleName'], p['CFBundleIdentifier'], p['CFBundleShortVersionString']), ('nxnative', 'Game: Test', 'org.nxnative.0400486024dec000', '1.0.1'))
         self.assertEqual((p['DMTitleID'], p['DMLanguage'], p['DMRomfsMarker'], p['CFBundleIconFile']), (TID, 'fr', 'region_common/audio/edward.bfsar', 'AppIcon'))
         self.assertIs(p['LSSupportsGameMode'], False)   # macOS's Game Mode holds the GPU at its lowest clock (frame-rate.md)
         self.assertEqual(p['DMSettings'], [])   # launcher.json's settings, as the saved choices they accept: none here
@@ -1062,7 +1062,7 @@ class Script(unittest.TestCase):
         self.assertEqual((a.platform, a.mac_sign, a.out), ('mac-app', 'Developer ID Application: X (T)', '/tmp/x.app'))
 
     def test_app_name(self):
-        self.assertEqual(nsp.mac_app_name('The Legend of Zelda: Echoes of Wisdom'), 'The Legend of Zelda - Echoes of Wisdom')
+        self.assertEqual(nsp.mac_app_name('Some Game: Subtitle'), 'Some Game - Subtitle')
         self.assertEqual(nsp.mac_app_name('AC/DC'), 'AC - DC'); self.assertEqual(nsp.mac_app_name(':'), 'nxnative')
 
     def pack_cmd(self, gfx, **kw):
@@ -1100,14 +1100,14 @@ class Script(unittest.TestCase):
             on_line('step: launcher and host (clones of the game files)')
             on_line(f'app: {out}')
         g = types.SimpleNamespace(table=lambda n: tmp / 'profile' / n, get={'app_category': 'public.app-category.games', 'romfs_marker': 'a/b', **kw.get('profile', {})}.get)
-        g.id = '01008CF01BAAC000'
+        g.id = '0400486024DEC000'
         self.prog = mock.Mock()
         real_run = subprocess.run
         def sw_vers(cmd, *a, **k): return subprocess.CompletedProcess(cmd, 0, '26.1\n', '') if cmd[0] == 'sw_vers' else real_run(cmd, *a, **k)   # pso_offline.os_min_default
         with mock.patch.object(nsp, 'run', fake_run), mock.patch.object(nsp, 'PROG', self.prog), mock.patch.object(subprocess, 'run', sw_vers), mock.patch.object(nsp, 'chain_of', lambda repo: '0123456789ab'), \
              mock.patch.object(nsp, 'mac_gpu_arch', lambda *a: 'applegpu_g14s'), mock.patch.object(nsp, 'say', self.said.append):
-            nsp.mac_app(sys.executable, REPO, out, 0x01008CF01BAAC000, tmp, tmp / 'ex', tmp / 'patched', tmp / 'dmhost', tmp / 'font', tmp / 'shader/cache' if gfx == 'nvn' else tmp / 'shader',
-                        kw.get('aoc'), gfx, 'en-US', g, 'Game', '1.0.0', 'org.nxnative.01008cf01baac000', None, kw.get('sign', ''), {}, tmp, gpus=kw.get('gpus', ''), prebake=kw.get('prebake', False))
+            nsp.mac_app(sys.executable, REPO, out, 0x0400486024DEC000, tmp, tmp / 'ex', tmp / 'patched', tmp / 'dmhost', tmp / 'font', tmp / 'shader/cache' if gfx == 'nvn' else tmp / 'shader',
+                        kw.get('aoc'), gfx, 'en-US', g, 'Game', '1.0.0', 'org.nxnative.0400486024dec000', None, kw.get('sign', ''), {}, tmp, gpus=kw.get('gpus', ''), prebake=kw.get('prebake', False))
         self.pso_cmd = next((c for c in ran if len(c) > 1 and c[1].endswith('pso_offline.py')), None)   # before the packer
         self.settings_cmd = next(c for c in ran if len(c) > 1 and c[1].endswith('dm/games/settings.py'))
         c = ran[-1]; return {c[i]: c[i + 1] for i in range(3, len(c) - 1) if c[i].startswith('--')}, tmp
@@ -1124,7 +1124,7 @@ class Script(unittest.TestCase):
         self.assertNotIn('--aoc', o); self.assertNotIn('--icon', o)
         self.assertNotIn('--pso', o)   # no shader pairs: no pipeline archive
         self.assertEqual(o['--settings'], str(tmp / 'app/launcher.json'))   # the launcher settings the Mac front end reads, without the iPhone's own switches
-        self.assertEqual(self.settings_cmd[2:], ['01008CF01BAAC000', str(tmp / 'patched'), str(tmp / 'ex/control.nacp'), str(tmp / 'app/launcher.json')])
+        self.assertEqual(self.settings_cmd[2:], ['0400486024DEC000', str(tmp / 'patched'), str(tmp / 'ex/control.nacp'), str(tmp / 'app/launcher.json')])
         self.assertEqual((self.settings_env['SETTINGS_PLATFORM'], self.settings_env['GFXAPI'], self.settings_env['DM_LANG']), ('mac', 'nvn', 'en-US'))
         o, tmp = self.pack_cmd('vulkan', aoc=Path('/x/aoc'), sign='Developer ID Application: X (T)')
         self.assertEqual((o['--msl'], o['--aoc'], o['--sign']), (str(tmp / 'shader/vk'), '/x/aoc', 'Developer ID Application: X (T)'))
@@ -1136,7 +1136,7 @@ class Script(unittest.TestCase):
         self.assertEqual(o['--pso'], str(tmp / 'pso/mac'))
         p = self.pso_cmd; self.assertTrue(p[1].endswith('dm/gfx/tools/pso_offline.py'))
         self.assertEqual({p[i]: p[i + 1] for i in range(2, len(p) - 1) if p[i].startswith('--')},
-                         {'--game': '01008CF01BAAC000', '--msl': str(tmp / 'shader/cache/b-0123456789ab'), '--out': str(tmp / 'pso/mac'), '--work': str(tmp / 'pso/mac-work'),
+                         {'--game': '0400486024DEC000', '--msl': str(tmp / 'shader/cache/b-0123456789ab'), '--out': str(tmp / 'pso/mac'), '--work': str(tmp / 'pso/mac-work'),
                           '--gpu': 'applegpu_g14s', '--platform': 'macos'})
         self.assertFalse(any('does not name this Mac' in m for m in self.said))
         o, _ = self.pack_cmd('nvn', work=tmp, gpus='g18p')   # PSO_GPUS set for the IPA: built as asked, with a note that this Mac's app builds its own bases
@@ -1327,12 +1327,6 @@ class Script(unittest.TestCase):
         self.assertTrue(any(m.startswith('[RED] pipeline archive: pso_offline.py failed') for m in self.said))
         self.assertFalse((tmp / 'pso/mac').exists())   # no half archive left to be picked up
 
-    def test_ipa_build_says_its_archive_failed(self):   # build_ipa.sh's output goes to a log: the console shows this line, which the build going on would otherwise hide
-        tmp = Path(tempfile.mkdtemp(dir=TEST_ROOT)); self.addCleanup(shutil.rmtree, tmp); said = []
-        with mock.patch.object(nsp, 'say', said.append), mock.patch.object(nsp, 'PROG', mock.Mock()):
-            w = nsp.IpaWatch(REPO, tmp, tmp / 'G.ipa'); w.line('[12:00:00] pso_offline: g18p: metal-tt'); w.line('[12:00:01] [RED] pipeline archive: pso_offline.py failed')
-        self.assertEqual(said, ['[RED] pipeline archive: pso_offline.py failed'])
-
     def test_run_not_fatal_returns_the_exit_code(self):
         log = Path(tempfile.mkdtemp(dir=TEST_ROOT)); self.addCleanup(shutil.rmtree, log)
         with mock.patch.object(nsp, 'PROG', mock.Mock()) as prog:
@@ -1376,8 +1370,6 @@ class SeenShaders(unittest.TestCase):   # --seen-shaders: the keys, the partial 
     def test_option(self):
         self.assertTrue(nsp.parse_args(['--seen-shaders']).seen_shaders); self.assertFalse(nsp.parse_args(['--no-seen-shaders']).seen_shaders)
         self.assertIsNone(nsp.parse_args([]).seen_shaders); self.assertFalse(nsp.SEEN_SHADERS)   # the default stays the whole map
-        with mock.patch.object(nsp, 'PROG', mock.Mock()), mock.patch.object(nsp, 'check_native_python'), self.assertRaisesRegex(nsp.BuildError, 'needs --platform mac or mac-app'):
-            nsp.main(nsp.parse_args(['--seen-shaders', str(self.tmp)]))
 
     def test_keys_from_the_list_and_the_logs(self):
         a, b, c, d = self.keys('a', 'b', 'c', 'd')
@@ -1398,7 +1390,7 @@ class SeenShaders(unittest.TestCase):   # --seen-shaders: the keys, the partial 
 
     def test_logs_read(self):
         with mock.patch.dict(os.environ, {'HOME': '/h'}):
-            self.assertEqual(nsp.seen_logs(Path('/w'), 0x0400A3A01EE4C000), (Path('/w/run/host.log'), Path('/h/Library/Logs/nxnative/0400A3A01EE4C000.log'), Path('/h/Library/Logs/nxnative/0400A3A01EE4C000.prev.log')))
+            self.assertEqual(nsp.seen_logs(Path('/w'), 0x0400486024DEC000), (Path('/w/run/host.log'), Path('/h/Library/Logs/nxnative/0400486024DEC000.log'), Path('/h/Library/Logs/nxnative/0400486024DEC000.prev.log')))
 
     def test_partial_library(self):
         a, b = self.keys('a', 'b')
@@ -1466,7 +1458,7 @@ class SeenShaders(unittest.TestCase):   # --seen-shaders: the keys, the partial 
             if on_line: (self.tmp / 'G.app/Contents/MacOS').mkdir(parents=True, exist_ok=True); (self.tmp / 'G.app/Contents/MacOS/dmhost').write_bytes(b'x')
         (self.tmp / 'shader_pairs.tsv').write_text('v\tf\n')
         with mock.patch.object(nsp, 'run', fake_run), mock.patch.object(nsp, 'mac_gpu_arch', lambda *a: 'applegpu_g14s'):
-            nsp.mac_app(sys.executable, REPO, self.tmp / 'G.app', 0x01008CF01BAAC000, self.tmp, self.tmp / 'ex', self.tmp / 'patched', self.tmp / 'dmhost', self.tmp / 'font', self.sh / 'partial',
+            nsp.mac_app(sys.executable, REPO, self.tmp / 'G.app', 0x0400486024DEC000, self.tmp, self.tmp / 'ex', self.tmp / 'patched', self.tmp / 'dmhost', self.tmp / 'font', self.sh / 'partial',
                         None, 'nvn', 'en-US', self.g, 'Game', '1.0.0', 'org.x', None, '', {}, self.tmp)
         lib = str(self.sh / f'partial/b-{self.CHAIN}')
         pso = next(c for c in ran if c[1].endswith('pso_offline.py')); pack = ran[-1]

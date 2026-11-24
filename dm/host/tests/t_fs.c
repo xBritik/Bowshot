@@ -63,7 +63,7 @@ static void *sdk_sym(const char *name) {
     if (!strcmp(name, "_ZN2nn2fs7UnmountEPKc")) return (void *)sdk_unmount;
     return NULL;
 }
-// A stand-in for an SDK-owned RAM disk with files, as Nintendo Switch Sports Resort's "vtapi": VoiceText/ holds vt/, and vt/vtpath.ini holds "ini". Each SDK file call is counted
+// A stand-in for an SDK-owned RAM disk with files, as another game's "vtapi": VoiceText/ holds vt/, and vt/vtpath.ini holds "ini". Each SDK file call is counted
 #define VT_FILE ((uint64_t)0x7bbd001230)   // the SDK's handles: FileAccessor / DirectoryAccessor pointers
 #define VT_DIR ((uint64_t)0x7bbd004560)
 #define VT_INI "vtapi:/VoiceText/vt/vtpath.ini"
@@ -271,7 +271,7 @@ int main(void) {
         CHECK(read_fs("rom:\\data\\a", got, sizeof got) && !strcmp(got, "mod") && read_fs("rom:\\data\\c", got, sizeof got) && !strcmp(got, "xy"), "backslash paths reach the overlay folder and the image");
         h = 0; cnt = -1; CHECK(h_fs_OpenDirectory(&h, "rom:\\data", DIRMODE_DIR | DIRMODE_FILE) == RES_OK && h_fs_DirCount(&cnt, h) == RES_OK && cnt == 4, "and list the merged directory (%lld)", (long long)cnt); h_fs_CloseDirectory(h);
         unsetenv("DM_ROMFS_OVERLAY"); g_nmnt = 0;
-        {   // another program's RomFS by its index (Super Mario Bros. Wonder's Switch 2 program mounts its Switch 1 program's, index 0): romfs_programs/<index>.img beside DM_ROMFS
+        {   // another program's RomFS by its index (another game's Switch 2 program mounts its Switch 1 program's, index 0): romfs_programs/<index>.img beside DM_ROMFS
             char pd[1100], pd2[1100]; snprintf(pd, sizeof pd, "%s/romfs_programs", root); snprintf(pd2, sizeof pd2, "%s/progs", root); mkdir(pd, 0755); mkdir(pd2, 0755);
             memcpy(img + 32, "HELLO", 5); snprintf(fn, sizeof fn, "%s/0.img", pd); f = fopen(fn, "wb"); fwrite(img, 1, sizeof img, f); fclose(f); memcpy(img + 32, "hello", 5);
             CHECK(h_fs_MountRomIdx("content", 0, NULL, 0) == RES_OK && read_fs("content:/data/a", got, sizeof got) && !strcmp(got, "HELLO"), "MountRom with a program index mounts that program's image (got %s)", got);

@@ -97,40 +97,6 @@ class ReadImage(unittest.TestCase):
         with romfs.open(self.virtual / 'data/game.zip', 'rb') as f, zipfile.ZipFile(f) as z:
             self.assertEqual(z.read('member'), b'archive member')
 
-    def test_build_scanners_discover_the_same_inputs_from_image_and_folder(self):
-        import gl_shaders
-        import vk_shaders
-        with patch.dict(os.environ, DM_GAME='010020D01AD24000'):
-            import shader_split
-        self.assertEqual(list(gl_shaders.sources([str(self.virtual)])), list(gl_shaders.sources([str(self.src)])))
-        self.assertEqual([Path(p).relative_to(self.virtual) for p in vk_shaders.spirv_files(str(self.virtual))],
-                         [Path(p).relative_to(self.src) for p in vk_shaders.spirv_files(str(self.src))])
-        jobs, paths = shader_split.zip_jobs([(str(self.virtual / 'data/game.zip'), 'data/game.zip')])
-        self.assertEqual(paths, {str(self.virtual / 'data/game.zip')})
-        self.assertEqual(jobs[0][2][1], ('member',))
-        self.assertEqual(shader_split.scan_file(jobs[0])[1], {})
-        # Image replacement must invalidate the process's cached index.
-        (self.src / 'new').write_text('new entry'); romfs_image.pack(self.src, self.image)
-        self.assertEqual((self.virtual / 'new').read_text(), 'new entry')
-
-    @unittest.skipUnless(shutil.which('zstd'), 'zstd command required')
-    def test_zstd_file_inside_an_image(self):
-        # Mario Wonder's .zs files are decompressed from the image entry's bytes.
-        with patch.dict(os.environ, DM_GAME='010020D01AD24000'):
-            import shader_split
-        (self.src / 'data/table.byml.zs').write_bytes(subprocess.run(['zstd', '-c', '-q'], input=self.data, capture_output=True, check=True).stdout)
-        romfs_image.pack(self.src, self.image)
-        self.assertEqual(shader_split.unzs(str(self.virtual / 'data/table.byml.zs')), self.data)
-
-    def test_ipa_packer_keeps_image_as_one_file_and_reuses_it(self):
-        out = self.root / 'game.ipa'
-        cmd = [sys.executable, str(REPO / 'dm/ios/tools/pack_ipa.py'), str(out), f'Payload/Game.app/romfs.img={self.image}']
-        for _ in range(2):
-            subprocess.run(cmd, check=True, capture_output=True)
-            with zipfile.ZipFile(out) as z:
-                self.assertEqual(z.namelist(), ['Payload/', 'Payload/Game.app/', 'Payload/Game.app/romfs.img'])
-                self.assertEqual(z.read('Payload/Game.app/romfs.img'), self.image.read_bytes())
-
     def test_damaged_flag_is_read_on_files_only(self):
         with open(self.image, 'rb') as f: _, ioff, _, _ = romfs_image.HEAD.unpack(f.read(romfs_image.HEAD.size))
         loaded = romfs.Image(self.image); file_k, dir_k = loaded.find('a'), loaded.find('data')

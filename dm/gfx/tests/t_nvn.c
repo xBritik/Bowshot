@@ -78,7 +78,7 @@ static void texture_gob_orders(void) {
     dm_test_sdk_ounce = 0;
     NVNdeviceBuilder db; P(nvnDeviceBuilderSetDefaults)(&db); P(nvnDeviceInitialize)(&dev, &db);
 }
-// CRC-16 with the reflected polynomial 0xA001, from 0: the hash Super Mario Odyssey's sampler cache takes of a sampler's bytes 8 on (main+0x96e400)
+// CRC-16 with the reflected polynomial 0xA001, from 0: the hash another game's sampler cache takes of a sampler's bytes 8 on (main+0x96e400)
 static uint16_t crc16_a001(const uint8_t *p, size_t n) {
     uint16_t c = 0;
     while (n--) { c ^= *p++; for (int k = 0; k < 8; k++) c = c & 1 ? (uint16_t)((c >> 1) ^ 0xA001) : (uint16_t)(c >> 1); }
@@ -403,7 +403,7 @@ int main(void) {
       EXPECT("a frame step page needs no limiter",60,fps_present_cap());
       dm_fps_state=NULL;unsetenv("DM_FPS_TARGET");g_present_cap=-1;g_engine_stub=1;nvn_present_config(0,0);
     }
-    // Display mode with no engine limiter (Red Dead Redemption: interval 2 set once, steps by time): the cap is the present interval alone
+    // Display mode with no engine limiter (another game: interval 2 set once, steps by time): the cap is the present interval alone
     { win_t w={.interval=2};nvn_present_config(60,1);dm_fps_state=NULL;g_engine_stub=0;
       setenv("DM_FPS_TARGET","60",1);g_present_cap=-1;
       EXPECT("display mode, no limiter: the 60 cap is applied",60,fps_present_cap());
@@ -472,7 +472,7 @@ int main(void) {
     EXPECT("uniform buffer alignment (256 measured on X1)", 256, v);
     P(nvnDeviceGetInteger)(&dev, NVN_DEVICE_INFO_TEXTURE_DESCRIPTOR_SIZE, &v); EXPECT("texture descriptor size (32)", 32, v);
     P(nvnDeviceGetInteger)(&dev, NVN_DEVICE_INFO_QUEUE_COMMAND_MEMORY_MIN_SIZE, &v); EXPECT("queue command memory minimum (65536)", 65536, v);
-    // Precompiled shaders need not match the linked SDK: ASTRAL CHAIN (SDK 6.4)
+    // Precompiled shaders need not match the linked SDK: another game (SDK 6.4)
     // ships GPU code 1.15. Advertise the translator's supported range even with no SDK.
     P(nvnDeviceGetInteger)(&dev, (NVNdeviceInfo)0x2E, &v); EXPECT("newest GPU code major", 1, v);
     P(nvnDeviceGetInteger)(&dev, (NVNdeviceInfo)0x30, &v); EXPECT("newest GPU code minor", 16, v);
@@ -538,7 +538,7 @@ int main(void) {
     P(nvnSamplerInitialize)(&sampler, &sb);
     EXPECT("signed integer border RGB is numeric", 1, ((samp_t *)&sampler)->p.border[0] == 1.f && ((samp_t *)&sampler)->p.border[2] == 1.f);
     P(nvnSamplerFinalize)(&sampler);
-    {   // Games tell samplers apart by their bytes from 8 on: Super Mario Odyssey's sampler cache keys entries by a CRC-16 (polynomial 0xA001) of them alone (nvn_obj.h samp_t)
+    {   // Games tell samplers apart by their bytes from 8 on: another game's sampler cache keys entries by a CRC-16 (polynomial 0xA001) of them alone (nvn_obj.h samp_t)
         NVNsampler s2;
         #define SAMP_CRC(s) crc16_a001((const uint8_t *)&(s) + 8, sizeof(NVNsampler) - 8)
         P(nvnSamplerBuilderSetDefaults)(&sb);
@@ -773,7 +773,7 @@ int main(void) {
     EXPECT("report converted to ns lies inside submit/wait", 1, counter_ns + 2 >= counter_before && counter_ns <= counter_after);
 
     // 5c. Copy strides are command buffer state (NVN): setting them takes no command memory, Get reads them back, and a copy recorded after them carries them.
-    //     Super Smash Bros. Ultimate records one upload in 256 bytes of command memory and 256 of control memory (main+0x3664960): SetCopyRowStride, SetCopyImageStride,
+    //     Another game records one upload in 256 bytes of command memory and 256 of control memory (main+0x3664960): SetCopyRowStride, SetCopyImageStride,
     //     CopyBufferToTexture, on a command buffer whose out-of-memory handler is null; recorded as two 24-byte records, the copy overflowed and the game's callback jumped to 0
     {
         static uint8_t m[256] __attribute__((aligned(4096))), ctl[256]; NVNmemoryPoolBuilder mb; NVNmemoryPool mp; NVNcommandBuffer c3;
@@ -803,7 +803,7 @@ int main(void) {
         P(nvnTextureFinalize)(&tx); P(nvnCommandBufferFinalize)(&c3);
     }
 
-    // 5d. GetCommandMemorySize is the size of the memory the game last added, stable while another thread records into the buffer (GitHub issue #768): Super Smash Bros. Ultimate
+    // 5d. GetCommandMemorySize is the size of the memory the game last added, stable while another thread records into the buffer (GitHub issue #768): another game
     //     sorts its pool of command buffers by it while its other render dispatch thread records into buffers of that pool. Summed per call, a reader saw sizes torn by the records
     {
         static uint8_t m[4096] __attribute__((aligned(4096))); NVNmemoryPoolBuilder mb; NVNmemoryPool mp; NVNcommandBuffer c4;
@@ -874,7 +874,7 @@ int main(void) {
         EXPECT("indirect indexed draw: 24 bytes (the driver's 36)", 24, P(nvnCommandBufferGetCommandMemoryUsed)(&c2));
         L = lin(hi); memcpy(&rh, L, sizeof rh); d = draw_idx_rec(L + 8, rh.size, &dt);
         EXPECT("indirect draw keeps its address", 0x20000, d->ind);
-        // A single texture bind keeps its handle 16 bytes into the command, where a game that patches recorded commands writes a new one (Luigi's Mansion 3: base + GetCommandMemoryUsed + 0x10)
+        // A single texture bind keeps its handle 16 bytes into the command, where a game that patches recorded commands writes a new one (another game: base + GetCommandMemoryUsed + 0x10)
         P(nvnCommandBufferAddCommandMemory)(&c2, &mp, 0, sizeof m); P(nvnCommandBufferBeginRecording)(&c2);
         size_t at = P(nvnCommandBufferGetCommandMemoryUsed)(&c2);
         P(nvnCommandBufferBindTexture)(&c2, NVN_SHADER_STAGE_FRAGMENT, 3, (NVNtextureHandle)(0x1ff00000u | 1234));
@@ -1130,7 +1130,7 @@ int main(void) {
         EXPECT("the next overflow reuses it: no new segment", nseg, g_nhostseg);
         P(nvnCommandBufferFinalize)(&ca); P(nvnCommandBufferFinalize)(&cb); P(nvnCommandBufferFinalize)(&cx); P(nvnMemoryPoolFinalize)(&mp);
     }
-    // 5b''''. A record that does not fit claims its position (Pokémon Legends: Z-A, Legends: Arceus and Violet: 1 KB blocks, a 1,400-byte SET_RT first). Each frame a buffer is given the
+    // 5b''''. A record that does not fit claims its position (another game, Legends: Arceus and Violet: 1 KB blocks, a 1,400-byte SET_RT first). Each frame a buffer is given the
     //        same block, and its first record takes two callback blocks and then a lent segment, writing nothing in the game's memory; the next frame's attempt in the same
     //        blocks shows the last list dead, so its segment is taken again instead of a new one
     {
@@ -1165,7 +1165,7 @@ int main(void) {
         P(nvnMemoryPoolFinalize)(&mp); P(nvnMemoryPoolFinalize)(&g_blkpool);
     }
     // 5b'''. Calls and copies (NVN): CallCommands copies the called list's pieces into the caller's list, as the driver copies a command set's GPU FIFO entries, so the called
-    //        recording's control memory may be given out again once the call is recorded (Donkey Kong Bananza resets its control arena twice per command arena: when a call
+    //        recording's control memory may be given out again once the call is recorded (another game resets its control arena twice per command arena: when a call
     //        pointed at the called list, the caller replayed whatever the next recordings wrote there); CopyCommands copies the records, so its command memory may go too
     {
         static uint8_t cm[4096] __attribute__((aligned(4096))), ctl_a[256] __attribute__((aligned(8))), ctl_b[256] __attribute__((aligned(8)));
@@ -1331,7 +1331,7 @@ int main(void) {
         EXPECT("compact records are smaller in most cases", 1, smaller >= 35);
         P(nvnCommandBufferFinalize)(&ce); P(nvnMemoryPoolFinalize)(&mp);
     }
-    // 5b''. Host segment sizes (hostseg_size), as Super Mario Odyssey grants 512 bytes from an empty pool before recording: such a grant gets a HOSTSEG_SMALL segment; a recording
+    // 5b''. Host segment sizes (hostseg_size), as another game grants 512 bytes from an empty pool before recording: such a grant gets a HOSTSEG_SMALL segment; a recording
     //       that outgrows it with no callback goes on in a full one, as a second piece of its control list, and replays whole through its handle; a record larger than HOSTSEG_SZ gets a segment that holds it;
     //       a free small segment is not taken for a full one, and the cap counts every segment's bytes
     {
@@ -1427,7 +1427,7 @@ int main(void) {
     EXPECT("Barrier count = 4 frames × 5", 20, nvn_slot[bi].cnt - barriers0);
 
     // 6a. Deferred acquire sync edge cases:
-    // (1) Present enqueued for the acquired texture behind an unsignaled GPU event BEFORE CPU nvnSyncWait(s) must not deadlock (Super Mario Bros. Wonder Switch 2 Edition's parallel present thread)
+    // (1) Present enqueued for the acquired texture behind an unsignaled GPU event BEFORE CPU nvnSyncWait(s) must not deadlock (another game Switch 2 Edition's parallel present thread)
     // (2) Queue-only nvnQueueWaitSync without CPU nvnSyncWait, followed by next acquire drain
     // (3) Re-fencing and finalizing a pending deferred acquire sync, and finalizing the window with a pending acquire
     {
@@ -1602,7 +1602,7 @@ int main(void) {
         mtl_pkg_stats(&up, &re); EXPECT("host write triggers a re-upload, 2 in total", 2, re - re0);
         P(nvnMemoryPoolFinalize)(&wp);
     }
-    // 6c1. Writes beside a texture (pkg_edges_clean): the texture starts 4 KB into a host page whose first 4 KB hold other data (Pokémon Sword: the pool's object). A write there dirties the
+    // 6c1. Writes beside a texture (pkg_edges_clean): the texture starts 4 KB into a host page whose first 4 KB hold other data (another game: the pool's object). A write there dirties the
     //      page, but the texture's bytes are as uploaded: protected again, no re-upload; a write into the texture's own bytes in that page still re-uploads
     {
         static uint8_t eb_[256 << 10] __attribute__((aligned(16384)));
@@ -1631,7 +1631,7 @@ int main(void) {
         P(nvnMemoryPoolFinalize)(&ep);
     }
 
-    // 6c2. WriteTexels region writes: the result must be byte-identical to "decode the whole level → patch the region → re-encode" (Metroid Dread's minimap writes one texel at a time, which used to cost a whole-level round trip each).
+    // 6c2. WriteTexels region writes: the result must be byte-identical to "decode the whole level → patch the region → re-encode" (another game's minimap writes one texel at a time, which used to cost a whole-level round trip each).
     //      RGBA8 100×37 (width not a whole number of GOBs), BC1 64×64 (4×4 blocks, 8 bytes per block), RGBA16F 33×17 two-layer array; several regions each, including 1×1, a whole row, GOB-crossing and the whole level
     {
         static uint8_t wtmem[1 << 18] __attribute__((aligned(16384)));
@@ -1895,7 +1895,7 @@ int main(void) {
         mtl_present_test_stall(0); mtl_present_flush();
     }
 
-    // 6g. SetNumActiveTextures: acquire hands out the first n of the swap chain (Super Mario Bros. Wonder sets 2 of 3), the window's own call changes it, a count out of range keeps all
+    // 6g. SetNumActiveTextures: acquire hands out the first n of the swap chain (another game sets 2 of 3), the window's own call changes it, a count out of range keeps all
     {
         nvn_present_config(0, 0);
         NVNwindowBuilder wb4; NVNwindow w4; P(nvnWindowBuilderSetDevice)(&wb4, &dev); P(nvnWindowBuilderSetDefaults)(&wb4);

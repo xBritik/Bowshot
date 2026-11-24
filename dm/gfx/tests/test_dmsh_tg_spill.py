@@ -1,5 +1,5 @@
 """Compute shared memory past Metal's 32 KB (dmsh_rewrite.py tg_spill): a kernel whose threadgroup arrays exceed abi.TG_MAX takes them from the device buffer at abi.TG_SLOT, one slice per
-workgroup at its index in the whole grid, with barriers that order device memory; a kernel within the limit is left as it is. The shape is Mario Kart World's DrivePassShaderDefault
+workgroup at its index in the whole grid, with barriers that order device memory; a kernel within the limit is left as it is. The shape is another game's DrivePassShaderDefault
 compute shaders (spvUnsafeArray<uint, 12288>, 48 KB). When the Metal compiler is installed, the rewritten kernel is compiled too, and with Xcode it runs over 1,024 workgroups on this Mac's
 GPU, more than run at once: no workgroup may see another's data in its shared memory, as with the index modulo 512 they did."""
 import ast

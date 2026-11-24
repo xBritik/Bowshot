@@ -104,7 +104,7 @@ static void slices(id<MTLLibrary> lib) {
     tex_t t=texture(NVN_TEXTURE_TARGET_2D_ARRAY,NVN_FORMAT_RGBA8,6);
     prog_t pg={0}; NvProg *p=make_program(lib,&pg,"red");
     chain c={0}; bind(&c,&pg,3);
-    // Between some layers the compact uniform and vertex buffer binds the recorder writes (OP_BIND_UBO_SMALL, OP_BIND_VBUF1; Mario Kart World binds them between its per-layer
+    // Between some layers the compact uniform and vertex buffer binds the recorder writes (OP_BIND_UBO_SMALL, OP_BIND_VBUF1; another game binds them between its per-layer
     // draws): plain state, which must not end the look-ahead (sm_scan) any more than OP_BIND_UBO or OP_BIND_VBUF do
     for(int sl=0;sl<6;sl++) { rt(&c,&t,sl,NULL); triangle(&c);
         if(sl&1) { p_bind_ubo_small u={1,9,0,0}; emit(&c,OP_BIND_UBO_SMALL,&u,sizeof u); p_bind_vbuf1 v={15,0,0}; emit(&c,OP_BIND_VBUF1,&v,sizeof v); } }
@@ -175,7 +175,7 @@ static void faces(id<MTLLibrary> lib) {
 }
 
 // Face-split draws of one level size into other textures or layers join the first one's pass (fsm_plan, DM_NVN_FACE_MERGE), passing over draws into another level: X level 0,
-// X level 1, then the halves of Y (layers 0-5 and 6-11) at levels 0 and 1, the order Mario Kart World's three cube chains come in. Two passes of three attachments instead of six,
+// X level 1, then the halves of Y (layers 0-5 and 6-11) at levels 0 and 1, the order another game's three cube chains come in. Two passes of three attachments instead of six,
 // and every layer of both levels holds its own output (the textures are cleared to zero first, so a draw that went nowhere shows)
 static tex_t texture_lv(int target, int format, int layers, int levels) { tex_t t=texture(target,format,layers); t.d.levels=levels; nvn_tex_layout(&t.d,&t.L); return t; }
 static int layers_read(const tex_t *t, int level, int base, const uint8_t *solid) {

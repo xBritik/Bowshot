@@ -1,6 +1,6 @@
 // The typed-output entry point (dmsh_entry.py fs_uint) through the host's pipeline path (pso_desc): every mix of float, unsigned and signed targets for colours 0 to 2, the pipeline
 // built as the draws build it (pso_build: Metal 4 bases, or the MTLDevice with DM_PSO_MTL4=0), drawn, and every target's bits read back: each output's register bits land as they
-// are, whatever the target's class (Kirby and the Forgotten Land's R8Uint colour 5, GitHub issue #2760; Mortal Kombat 11's signed targets, PR #2807). Then the alpha test of a float
+// are, whatever the target's class (another game's R8Uint colour 5, GitHub issue #2760; Mortal Kombat 11's signed targets, PR #2807). Then the alpha test of a float
 // colour 0 beside integer targets (main0_u with its alpha test on), passing and failing, and with float targets only (main0's alpha test entry point main0_a, no specialization).
 // Colour 3 carries bits no float target keeps (NaN payloads, denormals: what a BC block encoder writes) into an unsigned or a signed target, or is left unattached. The libraries come from test_dmsh_typed.py --fixture <dir>
 // make GAME=<id> check_t_typed_outputs

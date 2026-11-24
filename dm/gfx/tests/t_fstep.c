@@ -45,7 +45,7 @@ int main(void) {
         snprintf(b, sizeof b, "  game time %.0f against real time %.2f (debt %.2f)", m.game, m.real, m.s.debt);
         check(m.real - m.game - m.s.debt > -1.01 && m.real - m.game - m.s.debt < 1.01 && m.s.debt < 1, b);
     }
-    {   // Mario Kart World on an M4 Max (issue #1823): frames scattered around one vsync, three in a row late by 4 ms every 20 frames, the rest on time. The rate holds 60
+    {   // Another game on an M4 Max (issue #1823): frames scattered around one vsync, three in a row late by 4 ms every 20 frames, the rest on time. The rate holds 60
         // and the step pays the late frames back, so hold 1 stays (three late frames alone stepped to 30 every second)
         sim m = {0}; run(&m, 120, 0.5, 1, 3, 0);
         for (int i = 0; i < 3000; i++) run(&m, 1, i % 20 < 3 ? 1.25 : 0.9, 1, 3, 0);
@@ -80,7 +80,7 @@ int main(void) {
         snprintf(b, sizeof b, "  a 3-vsync frame then: hold 2, not 3 (k %d)", m.s.k);
         check(m.s.k == 2 && m.s.ups == 1, b);
     }
-    {   // a game whose stub takes steps up to 2 (Mario Kart World's STEP_MAX): frames of 2.6 vsyncs stop at hold 2, and no step above 2 is handed out
+    {   // a game whose stub takes steps up to 2 (another game's STEP_MAX): frames of 2.6 vsyncs stop at hold 2, and no step above 2 is handed out
         sim m = {0}; m.s.smax = 2; int over = 0;
         run(&m, 120, 0.5, 1, 3, 0);
         for (int i = 0; i < 600; i++) { run(&m, 1, i < 300 ? 2.6 : 1.3, 1, 3, 0); over += m.next > 2; }

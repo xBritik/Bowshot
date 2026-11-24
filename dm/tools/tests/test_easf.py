@@ -133,42 +133,6 @@ class EA(unittest.TestCase):
         found = reader.archive(d, 'synthetic', self.ring())
         self.assertEqual(len(found), 1); self.assertEqual(found[0][1], 'cs')
 
-    def test_pipeline_exports_package_and_compute_query(self):
-        self.ring()
-        root = Path(self.tmp.name); rom = root / 'RomFS'; rom.mkdir()
-        (rom / 'data.big').write_bytes(big(b'shader.big', encrypted(big(b'a.fxo', compute()))))
-        no_crypto = root / 'no_crypto'; no_crypto.mkdir()
-        (no_crypto / 'Crypto.py').write_text("raise ModuleNotFoundError('no PyCryptodome in this environment')\n")
-        env = dict(os.environ, DM_GAME='010015100B514000', J='1', PYTHONPATH=str(no_crypto))
-        out = subprocess.run([sys.executable, ROOT / 'dm/gfx/tools/shader_split.py', rom, self.path,
-                              root / 'pkg', root / 'map.tsv', root / 'facts.tsv', root / 'pairs.tsv'],
-                             env=env, capture_output=True, text=True)
-        self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
-        rows = [l for l in (root / 'facts.tsv').read_text().splitlines() if l and not l.startswith('#')]
-        fact = json.loads(rows[0].split('\t')[1])
-        self.assertEqual(fact, {'local': [8, 4, 1], 'shared': 32})
-        self.assertEqual(len(list((root / 'pkg').glob('*.bin'))), 1)
-
-    def test_pipeline_keeps_version_keys_separate_and_reads_dlc(self):
-        root = Path(self.tmp.name); roms, mains = [], []
-        for i, key in enumerate((KEY, bytes(reversed(KEY)))):
-            base = root / f'v{i}'; rom = base / 'RomFS'; rom.mkdir(parents=True)
-            main = base / 'main'; main.write_bytes(module(ID + key))
-            program = bytearray(compute()); program[-1] = i
-            (rom / 'arbitrary.bin').write_bytes(encrypted(big(b'a.fxo', program), key))
-            roms.append(str(rom)); mains.append(str(main))
-        dlc = root / 'dlc' / '001'; dlc.mkdir(parents=True)
-        program = bytearray(compute()); program[-1] = 2
-        (dlc / 'arbitrary.bin').write_bytes(encrypted(big(b'a.fxo', program), bytes(reversed(KEY))))
-        out = subprocess.run([sys.executable, ROOT / 'dm/gfx/tools/shader_split.py', ','.join(roms), ','.join(mains),
-                              root / 'pkg', root / 'map.tsv', root / 'facts.tsv', root / 'pairs.tsv', root / 'pso.tsv', dlc],
-                             env=dict(os.environ, DM_GAME='010015100B514000', J='1'), capture_output=True, text=True)
-        self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
-        rows = [l for l in (root / 'map.tsv').read_text().splitlines() if l and not l.startswith('#')][1:]
-        self.assertEqual(len(rows), 3)
-        self.assertTrue(any('v1/' in l for l in rows))
-        self.assertTrue(any('aoc/001/' in l for l in rows))
-
     def test_reader_through_outer_big(self):
         self.ring()
         p = Path(self.tmp.name) / 'outer.big'

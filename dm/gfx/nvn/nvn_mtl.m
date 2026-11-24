@@ -56,7 +56,7 @@ _Static_assert(DMSH_C0_CS_UBO + DMSH_C0_ROW * DMSH_C0_CS_UBO_SLOTS == DMSH_C0_SS
 static int c0_ssbo_base(int stage) { return stage == 0 ? DMSH_C0_SSBO_VS : stage == 1 ? DMSH_C0_SSBO_PS : stage == 2 ? DMSH_C0_SSBO_GS : stage == 5 ? DMSH_C0_SSBO_CS : stage == 3 ? DMSH_C0_SSBO_TS : stage == 4 ? DMSH_C0_SSBO_MS : -1; }   // NVN stages 0 vertex, 1 pixel, 2 geometry, 5 compute; hull / domain never seen
 // The handle a texture binding of slot reg reads: as c2 holds it (encode_args fills c2 the same way), a combined slot past 31 shares its word with an image slot, and a bound image
 // is what lies there. A texture instruction on an image handle names such a slot: a size query of the image a compute shader writes (Unreal's GetDimensions on a RWTexture3D,
-// dmsh_reflect.py decode_tex). DRAGON QUEST VII Reimagined's volumetric lightmap indirection patch read the empty texture slot 32 there, got a 1x1 size and wrote only cell (0, 0, 0)
+// dmsh_reflect.py decode_tex). Another game's volumetric lightmap indirection patch read the empty texture slot 32 there, got a 1x1 size and wrote only cell (0, 0, 0)
 static inline uint64_t tex_slot_h(const uint64_t *tex, const uint64_t *img, unsigned reg) {
     return reg >= 32 && reg - 32 < DMSH_C2_IMG_SLOTS && img[reg - 32] ? img[reg - 32] : reg < NTEX ? tex[reg] : 0;
 }
@@ -551,7 +551,7 @@ static void res_remove(id<MTLAllocation> r) { @autoreleasepool {
 // a placement heap of its own; when its texture is freed (after the submissions that used it completed, defer_drain), the heap waits here, still resident, for the next texture it fits.
 // Every texture whose memory the host makes for the GPU alone draws from the same list: single-description targets in a GPU-only pool (rh_texture), the heaps of resolution families
 // (image_texture), and same-pass feedback snapshots (fb_snap). A heap is made an eighth larger than its first texture, and a waiting heap serves a texture up to a third smaller
-// than itself (the smallest that fits is taken), so a target that grows by a step of Metal's sizes (about 10% near 2 MB) fits the heap it freed the frame before: Mario Kart World's
+// than itself (the smallest that fits is taken), so a target that grows by a step of Metal's sizes (about 10% near 2 MB) fits the heap it freed the frame before: another game's
 // dynamic resolution moves its targets every frame (1480x832, 1544x868, 1548x868, 1488x836 and their halves and quarters), and with exact heaps taken only up to an eighth larger,
 // family heaps freed for good and only COMPRESSIBLE targets recycled, its race made about 3,500 textures and heaps and added 5-6 GB to the residency set every 300 frames on an
 // M6, with a residency commit for nearly every one; alternating that policy with this one in a run, 970 -> 272 commits and 1.8 -> 0.34 GB per 300 frames, replay CPU 6.94 -> 6.36 ms
@@ -627,7 +627,7 @@ static id<MTLTexture> rh_place(MTLTextureDescriptor *d) {
     return mt;
 }
 // A shared texture in a GPU-only pool (tex_mtl_) that the GPU can render or write to, in recycled memory: the CPU never writes its storage, and the new texture is filled from what
-// the host holds of it (tex_init_fill) or zeroed, as a new allocation is. NVN asks no flag of a render target (Mario Kart World's resized targets include some without COMPRESSIBLE),
+// the host holds of it (tex_init_fill) or zeroed, as a new allocation is. NVN asks no flag of a render target (another game's resized targets include some without COMPRESSIBLE),
 // so the test is the Metal usage the host gives it: a texture of a block-compressed format, which is an asset the game copied in, keeps an allocation of its own and so its exact size
 static int rh_fits(const tex_t *t, MTLTextureUsage usage) {
     return t->pool && (t->pool->flags & NVN_MEMORY_POOL_FLAGS_CPU_NO_ACCESS) && (usage & (MTLTextureUsageRenderTarget | MTLTextureUsageShaderWrite))
@@ -883,7 +883,7 @@ static void defer_obj_at(id obj, int keep_resident, uint64_t fence) {
 static void defer_obj_release(id obj) { defer_obj_at(obj, 0, g_fence + 1); }
 static void defer_obj_unref(id obj) { defer_obj_at(obj, 1, g_fence + 1); }
 // Its own autorelease pool: mtl_sub_begin drains before it pushes the submission's pool, on the guest submit thread, whose implicit pool is never drained. The weak-table lookups and the residency-set removal
-// autorelease the retired object, so whatever that thread drained (instead of the completion handler, which wins the race only when the CPU is idle) stayed alive for good: in Metroid Dread every
+// autorelease the retired object, so whatever that thread drained (instead of the completion handler, which wins the race only when the CPU is idle) stayed alive for good: in another game every
 // re-upload of its map mask kept the old texture and its 32 MB upload staging block, and GPU memory grew by several GB within minutes under CPU load.
 // → how many finished entries it handed back to the queue (g_smu busy)
 static int defer_drain(void) { int back = 0; @autoreleasepool {
@@ -1041,7 +1041,7 @@ static void mtl_init_once(void) {
     g_present_readbacks = dispatch_group_create();
     // A device without Metal 4 (the paravirtualized GPU of a virtual Mac, such as GitHub's macos-26 runner: no residency set, no MTL4CommandQueue) cannot run the NVN layer. The GL and
     // Vulkan layers draw on classic queues of their own and need only the device (mtl_device_classic): there the classic part starts and presents are dropped, which is all a
-    // run-time shader capture needs (the NSP script's capture_shaders boots headless; GitHub issue #112: Balatro's capture aborted here)
+    // run-time shader capture needs (the NSP script's capture_shaders boots headless; GitHub issue #112: another game's capture aborted here)
     NSError *re = nil; const char *no4 = NULL;
     if (getenv("DM_TEST_NO_METAL4")) no4 = "DM_TEST_NO_METAL4";   // test switch: as on a virtual Mac; not set in the product
     else if (![g_dev supportsFamily:MTLGPUFamilyMetal4]) no4 = "no Metal 4 GPU family";
@@ -1225,7 +1225,7 @@ static void pool_res(int i) {
     if (g_pools[i].res) return;
     res_add(g_pools[i].buf); res_commit(); g_pools[i].res = 1; g_pool_res_n++;
 }
-// A large pool in chunks. Metal wires a zero-copy buffer whole while it is in the residency set, so one buffer over a large pool pins all of it, whatever the GPU reads. Mario Kart World's 2,427 MB
+// A large pool in chunks. Metal wires a zero-copy buffer whole while it is in the residency set, so one buffer over a large pool pins all of it, whatever the GPU reads. Another game's 2,427 MB
 // graphics pool: the GPU has touched 1,111 MB by the first race, 326 MB of it in the last 1,500 frames; on a 16 GB Mac the driver then spent half its time wiring and unwiring (3.2 s of a 6 s Metal System
 // Trace) with 140 MB free, and frames took 100 ms and more every few frames. A pool of BIG_MIN or more therefore has no buffer of its own: a lookup gets a chunk, a zero-copy buffer over the BIG_S
 // stride holding its address and on up to the end of what it asked (rounded up to the stride, plus a stride), made when first asked for. Only what lookups reach is wired. The chunks overlap, as adjacent
@@ -1246,7 +1246,7 @@ typedef struct { const void *mem; uint64_t size; uintptr_t lo, hi, a, b; __stron
 static int pool_chunks(void) { static int c = -1; if (c < 0) { const char *e = getenv("DM_NVN_POOL_CHUNKS"); c = !e || atoi(e); } return c; }
 static id<MTLBuffer> pool_buf_made(const void *mem, uint64_t size, uintptr_t a, uintptr_t b) {
     id<MTLBuffer> buf = pool_buf(a, b);
-    // Pokémon Legends: Z-A: twice on the Mac a small pool's buffer was refused although its pages were one read-write VM region, both times while another heavy job (a shader compile,
+    // Another game: twice on the Mac a small pool's buffer was refused although its pages were one read-write VM region, both times while another heavy job (a shader compile,
     // a second game instance) took the machine's memory; every run on an idle machine created all of them. Wiring the pages may fail under memory pressure: retry for up to about 2 s
     for (int t = 0; !buf && t < 12; t++) {
         usleep(10000u << (t < 4 ? t : 4));
@@ -1301,7 +1301,7 @@ static void big_moved(int i) {   // caller holds g_mu: entry i has a new index
 // The no-copy buffer goes through deferred release (out of the residency set and unreferenced after submitted commands complete). It used to be removed only from g_keep while the residency set still held a strong reference: after the pool was freed the buffer stayed alive wrapping that guest memory,
 // and a new pool at the same address wrapped it again. Engage's title demo cycles scenes; GPU allocated grew to 5.4 GB and resident memory to 3.6 GB in 850 s.
 // In an autorelease pool of its caller's: this runs on the guest thread that finalizes the pool, whose implicit pool never drains, and adding to the weak table g_dead_pools left the buffer
-// autoreleased there, so every finalized pool buffer stayed alive for good (Ghost Trick: Phantom Detective, 125 buffers and 6.6 GB of GPU allocations 300 frames into the boot, 0 with the pool)
+// autoreleased there, so every finalized pool buffer stayed alive for good (another game, 125 buffers and 6.6 GB of GPU allocations 300 frames into the boot, 0 with the pool)
 static void pool_take_out(const void *mem, NSMutableArray<id<MTLBuffer>> *gone) {   // caller holds g_mu
     as_drop_pool(mem);
     int bg = -1; for (int k = 0; k < g_nbig; k++) if (g_big[k].mem == mem) bg = k;
@@ -1340,7 +1340,7 @@ void mtl_pool_del(const void *mem) {
 }
 // Pools that take the place of others, in one step under g_mu: a lookup finds the old ones or the new ones, never neither. A sparse pool's mapped run is a pool of its own, replaced
 // whenever a mapping joins it to its neighbours or an unmap splits it (hle_nvn.c vrun_set), on the game's thread while the replay looks addresses up on its own. Removed and then
-// added, an address mapped all along was in no pool between the two: PRAGMATA's mesh shaders 765e6d9d2588ce70 and 5aab38bb5ba67ef7 read a buffer whose address the game pushes,
+// added, an address mapped all along was in no pool between the two: another game's mesh shaders 765e6d9d2588ce70 and 5aab38bb5ba67ef7 read a buffer whose address the game pushes,
 // 0x3000000 into a sparse pool whose one run kept growing (0x8c5e304000..0x8c7b1a4000, then on), and got a dummy buffer at frames 2971 and 4484, the frames the run was replaced in
 void mtl_pool_replace(const void *const *del, int ndel, const void *const *add, const uint64_t *size, int nadd) {
     mtl_init();
@@ -1361,7 +1361,7 @@ void mtl_pool_replace(const void *const *del, int ndel, const void *const *add, 
 }
 
 // Address → pool: the last hit first, then a binary search over indices sorted by start address, and a full linear scan only when that fails (pools overlapping).
-// The Legend of Zelda: Breath of the Wild keeps about 1760 memory pools alive and every buffer binding of every draw looks one up; the old full scan took about 4% of the submit thread's samples (mtl_gpu_addr 222 / 6 s). Adding / removing pools invalidates the index, which is re-sorted when next used. Caller holds g_mu
+// Another game keeps about 1760 memory pools alive and every buffer binding of every draw looks one up; the old full scan took about 4% of the submit thread's samples (mtl_gpu_addr 222 / 6 s). Adding / removing pools invalidates the index, which is re-sorted when next used. Caller holds g_mu
 static int *g_pidx; static int g_pidx_cap;
 static int pidx_cmp(const void *a, const void *b) { uintptr_t x = g_pools[*(const int *)a].lo, y = g_pools[*(const int *)b].lo; return x < y ? -1 : x > y; }
 static void pidx_sort(void) {
@@ -1431,7 +1431,7 @@ static int pool_peek(uint64_t addr) {
 }
 // Whether [addr, addr + len) lies in a pool, with no side effect: mtl_addr makes the pool resident, for a GPU use to follow. A large pool is answered from its range, since its lookup
 // (big_lookup) makes the chunk that holds the range. hle_nvn.c keys_hash asks this whether a shader's code is mapped: through mtl_addr every pool holding shader code went into the
-// residency set, though the GPU never reads it (the shaders run translated): The Great Ace Attorney Chronicles' three chunks, about 5 MB
+// residency set, though the GPU never reads it (the shaders run translated): another game' three chunks, about 5 MB
 int mtl_addr_known(uint64_t addr, uint64_t len) {
     pthread_mutex_lock(&g_mu); int b = big_of(addr), ok = b >= 0 ? addr + len <= g_big[b].hi : pool_find(addr, len) >= 0; pthread_mutex_unlock(&g_mu);
     return ok;
@@ -1580,7 +1580,7 @@ static int rc_value(uint64_t addr, uint64_t *v) {   // 0 = unknown at encode tim
         *v=*(const volatile uint64_t *)addr; return 1;
     }
     // No report of its own: memory holds the operand only when nothing queued before the condition writes it later (rc_source: an inline update of this submission is known by its
-    // bytes; a copy, fill or shader write of this submission, or a GPU write of one still running, is not). Portal 2's D3D9 layer has a shader write each mesh's visibility into a
+    // bytes; a copy, fill or shader write of this submission, or a GPU write of one still running, is not). Another game's D3D9 layer has a shader write each mesh's visibility into a
     // storage buffer and draws the mesh if that word differs from the next record's; read from memory before that shader ran, both were 0 and the vault's furniture was dropped
     uint8_t b[8]; int unreliable=0;
     if (rc_source(addr,8,b,&unreliable)!=0xff || unreliable) return 0;
@@ -1672,7 +1672,7 @@ static void rc_gpu_write(uint64_t dst, uint64_t n) {
 // the slots left at a submission's end are added at its completion too (VIS_FOLD), so a slot is read once, while its buffer is still this submission's (the ring hands it to a later one once the fence passes);
 // a reset drops the slots before it and zeroes the total there (VIS_ZERO). After a report a new slot is used, so later draws are not counted into the reported value.
 // Counting starts at the first reset or, for a game that never resets, at the first report: the GPU's counter runs from the queue's creation, so such a game reads end - begin of two reports around each query
-// (Red Dead Redemption's character occlusion queries: counting used to start only at a reset, so every report was 0 and the bodies of characters a few metres away were dropped).
+// (another game's character occlusion queries: counting used to start only at a reset, so every report was 0 and the bodies of characters a few metres away were dropped).
 // (Previously always wrote 0: occlusion query = 'fully occluded', campfires / light sources got culled - the character select screen calls ResetCounter 21 times per frame)
 typedef struct { void *buf; uint32_t slot; } vis_slot;
 typedef struct { int n; vis_slot s[]; } vis_list;
@@ -1710,7 +1710,7 @@ static vis_list *vis_snapshot(void) {
 // its bindless handles were read from memory under updates still queued (RED 47). Merely grown, that scan would cost each lookup about 0.25 us per thousand such writes
 // The list grows as a submission needs it and keeps its size for the next (pend_room). It used to stop at a fixed count, and past it the submission counted as a write anywhere
 // (g_pend_over), which gw_commit carries past the submission: every partly covered uniform shadow of later submissions was refused while it ran, so every draw that read one ended its
-// pass. Monster Hunter Rise passed 256 writes in a submission, and Splatoon Raiders' third boss stage about 11,000 (7 uniform updates before each of about 1,550 ink-map queries; 2,800
+// pass. Another game passed 256 writes in a submission, and another game' third boss stage about 11,000 (7 uniform updates before each of about 1,550 ink-map queries; 2,800
 // in its other fights): past 8,192 each query took a pass of its own on its 6400x6400 map, the GPU fell behind, the submissions kept running, and the stage stayed at 1-2 fps.
 // A write anywhere is left for a list that cannot grow (no memory) and a write past the end of the address space
 enum { PEND_HB_BITS = 13, PEND_HB = 1 << PEND_HB_BITS, PEND_SPAN = 8, PEND_LV = 16 };
@@ -1738,9 +1738,9 @@ static int pend_room(int nodes) {
 // Other writes to guest memory in this submission, which the pend list does not hold: writable storage buffers bound to a shader, texture→buffer copies, counter reports (ubp_get).
 // Kept by 4 KB page (Breath of the Wild's particle dispatches bind about ten storage buffers each, hundreds a frame): a set of pages tagged with the submission (g_pend_gen) and with what
 // wrote them. A counter report does not count against this submission's shadows: the host writes reports on the CPU when the whole submission has completed, so no draw of it reads one
-// (Fire Emblem Engage writes its query reports into the page of a uniform block); for later submissions it counts by its own 16 bytes while this one runs (hw_note, hw_live).
+// (another game writes its query reports into the page of a uniform block); for later submissions it counts by its own 16 bytes while this one runs (hw_note, hw_live).
 // A GPU write over more than SBW_WPAGES pages is kept as an interval instead (overlapping ones merge): a storage buffer bound with size 0 counts as the rest of its Metal buffer (sbw_len)
-enum { SBW_INIT = 16384, SBW_WPAGES = 64, SBW_WN = 256 };   // g_sbwp grows on demand from 16,384 slots (large Switch 2 scenes such as Donkey Kong Bananza's 3D overview map touch >16,384 unique pages per submission)
+enum { SBW_INIT = 16384, SBW_WPAGES = 64, SBW_WN = 256 };   // g_sbwp grows on demand from 16,384 slots (large Switch 2 scenes such as another game's 3D overview map touch >16,384 unique pages per submission)
 typedef struct { uint64_t page; uint32_t gen; uint8_t src; } sbw_ent;
 static sbw_ent *g_sbwp; static uint32_t *g_sbw_list; static uint32_t g_sbw_cap, g_sbw_shift, g_nsbw; static int g_sbw_over;   // src: SBW_* bits; pages in the set this submission; over: a write could not be kept (out of memory, size not known, wide list full)
 static uint64_t g_sbw_wlo[SBW_WN], g_sbw_whi[SBW_WN]; static int g_nsbw_w;   // the wide writes of this submission
@@ -1797,7 +1797,7 @@ static int sbw_hits(uint64_t lo, uint64_t hi) {
 // size not known) the rest of that buffer. A device pointer that runs past its buffer is out of bounds on Metal, which the host could not give the Switch's meaning anyway. Before, such
 // a binding counted as a write anywhere, and every partly covered uniform shadow after it in the submission was refused (BotW shrines: about 240 more passes a frame, GitHub issue #534)
 // A bindless constant buffer handle in the hardware's layout (Ampere; as NVK's nvk_bindless_cbuf): bits 0..44 the address >> 4, 45..63 the size >> 4, which the shaders
-// decode (InstEmitAmpere.cs ABindlessConstant). PRAGMATA builds its own: b12078fe3bce1273 pushes 0x5a0083055d124, 32 bytes at 0x83055d1240. ucb_handle_addr reads a buffer
+// decode (InstEmitAmpere.cs ABindlessConstant). Another game builds its own: b12078fe3bce1273 pushes 0x5a0083055d124, 32 bytes at 0x83055d1240. ucb_handle_addr reads a buffer
 // word that holds either one or a plain address: a handle of any size has a bit at 45 or above, which no guest address has (they lie below 2^40)
 static uint64_t ucb_handle(uint64_t addr, uint64_t size) { uint64_t s = (size + 15) >> 4; return (addr >> 4 & ((1ull << 45) - 1)) | (s < (1u << 19) ? s : (1u << 19) - 1) << 45; }
 static uint64_t ucb_handle_addr(uint64_t v) { return v >> 45 ? (v & ((1ull << 45) - 1)) << 4 : v; }
@@ -1893,7 +1893,7 @@ static uint64_t g_sub_serial;   // Submission index (used by the parallel precom
 static int g_pkg_kept;   // a texture written during this submission kept its texture (tex_mtl_): the next submission starts a write generation, as a write would
 // The first submission: the prepare step (warm_start), before anything of it is encoded. No GPU work: the submit entry (hle_nvn.c) calls it outside the graphics gate.
 // Freeze the guest clock and park guest clock reads across it (reason 3, hle_os.c): the step can stall the render thread for seconds or minutes, and without this a game
-// whose main thread bounds its render-thread wait skips hundreds of frames and tears down frame 1's resources while frame 1 is still waiting here (13 Sentinels: Aegis Rim)
+// whose main thread bounds its render-thread wait skips hundreds of frames and tears down frame 1's resources while frame 1 is still waiting here (another game)
 void mtl_prepare(void) {
     if (!g_warm_started && prepare_on()) {
         guest_clock_freeze_for(3, 1);
@@ -1967,8 +1967,8 @@ void mtl_sub_begin(void) {
 }
 
 static void rp_end_at(const char *fn, int line);
-// Every render pass end names its call site in a pass dump (E <pass> pass ends in <function>:<line>): a pass that ends with no record of its own was found only by reading the code (Splatoon Raiders'
-// third boss stage, about 1,500 one-draw passes a frame on its ink map, dm/games/0400380020056000/README.md). The line is in the file that holds the function (this one or an .inc it includes), at the build the log came from
+// Every render pass end names its call site in a pass dump (E <pass> pass ends in <function>:<line>): a pass that ends with no record of its own was found only by reading the code (another game'
+// third boss stage, about 1,500 one-draw passes a frame on its ink map, dm/games/<title ID>/README.md). The line is in the file that holds the function (this one or an .inc it includes), at the build the log came from
 #define rp_end() rp_end_at(__func__, __LINE__)
 static void geo_mesh_flush_pass(void);   // a waiting run of mesh draws is drawn before its pass ends (nvn_geometry.inc)
 // DM_NVN_PASSGPU_SERIAL=1 (for measurement): before creating each encoder on the main command buffer, encode 'signal n+1 → wait for signal n+1' - the signal is only raised once all prior work has completed,
@@ -2192,7 +2192,7 @@ static void blit_note(void);   // Per-pass dump: a copy / buffer update ended th
 // Ordering inside the copy encoder: Metal 4 does not order copies / fills within one encoder (no automatic hazard tracking); an operation reading or writing a range an earlier one wrote needs an intra-encoder barrier.
 // Without it, SMBW's two updates per frame to the same uniform slot ("write 4 bytes −1, then 16 bytes of coefficients") occasionally landed in reverse order; the fountain water wave simulation took −1 as its self coefficient, diverged, and the water vertices were pushed to the top of the screen.
 // Buffer operations check conflicts by guest address range: a barrier when an operation reads a range written earlier, or writes a range read or written earlier; texture operations get
-// one whenever the encoder already holds an operation. Reads were not tracked at first, so a copy writing bytes an earlier copy reads could run first (seen in Cuphead while its pool
+// one whenever the encoder already holds an operation. Reads were not tracked at first, so a copy writing bytes an earlier copy reads could run first (seen in another game while its pool
 // allocator gave out overlapping blocks, see hle_nvn.c zcull_size; NVN runs copies in order for any game)
 enum { BW_MAX = 64 };
 static uint64_t g_bw_lo[BW_MAX], g_bw_hi[BW_MAX], g_br_lo[BW_MAX], g_br_hi[BW_MAX]; static int g_bw_n, g_br_n, g_blit_ops; static uint64_t g_blit_barriers;
@@ -2231,7 +2231,7 @@ static uint64_t g_mdx_epoch;  // Bumped by GPU writes that can change an indirec
 // writes and copies, updates and fills (sbw_note, pend_add). The list is trusted only while every bump of g_wr_epoch since the drain came from a geometry kernel (g_wr_geo), whose
 // storage writes sbw_note sees; another bump (transform feedback, for one) or an overflow sends readers back to the submission-wide sets. Before, every geometry draw of an
 // indirect-count multi-draw drained the GPU for its count and its record, since the draw before it had dispatched its geometry kernel: about 1,900 drains a frame for three frames as
-// Donkey Kong Bananza enters its first level (submissions of 330-520 ms of which 180 ms CPU)
+// Another game enters its first level (submissions of 330-520 ms of which 180 ms CPU)
 enum { DRW_N = 512 };
 static uint64_t g_drw_lo[DRW_N], g_drw_hi[DRW_N], g_drain_sub = ~0ull, g_drain_other, g_wr_geo; static int g_ndrw, g_drw_over;
 static void drw_note(uint64_t lo, uint64_t n) {
@@ -2316,7 +2316,7 @@ void mtl_sub_copy(uint64_t src, uint64_t dst, uint64_t n) {
         void nvn_vpool_note(uint64_t, char *, size_t); char sn[256], dn[256]; nvn_vpool_note(src, sn, sizeof sn); nvn_vpool_note(dst, dn, sizeof dn);
         MDIE("buffer copy address is in no memory pool src=%#llx%s dst=%#llx%s n=%#llx", (unsigned long long)src, sn, (unsigned long long)dst, dn, (unsigned long long)n);
     }
-    if (src != dst && src < dst + n && dst < src + n) { static int once;   // Metal leaves an overlapping copy undefined; seen only in Cuphead while its pool allocator gave out overlapping blocks (hle_nvn.c zcull_size)
+    if (src != dst && src < dst + n && dst < src + n) { static int once;   // Metal leaves an overlapping copy undefined; seen only in another game while its pool allocator gave out overlapping blocks (hle_nvn.c zcull_size)
         if (!once++) MLOG("[RED] buffer copy with overlapping source and destination (src %#llx dst %#llx, %llu bytes): the result is undefined", (unsigned long long)src, (unsigned long long)dst, (unsigned long long)n); }
     enc_b_copy_buffer(blit_buf(src, src + n, dst, dst + n), (__bridge id<MTLBuffer>)sb, so, (__bridge id<MTLBuffer>)db, dof, n);
 }
@@ -2325,7 +2325,7 @@ void mtl_sub_copy(uint64_t src, uint64_t dst, uint64_t n) {
 // Previously it was read from command memory only when the GPU executed - if the game recycles command memory before the GPU runs, it reads the bytes of the next batch of commands (SMBW's fountain water wave simulation got the wrong coefficients and diverged to ±65504).
 static id<MTLBuffer> g_ubs_buf; static size_t g_ubs_off, g_ubs_size;
 // Inline updates inside an open render pass are deferred instead of ending the pass. Metal cannot copy into a buffer inside a render pass, so each update used to end it: all attachments stored,
-// reloaded by the next pass, new encoders (Metroid Dread about 246 times a frame, Tears of the Kingdom about 50). NVN applies the update in command order, so the draws after it in the pass must
+// reloaded by the next pass, new encoders (another game about 246 times a frame, Tears of the Kingdom about 50). NVN applies the update in command order, so the draws after it in the pass must
 // read the new data: a draw whose uniform binding overlaps a deferred update reads a shadow. When the updates deferred in this pass cover all of the binding the shader can read, the shadow is
 // made of them alone, latest first per byte (exactly what the GPU would read, whatever earlier frames still have in flight); when they cover only part of it, the rest comes from memory (ubp_get).
 // The real copies are encoded in order when the pass ends (rp_end), so later passes and the CPU see them as before. The pass still ends before a draw that would need more: a partly covered binding
@@ -2456,7 +2456,7 @@ static uint64_t g_ubp_made, g_ubp_reused, g_ubp_refused;   // partial shadows ma
 static uint64_t g_ubp_why[6];   // why ubp_get refused: 0 too large or off, 1 other GPU writes in this submission (sbw), 2 GPU writes of an earlier submission still running, 3 a copy, fill or feedback write queued, 4 unreadable or too many writes, 5 a report of an earlier submission still to land (hw_live)
 static inline unsigned gw_slot_b(uint64_t pg, unsigned bits) { return (unsigned)((pg * 0x9E3779B97F4A7C15ull) >> (64 - bits)) & ((1u << bits) - 1); }
 static inline unsigned gw_slot(uint64_t pg) { return gw_slot_b(pg, GW_BITS); }
-// Writes of GW_PAGES pages or more, kept whole. They used to count as a write anywhere (g_gw_all): one storage binding over 16 MB in each submission (Splatoon Raiders) refused every uniform shadow of the next one, and the
+// Writes of GW_PAGES pages or more, kept whole. They used to count as a write anywhere (g_gw_all): one storage binding over 16 MB in each submission (another game) refused every uniform shadow of the next one, and the
 // pass ended for each. The same range comes back every submission, so few are live at a time; only when none of the slots is free does it still count as a write anywhere
 enum { GWW_N = 32 };
 static struct { uint64_t lo, hi, fence; } g_gww[GWW_N];
@@ -2500,7 +2500,7 @@ static int gw_live_in(const gw_set *t, unsigned bits, uint64_t lo, uint64_t hi) 
 // The records the host writes into guest memory when a submission completes (post_run): counter reports and samples-passed results, 16 bytes each. Until then memory holds what was there
 // before, and only those 16 bytes: the GPU does not write them. They used to count as GPU writes of their whole 4 KB page, so every partly covered uniform shadow over that page was refused
 // while their submission ran, and each refusal ended a pass. A game whose reports share a page with uniform blocks then ended a pass for each such block once the GPU fell a frame behind
-// (a slow frame at a load), which kept it behind: Ori and the Will of the Wisps writes two timestamp reports a frame into such a page, and fell from 60 to 15-18 fps in the same scene
+// (a slow frame at a load), which kept it behind: another game writes two timestamp reports a frame into such a page, and fell from 60 to 15-18 fps in the same scene
 // (issue #1660). A record is kept by its own bytes in a ring with its submission's fence, and its page in g_gwr only to pass over the ring for every other page. The records of a
 // submission that do not fit in the ring's finished slots go into the page tables as before. Samples-passed results used to count nowhere. DM_NVN_REPORT_EXACT=0 refuses by page as before
 enum { HW_N = 4096 };
@@ -2511,7 +2511,7 @@ static void hw_note(uint64_t addr) {
     if (g_nhw_sub == g_hw_cap) { int c = g_hw_cap ? g_hw_cap * 2 : 256; uint64_t *p = realloc(g_hw_sub, (size_t)c * sizeof *p); if (!p) { g_sbw_over = 1; return; } g_hw_sub = p; g_hw_cap = c; }   // over: every page counts as written (gw_commit)
     g_hw_sub[g_nhw_sub++] = addr;
 }
-// The records this submission's reports write (hw_note), by their own 16 bytes: a report's page holds other words no report writes (Nintendo Switch Sports Resort's agl compares a
+// The records this submission's reports write (hw_note), by their own 16 bytes: a report's page holds other words no report writes (another game's agl compares a
 // timestamp record with the word 16 bytes on, which only the CPU writes; counted by page, that word was unknown and the clear the condition skips ran)
 static int hw_sub_hits(uint64_t lo, uint64_t hi) { for (int i = 0; i < g_nhw_sub; i++) if (lo < g_hw_sub[i] + 16 && g_hw_sub[i] < hi) return 1; return 0; }
 static int hw_live(uint64_t lo, uint64_t hi) {
@@ -2526,7 +2526,7 @@ static int um_page_live(uint64_t lo, uint64_t hi, uint64_t done);
 static int gw_live(uint64_t lo, uint64_t hi) { uint64_t done = g_done; return gw_live_in(g_gwx, GW_BITS, lo, hi) || um_page_live(lo, hi, done) || hw_live(lo, hi); }
 // Inline updates of submissions still running, remembered by byte. A partly covered uniform shadow takes the rest from memory, and memory does not hold them until their submission has run, so they used to refuse
 // the shadow and end the pass. A game that updates a block every frame refused it for as long as the last frame's work was running, and the slower the GPU the longer: each refusal is one more pass, which made the GPU
-// slower still. Splatoon Raiders updates 0x00..0x14 and 0x18..0x70 of its ink query block before each of about 150 queries a frame while the shader reads 0x00..0x70: 150 passes on a 6400x6400 target, about 6 fps.
+// slower still. Another game updates 0x00..0x14 and 0x18..0x70 of its ink query block before each of about 150 queries a frame while the shader reads 0x00..0x70: 150 passes on a 6400x6400 target, about 6 fps.
 // The CPU knows these bytes, so the shadow lays them over memory instead. A byte counts while its fence runs, so what the game writes later (or a copy of a later submission lands) is not overwritten once it has finished.
 // A slot that a page still running holds leaves the other page to g_gwx: refused as before. DM_NVN_UBP_RUNNING=0 refuses them all as before
 enum { UM_N = 256 };
@@ -2741,7 +2741,7 @@ uint64_t guest_ns(void);
 static uint64_t gpu_ticks(void) { return nvn_timestamp_from_ns(guest_ns()); }
 // Counter timestamps by segment, for every game (DM_NVN_GPU_TS=submission / segment_gaps for A/B runs). On hardware a timestamp report is written when the GPU reaches it, so two reports of one submission bracket the GPU work between them.
 // The host writes all reports of a submission in its completion handler; with one time for all of them a game that measures its GPU time that way reads 0 (Breath of the Wild: frame-interval controller and dynamic resolution;
-// Mario Kart World and Donkey Kong Bananza kept their full render size however long the GPU took, Splatoon Raiders too: GitHub PR #1229, issue #1064).
+// Another game and another game kept their full render size however long the GPU took, another game too: GitHub PR #1229, issue #1064).
 // A report takes the GPU time of the segment it was encoded in (sub_cut): TIMESTAMP_TOP (0x10) that segment's GPU start, other types its GPU end. The writes stay in the last segment's handler, before the fence,
 // so a game that waits for the fence reads one submission's reports together; a segment whose feedback has not arrived by then takes the last segment's times
 #define SEG_CLK_N 1024
@@ -2765,8 +2765,8 @@ static uint64_t gpu_s_guest_ns(double s) {   // a feedback GPU time (seconds on 
 // back, and starts a submission as soon as the one before it ends, or once it is ready if that is later: the game's nvnQueueSubmitCommands, or the passing of a queue wait it was held
 // for (mtl_sub_ready). Here the GPU also waits while the host translates: at each of sub_cut's commits inside a submission (a commit is made only once the GPU has run out of work), and
 // before a submission the game had submitted while the one before still ran. A game that times its GPU work as the difference of two reports read that wait as GPU time, and agl's
-// dynamic resolution stepped its render size down for it, which cannot shorten the host's translation: Mario Kart World stepped down and up from frame to frame and thin distant geometry
-// flickered (5-6 ms of gaps between command buffers a frame on an M5: GitHub PR #1350), Splatoon Raiders read 16 ms where the GPU worked 8 (issue #1290), and Nintendo Switch Sports
+// dynamic resolution stepped its render size down for it, which cannot shorten the host's translation: another game stepped down and up from frame to frame and thin distant geometry
+// flickered (5-6 ms of gaps between command buffers a frame on an M5: GitHub PR #1350), another game read 16 ms where the GPU worked 8 (issue #1290), and Nintendo Switch Sports
 // Resort, which submits a frame's three submissions within 0.2 ms, read 14.3 ms where the GPU worked 12 (each waited 1.3-2.6 ms for its translation) and stayed at 854x480 (PR #2491).
 // So each command buffer is placed at the later of the timeline's end and its submission's ready time, and a report moves back by how much later the real GPU ran its command buffer
 // (place_back): the offset of the submission's first command buffer (sub_place), and for each later one the gaps before it (seg_idle_before), as a submission is ready all at once.
@@ -2931,7 +2931,7 @@ static void gpu_tag_done(uint64_t f, double g0, double g1) {
     unsigned k = f % GRING;
     if (atomic_load(&g_gpu[k].frame) != f) return;
     double d = g1 - g0;
-    if (d > 0 && g0 > 0) {   // a command buffer can complete with no start time (0, while a movie's frames upload each frame in Big Brain Academy: Brain vs. Brain), and its span would be the whole clock
+    if (d > 0 && g0 > 0) {   // a command buffer can complete with no start time (0, while a movie's frames upload each frame in another game), and its span would be the whole clock
         atomic_fetch_add(&g_gpu[k].ns, (uint64_t)(d * 1e9));
         uint64_t s0 = (uint64_t)(g0 * 1e9), s1 = (uint64_t)(g1 * 1e9), v;
         for (v = atomic_load(&g_gpu[k].t0); s0 < v && !atomic_compare_exchange_weak(&g_gpu[k].t0, &v, s0);) {}
@@ -3050,7 +3050,7 @@ static void rt_preserve_bound(void);
 static void queue_program_preserve(void);
 // GPU watchdog: a committed command buffer that has not completed within DM_NVN_GPU_WATCHDOG seconds (default 4; 0 turns it off) ends the process at once, before
 // more work is queued behind it. Committed Metal work cannot be cancelled and exiting does not recall it (Apple, developer forums 839155), so this only keeps a hang
-// from growing: PRAGMATA's first real frame left a command buffer that never completed nor reported an error, and twice the Mac's WindowServer stopped minutes later
+// from growing: another game's first real frame left a command buffer that never completed nor reported an error, and twice the Mac's WindowServer stopped minutes later
 static _Atomic uint64_t g_commit_ns[256];
 static void *gpu_watchdog_main(void *arg) {
     uint64_t limit = (uint64_t)(uintptr_t)arg;
@@ -3193,7 +3193,7 @@ static int mtl_wait_at(uint64_t fence, uint64_t timeout_ns, int site) {
     dl.tv_sec += ns / 1000000000ull; dl.tv_nsec = ns % 1000000000ull;
     pthread_mutex_lock(&g_mu);
     int r = 0;
-    // An unbounded wait still waiting after 10 s is a hang: said once, with what it waits for (PRAGMATA's queue worker stopped here at its first 3D scene, no GPU error)
+    // An unbounded wait still waiting after 10 s is a hang: said once, with what it waits for (another game's queue worker stopped here at its first 3D scene, no GPU error)
     struct timespec said; clock_gettime(CLOCK_REALTIME, &said); said.tv_sec += 10; int told = timeout_ns != UINT64_MAX;
     while (g_done < fence) {
         int late = !told && (dl.tv_sec > said.tv_sec || (dl.tv_sec == said.tv_sec && dl.tv_nsec > said.tv_nsec));
@@ -3237,7 +3237,7 @@ static int gpu_read_wait(int site) {
 }
 void mtl_present_flush(void);
 // nvnQueueFinish waits for the GPU work submitted so far, not for queued presents to reach the screen: with a window, the display link takes one present per tick, so waiting for them
-// made every QueueFinish cost one or two display frames. Fire Emblem: Three Houses' loader submits a copy and calls QueueFinish for each resource it uploads, and its first loading screen
+// made every QueueFinish cost one or two display frames. Another game' loader submits a copy and calls QueueFinish for each resource it uploads, and its first loading screen
 // took 78 s on the iPhone (5 s windowless on the Mac). A swapchain texture is not handed back before its previous present is processed (AcquireTexture waits for that ticket)
 void mtl_finish(void) { mtl_finish_gpu_at(WS_FINISH); }
 static void present_drop_for_suspend(void);
@@ -3454,7 +3454,7 @@ void mtl_alias_drop_pool(const void *pool) {
 void own_hook_parts(id o, void (^add)(id part)) { if (![o isKindOfClass:[NvPkg class]]) return; NvPkg *pk = o; add(pk->tex); add(pk->view); add(pk->spare); }
 static alias_key tex_alias_key(const tex_t *t) {
     alias_key k; memset(&k, 0, sizeof k); k.pool = (uint64_t)(uintptr_t)t->pool; k.off = t->off; k.d = t->d;
-    // IMAGE permits shader writes; it does not change storage. Xenoblade Chronicles 3's depth and stencil-sampling objects differ only by this flag. Separate Metal textures
+    // IMAGE permits shader writes; it does not change storage. Another game's depth and stencil-sampling objects differ only by this flag. Separate Metal textures
     // made the stencil read zero and rejected every deferred-lighting pass. Actual image writes add Metal usage before opening their encoder (image_prepare).
     k.d.flags &= ~NVN_TEXTURE_FLAGS_IMAGE;
     return k;
@@ -3489,7 +3489,7 @@ static void pkg_share_put(const tex_t *t, NvPkg *pk) {
 }
 // A sparse texture's CPU-write check walks its page table (nvn_sparse_since). A submission sees the CPU writes and the mappings made before it (as NVN's: a map is a CPU call,
 // not a command), so the replay checks each one once a submission (sub: the submission, g_sub_serial, of its last check). Games remap streamed pages all the time, so the
-// mapping generation alone rarely let the check be skipped: Mario Kart World's terrain targets walked theirs at nearly every lookup
+// mapping generation alone rarely let the check be skipped: another game's terrain targets walked theirs at nearly every lookup
 static inline int sparse_checked(const NvPkg *pk) { return pk->sub == g_sub_serial && pk->own == nvn_dirty_own_writes(); }
 static uint64_t g_pkg_uploads, g_pkg_reuploads, g_pkg_miss, g_pkg_edge_skips;
 static uint64_t g_pfv_upgrades;
@@ -3535,7 +3535,7 @@ static void pkg_miss_report(NvPkg *pk, const tex_t *t, uint64_t now) {
     }
 }
 // Writes beside a texture. The tracker marks whole host pages (16 KB) dirty, and guest memory pools are only 4 KB aligned: the first and last pages of a texture's storage are shared with
-// whatever lies beside it. Pokémon Sword keeps each texture of its GFPAK models in a pool of its own, with the pool's object 4 KB before the storage, in the same host page, and writes there
+// whatever lies beside it. Another game keeps each texture of its GFPAK models in a pool of its own, with the pool's object 4 KB before the storage, in the same host page, and writes there
 // every frame: 73,232 re-uploads in 70 s of play from a save, every one checked of unchanged content, 12 GB of upload staging in 8 minutes. So the bytes of the storage in those edge pages
 // are kept at the upload (pkg_edges_take), and a texture whose only written pages are its edges, with those bytes unchanged, is protected again instead of re-uploaded (pkg_edges_clean).
 // The edges are the whole storage when it lies within two pages (no page wholly inside)
@@ -3588,7 +3588,7 @@ static void pkg_edges_take(NvPkg *pk, const tex_t *t) {   // right after an uplo
     if (nvn_dirty_since_span(pk->span, t->mem, t->L.size, pk->stamp)) pkg_edges_drop(pk);
 }
 // A GPU store into the storage (gsb_swz) changes the texture's bytes in its edge pages too, which the host texture already holds, and no page fault tells the tracker. Against the bytes of
-// the upload, the next write beside it then looked like a write into it and re-uploaded the texture: 17 small ones in two minutes of Minecraft Dungeons II, and a full-screen target
+// the upload, the next write beside it then looked like a write into it and re-uploaded the texture: 17 small ones in two minutes of another game, and a full-screen target
 // beside a page the game writes each frame would be re-uploaded each frame. So from its first store on the edge bytes live in a buffer the GPU writes too (eb), and the swz kernel writes
 // each byte it stores there as well, in the same order as into the storage. eb: [first edge][last edge]; *e1s: the last edge's offset in the storage, ~0 when none
 static id<MTLBuffer> pkg_edges_gpu(NvPkg *pk, const tex_t *t, uint64_t *e0n, uint64_t *e1s, uint64_t *e1n) {
@@ -3628,8 +3628,8 @@ static int pkg_edges_clean(NvPkg *pk, const tex_t *t) {   // the covered pages w
 // not say which images a shader will use atomically
 static inline int pf_r32i(MTLPixelFormat pf) { return pf == MTLPixelFormatR32Uint || pf == MTLPixelFormatR32Sint; }
 // 64-bit texture atomics (texture2d<ulong>::atomic_max / atomic_min, MSL 3.1; dmsh_atomic.wide_atomics): Metal runs them on an RG32Uint texture made with the shader-atomic usage,
-// on Apple GPU family 9 (M3 / A17 Pro and later). PRAGMATA's visibility buffer (SURED.D.2D.MAX.U64, depth << 32 | ID) is an NVN RG32UI image. Older GPUs have no 64-bit texture
-// atomic at all (the pipeline does not build there), so their RG32Uint textures keep the usage they had. After uncraftablexd's PRAGMATA bring-up (PR #1801)
+// on Apple GPU family 9 (M3 / A17 Pro and later). Another game's visibility buffer (SURED.D.2D.MAX.U64, depth << 32 | ID) is an NVN RG32UI image. Older GPUs have no 64-bit texture
+// atomic at all (the pipeline does not build there), so their RG32Uint textures keep the usage they had. After uncraftablexd's another game bring-up (PR #1801)
 static int dev_atomic64(void) { static int v = -1; if (v < 0 && g_dev) v = [g_dev supportsFamily:MTLGPUFamilyApple9] ? 1 : 0; return v > 0; }
 static inline int pf_atomic(MTLPixelFormat pf) { return pf_r32i(pf) || (pf == MTLPixelFormatRG32Uint && dev_atomic64()); }
 static MTLTextureUsage img_usage(const tex_t *t, MTLPixelFormat pf) {
@@ -3665,7 +3665,7 @@ static MTLTextureDescriptor *tex_desc(const tex_t *t, int packaged) {
     d.mipmapLevelCount = t->d.levels ? t->d.levels : 1;
     switch (t->d.target) {
         // 1D / 1D array are created as one-row 2D / 2D array textures: translated shaders never declare texture1d (0 in all five games' libraries) and always sample them as 2D; a Metal 1D texture bound to a texture2d argument is a type mismatch with undefined reads.
-        // Super Mario 3D World + Bowser's Fury's material shaders sample 64x1 R32F 1D lookup tables heavily every frame (on Maxwell a 2D sample of a 1D texture reads that one row)
+        // Another game's material shaders sample 64x1 R32F 1D lookup tables heavily every frame (on Maxwell a 2D sample of a 1D texture reads that one row)
         case 0: d.textureType = MTLTextureType2D; d.height = 1; break;
         case 2: d.textureType = MTLTextureType3D; d.depth = t->d.depth; break;
         case 3: d.textureType = MTLTextureType2DArray; d.arrayLength = t->d.height; d.height = 1; break;
@@ -3673,7 +3673,7 @@ static MTLTextureDescriptor *tex_desc(const tex_t *t, int packaged) {
         case 5: d.textureType = MTLTextureType2DMultisample; d.sampleCount = t->d.samples; d.mipmapLevelCount = 1; break;
         case 6: d.textureType = MTLTextureType2DMultisampleArray; d.sampleCount = t->d.samples; d.arrayLength = t->d.depth; d.mipmapLevelCount = 1; break;
         // Cube textures are created as 6-layer 2D arrays and sampled through cube / cube array views made by tex_fit: Metal only allows cube array views of a 2D array base texture (not of a cube base).
-        // The Legend of Zelda: Breath of the Wild has 1512 shaders that sample the environment light probes as a cube array while a single cube texture is bound (texture ID 1064 onwards): with mismatched types the reads are undefined, and every lit surface came out black
+        // Another game has 1512 shaders that sample the environment light probes as a cube array while a single cube texture is bound (texture ID 1064 onwards): with mismatched types the reads are undefined, and every lit surface came out black
         case 8: d.textureType = MTLTextureType2DArray; d.arrayLength = 6; break;
         // Cube arrays likewise, as a 2D array of all their faces: NVN gives a cube array's depth in layer-faces (a multiple of 6), where a Metal cube array's arrayLength counts cubes.
         // Created as a cube array with arrayLength = depth, DRAGON QUEST XI S's 510-face one (85 cubes, made when its prologue movie ends) asked for 510 cubes, past Metal's 341, and Metal aborted the process
@@ -3711,13 +3711,13 @@ static MTLTextureDescriptor *tex_desc(const tex_t *t, int packaged) {
     // GPU time over eight load / store passes with and without it
     if (d.pixelFormat == MTLPixelFormatDepth32Float_Stencil8) d.usage |= MTLTextureUsagePixelFormatView;
     // An RGB9E5 texture the GPU writes has the format-view usage from the start too: NVIDIA's GPUs have no RGB9E5 colour target, so a game draws into one through an R32_UI view
-    // of it (rt_view_upgrade), packing the bits in its shader. Nintendo Switch Sports Resort's NDSR upscaler input is one, made again at each new size of its dynamic resolution: without
+    // of it (rt_view_upgrade), packing the bits in its shader. Another game's NDSR upscaler input is one, made again at each new size of its dynamic resolution: without
     // this every one of them was upgraded (copied into a new texture) at its first pass, 27 in 80 s of its menus
     if (d.pixelFormat == MTLPixelFormatRGB9E5Float && (d.usage & MTLTextureUsageRenderTarget)) d.usage |= MTLTextureUsagePixelFormatView;
     return d;
 }
 // A level's size as its Metal texture holds it (tex_desc): width, rows, and depth planes (z may be NULL). A 1D (target 0) or 1D array (3) texture is one row; a 1D array's NVN
-// height is its layer count. Taken as rows, every layer of a 1D array went up as many rows tall as the array has layers: PRAGMATA's 512x64 R16F light-profile LUT went up as 64
+// height is its layer count. Taken as rows, every layer of a 1D array went up as many rows tall as the array has layers: another game's 512x64 R16F light-profile LUT went up as 64
 // copies of 64 rows into one-row slices, which Metal's validation refuses and which without it wrote past each slice into the next layers
 static inline void tex_lsize(const tex_t *t, unsigned l, uint32_t *w, uint32_t *h, uint32_t *z) {
     uint32_t H = t->d.target == 0 || t->d.target == 3 ? 1u : t->d.height, Z = t->d.target == 2 ? t->d.depth : 1u;
@@ -3726,7 +3726,7 @@ static inline void tex_lsize(const tex_t *t, unsigned l, uint32_t *w, uint32_t *
 }
 // In-place upgrade: when the original texture was not created with PixelFormatView (off by default, to keep Apple GPU lossless compression) but a different-format view is needed, create a new one with the original spec + PixelFormatView, copy over every slice × level, and replace the registration.
 // Count: across the 4 screens character select / camp / wilderness / combat, 17473 textures needed a different-format view 0 times, so this is a fallback and does not rely on predicting which textures need it
-// The same upgrade adds render-target usage for a whole-level clear (clear_tex) of a texture made without it: Monster Hunter Rise clears a 32x80 packaged one
+// The same upgrade adds render-target usage for a whole-level clear (clear_tex) of a texture made without it: another game clears a 32x80 packaged one
 static id<MTLTexture> tex_upgrade(const tex_t *t, id<MTLTexture> asked, MTLTextureUsage add, MTLPixelFormat view_pf) {
     id holder = tex_get(t->serial);
     // The serial holds an sRGB / linear view (tex_mtl_) of the asked texture, or the asked texture is that view: the parent is upgraded and the view made again on it, so the pair keeps sharing its bytes
@@ -4191,7 +4191,7 @@ static void sps_note(uint64_t lo, uint64_t n) {
 }
 static id<MTLBuffer> up_big_src(uint64_t addr, uint64_t len, uint64_t *off, int may_split);
 // A gather reads the physical memory behind a texture once: through zero-copy buffers that the open upload batch holds and retires (up_big_src), not through the pools' own buffers, which
-// mtl_gpu_addr puts into the residency set for good, committed on the spot (pool_res). Resident Evil 4 had 148 pools and 777 MB wired that way by the forest, against 8 and 52 MB with
+// mtl_gpu_addr puts into the residency set for good, committed on the spot (pool_res). Another game had 148 pools and 777 MB wired that way by the forest, against 8 and 52 MB with
 // the CPU gather (issue #2350). Its pages lie scattered through the pools: a buffer per run of pages made 193,000 in 5 minutes, residency commits 2.4 s against 0.9 s while it loaded;
 // a buffer over each whole pool, made again in each batch, wired 2 to 3 times the bytes of the runs in the forest. So the pages are sorted by address and taken in spans across gaps of up
 // to SP_GAP (a buffer costs about what 1 MB of wiring does in a residency commit), and a buffer the batch already holds over a span is used again. A pool already resident is read
@@ -4327,7 +4327,7 @@ static void zb_report(const tex_t *t, unsigned base, const char *why) {
 // RGBA4, whose four nibbles Metal's ABGR4 holds in reverse (nvn_fmt_to_mtl's reversed mapping); else 0.
 // Every host texture of these formats holds Metal's order, as Metal renders, clears and copies into it; only guest memory holds the guest's (red at bit 0). Bytes are converted where they cross:
 // uploads (pkg_upload_), buffer ↔ texture copies (rb_swap_gpu), ReadTexels (rb_swap_rows) and stores into storage (gsb_store, rb_swap_gpu). Textures that read guest memory in place (linear and buffer textures, on a
-// pool's buffer) take the swap when sampled instead (tex_by_id). Tears of the Kingdom's Depths: smeared rock with red and blue exchanged (GitHub issue #183); Super Mario RPG's RGBA4 shadowmask
+// pool's buffer) take the swap when sampled instead (tex_by_id). Tears of the Kingdom's Depths: smeared rock with red and blue exchanged (GitHub issue #183); another game's RGBA4 shadowmask
 // read its channels reversed and took the sunlight off Mushroom Way's battle ground
 static int rb_packed_shift(int f) {
     uint32_t pf = 0; uint8_t sw[4];
@@ -4399,7 +4399,7 @@ static int tex_cpu_wait(const tex_t *t) {
     if (!g_cb && (gw_live(lo, hi) || nvn_sparse_gen())) { mtl_finish_gpu_at(WS_UPALLOC); return 1; }
     return 0;
 }
-// The texture memory saver (DM_NVN_TEX_MIP_SKIP, from the PRAGMATA investigation, nxnative #1319; L7): a CPU-written compressed 2D, 2D array, cube or cube array texture of at
+// The texture memory saver (DM_NVN_TEX_MIP_SKIP, from the another game investigation, nxnative #1319; L7): a CPU-written compressed 2D, 2D array, cube or cube array texture of at
 // least that many pixels on its shorter side is made without its 1-3 finest levels (DM_NVN_TEX_MIP_LEVELS; at least one level kept). The finest level is about three quarters of
 // a texture's bytes, so those textures take about a quarter of the memory, and an area load converts and uploads about a quarter of their bytes. The guest's level l + k is the host
 // texture's level l: uploads (pkg_upload_), views and sparse clamps (tex_level_shift) and copies (lv_host) translate. Uncompressed textures (render targets, shader-written ones) are never reduced.
@@ -4411,7 +4411,7 @@ static int mip_skip_target(const tex_t *t) { return t->d.target == 1 || t->d.tar
 static unsigned mip_skip(const tex_t *t, MTLTextureDescriptor *d) {
     unsigned px = mip_skip_px();
     // Not the shader-write usage: an NVN image (NVN_TEXTURE_FLAGS_IMAGE) gets it (img_usage), but no shader stores into a compressed format, on the Switch's GPU or an Apple one.
-    // Ocarina of Time makes nearly every texture an image: excluding them, as the PRAGMATA patch did, left 2,300 of 2,329 large compressed textures of a walk unreduced
+    // Ocarina of Time makes nearly every texture an image: excluding them, as the another game patch did, left 2,300 of 2,329 large compressed textures of a walk unreduced
     if (!px || !fmt_compressed(t->d.format) || d.mipmapLevelCount < 2 || !mip_skip_target(t)) return 0;
     return MIN(d.width, d.height) >= px ? MIN(mip_skip_levels(), (unsigned)d.mipmapLevelCount - 1) : 0;
 }
@@ -4580,14 +4580,14 @@ static id<MTLTexture> pkg_upload_(const tex_t *t, uint64_t *stamp, id<MTLTexture
     return mt;
 }
 // ---------- Placement sparse textures ----------
-// A sparse texture in a sparse virtual pool holds what the game mapped into it, tile by tile: Mario Kart World's terrain keeps six 8192x8192x68 arrays of 12 levels (two BC6H, 5,803 MB
+// A sparse texture in a sparse virtual pool holds what the game mapped into it, tile by tile: another game's terrain keeps six 8192x8192x68 arrays of 12 levels (two BC6H, 5,803 MB
 // each made whole; four ASTC 8x8, 1,451 MB) in such pools and maps a small part of them. Made whole, the six took more than the 16 GB Mac had, and every command buffer failed with
 // kIOGPUCommandBufferCallbackErrorOutOfMemory, so no frame was presented. NVN lays such a texture out in 64 KB tiles (nvn_tex.c level_walk; a tile is 64 KB of storage of its own,
 // nvn_deswizzle_tile) of the same shape as Metal's 64 KB sparse tiles (256x256 texels of 16-byte blocks, 512x512 of ASTC 8x8, 128x128 of RGBA8, measured on an M6), and its mip tail starts at
 // the same level (the first smaller than a tile). So it is made a Metal placement sparse texture: no memory until the replay maps a tile from a placement heap, which it does for each
 // tile all of whose pages the game has mapped, uploading that tile's 64 KB; a tile the game unmaps is unmapped and its heap tile reused once the GPU is past it. Each layer's mip tail is
 // one Metal tile, mapped and uploaded when the game has mapped all of its storage. Only a texture that would take at least SP_MIN bytes made whole goes this way: smaller ones keep the
-// whole upload (pkg_upload_), which costs no mapping operations and keeps sparse_view's level clamp (Monster Hunter Rise's streamed clothes)
+// whole upload (pkg_upload_), which costs no mapping operations and keeps sparse_view's level clamp (another game's streamed clothes)
 #define SP_TILE 0x10000u
 #define SP_HEAP_TILES 4096u            // 256 MB placement heaps
 #define SP_MIN (64ull << 20)
@@ -4627,7 +4627,7 @@ static void sp_slot_free(uint32_t slot) {   // caller holds g_sp_mu; the GPU may
     if (g_sp_nlate == g_sp_latecap) { g_sp_latecap = g_sp_latecap ? 2 * g_sp_latecap : 1024; g_sp_late = realloc_or_die(g_sp_late, g_sp_latecap * sizeof *g_sp_late, "the sparse tile list"); }
     g_sp_late[g_sp_nlate++] = (struct sp_late){slot, atomic_load(&g_fence) + 1}; g_sp_live--;
 }
-// Shared tiles. On hardware a sparse texture's content is the physical memory the game maps, and a game may map one physical page at several places at once: Mario Kart World maps each page of
+// Shared tiles. On hardware a sparse texture's content is the physical memory the game maps, and a game may map one physical page at several places at once: another game maps each page of
 // its sparse pools at about three (976 MB of memory behind 2,959 MB of mappings in a race), always in textures of one format: its RGBA8 SNORM 3072² and 6144² arrays (which the GPU draws into)
 // with each other, its BC6H and ASTC 8x8 terrain arrays within themselves. A tile whose 16 pages are consecutive physical memory takes the heap tile of that memory and format, so every place
 // that maps it maps the same heap tile, as the hardware's page table does: one copy where there were three, and a GPU write through one place shows at the others. Metal reads one heap tile
@@ -4866,7 +4866,7 @@ static void sparse_sync(NvSparse *s, const tex_t *t, int whole) {
                                                         (unsigned long long)c.up, (unsigned long long)c.unmapped, (unsigned long long)g_sp_live, (unsigned long long)g_sp_shared, (unsigned long long)g_sp_peak, (unsigned long long)(g_sp_peak * SP_TILE >> 20)); }
 }
 // A look when the texture is resolved: only a new mapping request in its pool costs anything, or a write to a page behind a tile, which no game seen does to a tile it keeps mapped (none of 42,072
-// in Mario Kart World's first race): at most once a second, as the look goes over every mapped tile, so a rewritten tile can show its old content for that long
+// in another game's first race): at most once a second, as the look goes over every mapped tile, so a rewritten tile can show its old content for that long
 static inline void sparse_look(NvSparse *s, const tex_t *t) {
     if (nvn_sparse_log_seq(t->pool) != s->seq) sparse_sync(s, t, 0);
     if (atomic_load_explicit(&g_up_lost_n, memory_order_relaxed) && !s->gpu && up_lost_take(s->tex)) { sparse_sync(s, t, 3); return; }
@@ -5009,14 +5009,14 @@ static void tex_zero_fill(id<MTLTexture> mt) {
 }
 
 // Initial content: what a memory pool's storage holds at nvnMemoryPoolInitialize is the pool's content, also in a pool the CPU cannot access afterwards (CPU_NO_ACCESS), where the
-// game never writes it again. Rhythm Heaven Groove reads each texture file into memory and makes a CPU_NO_ACCESS | GPU_CACHED pool on it (245 by its first screens), with BC7 textures
+// game never writes it again. Another game reads each texture file into memory and makes a CPU_NO_ACCESS | GPU_CACHED pool on it (245 by its first screens), with BC7 textures
 // that have no packaged layout; as GPU textures of zeros its sprite shader discarded every fragment (alpha 0) and the screen stayed black. A new texture in such a pool whose storage
 // holds data is filled from it once, as a GPU texture that can still be rendered into (no re-upload on page writes, unlike packaged / CPU-written ones). Left out: storage of zeros
 // (the zero fill does the same), COMPRESSIBLE textures (their memory is meaningless without the compression tags), multisample, depth / stencil and sparse ones.
 // In a pool the CPU can write, the same holds for storage the game flushed (nvnMemoryPoolFlushMappedRange) before the texture's first use, when the GPU has not written it yet
 // (nvn_flushed in hle_nvn.c: Breath of the Wild's sky scattering tables, copied into their pools and flushed; without them the sky was brownish grey). DM_NVN_FLUSH_FILL=0 leaves
 // those out, as before. In a CPU_UNCACHED pool the CPU's writes reach memory with no flush, and the GPU reads that memory: what the storage holds at the texture's first use is its
-// content there too, flushed or not. Donkey Kong Country: Tropical Freeze's title logo and menu panels (ASTC 5x5, no packaged layout) sit in CPU_UNCACHED | GPU_CACHED pools
+// content there too, flushed or not. Another game's title logo and menu panels (ASTC 5x5, no packaged layout) sit in CPU_UNCACHED | GPU_CACHED pools
 // (flags 0x22) whose storage holds their texels at first use (the 912x512 logo: 242,374 of 376,832 bytes non-zero), never flushed; as GPU textures of zeros they were magenta
 int nvn_flushed(const void *p, uint64_t n);   // hle_nvn.c
 static int mem_any(const uint8_t *p, uint64_t n) {   // whether any byte is non-zero (stops at the first)
@@ -5030,7 +5030,7 @@ static int tex_init_fill(const tex_t *t, id<MTLTexture> mt) {
     if (!t->mem || !t->pool || (t->pool->flags & NVN_MEMORY_POOL_FLAGS_VIRTUAL) || t->has_layout) return 0;
     if (t->d.samples > 1 || ((int)mt.pixelFormat >= 250 && (int)mt.pixelFormat <= 262)) return 0;   // 250..262: Depth16Unorm … X24_Stencil8 (some names are macOS-only)
     int no_cpu = (t->pool->flags & NVN_MEMORY_POOL_FLAGS_CPU_NO_ACCESS) != 0, uncached = (t->pool->flags & NVN_MEMORY_POOL_FLAGS_CPU_UNCACHED) != 0;
-    // COMPRESSIBLE is a memory-compression hint, not a data format. In a CPU_NO_ACCESS pool the game never writes the storage, so the memory may mean nothing to the CPU (Rhythm Heaven Groove's render
+    // COMPRESSIBLE is a memory-compression hint, not a data format. In a CPU_NO_ACCESS pool the game never writes the storage, so the memory may mean nothing to the CPU (another game's render
     // targets). In a pool the CPU writes the texels are plain: SD GUNDAM G GENERATION CROSS RAYS (SDK 9.4.1) sets it on every texture it creates in 0xa2 pools and writes ordinary texels into them,
     // and skipping the fill left all 74 of them with content 0, the screen black but for text
     if (no_cpu && (t->d.flags & NVN_TEXTURE_FLAGS_COMPRESSIBLE)) return 0;
@@ -5057,7 +5057,7 @@ static NSUInteger tbuf_view_align(MTLPixelFormat pf) {
 static uint32_t tbuf_lead(int tid, id<MTLTexture> t);
 static int linear_fit(const tex_t *t, uint32_t *pf, void **mb, uint64_t *mo, size_t *row) {
     // LINEAR_RENDER_TARGET is a linear layout too (SMBW's sky colour ramps: four 64×1 RGBA16F, written by the CPU every frame). Also in a pool the CPU cannot access, whose buffer holds what
-    //   its storage held at creation (see tex_init_fill): Rhythm Heaven Groove's 228 linear R8 textures (sprite masks), read from files into CPU_NO_ACCESS pools, were private textures of zeros
+    //   its storage held at creation (see tex_init_fill): another game's 228 linear R8 textures (sprite masks), read from files into CPU_NO_ACCESS pools, were private textures of zeros
     if (!(t->d.flags & (NVN_TEXTURE_FLAGS_LINEAR | NVN_TEXTURE_FLAGS_LINEAR_RENDER_TARGET)) || !t->mem || !t->pool) return 0;
     if (t->d.target != NVN_TEXTURE_TARGET_2D || t->d.levels > 1 || t->d.samples > 1) return 0;
     // The fallback through tex_desc logs the same diagnostic as for an oversized private texture.
@@ -5076,7 +5076,7 @@ static int linear_fit(const tex_t *t, uint32_t *pf, void **mb, uint64_t *mo, siz
 }
 // Whether a linear texture's storage holds its content, so that one no view can take is uploaded from there and again after each CPU write (tex_mtl_), and read there (mtl_read_texels).
 // In NVN a linear texture's content is its storage until the GPU writes it. LINEAR alone: always, as a GPU copy into it is written into the storage too (tex_storage_dst).
-// LINEAR_RENDER_TARGET or IMAGE only say that the GPU may render or store into it, not that it does: Hades II decodes its Bink movies on the CPU into IMAGE | LINEAR R8 planes of
+// LINEAR_RENDER_TARGET or IMAGE only say that the GPU may render or store into it, not that it does: another game decodes its Bink movies on the CPU into IMAGE | LINEAR R8 planes of
 // 736-byte rows that its shaders only sample (GitHub issue #1956). Such a texture's storage holds its content while the GPU has not written it (gws_owned, from the GPU writes the
 // commands record, mtl_tex_gpu_written), and one taken from it becomes a GPU texture at the GPU's next write there (cpu_unc_take / cpu_unc_drop). In a pool the CPU cannot write,
 // GPU writes are not recorded: there it stays a GPU texture (its first fill takes its storage, tex_init_fill)
@@ -5353,7 +5353,7 @@ static int tex_cpu_written(const tex_t *t) {
     return r;
 }
 // Whether the host takes a texture's content from its storage (tex_mtl_'s packaged path): a packaged layout, CPU-written, or a sampled texture in a sparse virtual pool, which holds what
-// the CPU wrote into the physical pages mapped there (Monster Hunter Rise: the hunter's innerwear, ASTC 6x6 with no packaged layout, came out magenta, and the face black) and is read
+// the CPU wrote into the physical pages mapped there (another game: the hunter's innerwear, ASTC 6x6 with no packaged layout, came out magenta, and the face black) and is read
 // through the page table. Render targets, images, linear and buffer textures stay GPU textures (as ft_add), except a linear texture whose storage holds its content that no view on
 // its buffer can take (linear_storage_ok, made CPU-written by tex_mtl_). mtl_read_texels reads these from the storage too, on whatever thread asks
 static int tex_from_storage(const tex_t *t) {
@@ -5373,15 +5373,15 @@ static int tex_from_storage(const tex_t *t) {
 // (BC and ASTC formats are not colour-renderable; GPU copies into it are written into its storage too, tex_storage_dst). So a sampled block-compressed texture in a pool the CPU can
 // write, with no packaged layout, whose storage holds data at its first use (tex_mtl_, submit thread) holds what the CPU wrote, flushed or not, before or after nvnTextureInitialize:
 // it is made CPU-written, uploaded now and re-uploaded when its pages change. A one-time fill (tex_init_fill) is not enough: that GPU texture goes into the sharing table (own_alias_publish),
-// and a new texture object over the same storage with the same description gets it back after the CPU has rewritten the storage. The Great Ace Attorney Chronicles (Japanese release
+// and a new texture object over the same storage with the same description gets it back after the CPU has rewritten the storage. Another game (Japanese release
 // 0100D7F00FB1A000, GitHub issue #568) decodes its court-record pictures (256x256 to 2048x2048 BC1, a CPU_CACHED pool, no flush) into storage it reuses, building a new texture over
 // it for each item: they were black, and once filled once, showed the previous item's picture. An uncompressed 2D texture cannot be told from a render target by its flags (NVN has
-// none for that, so tex_desc gives it render-target use), but storage the GPU has not written holds only what the CPU wrote: there it takes its storage the same way (Mario Kart World's
+// none for that, so tex_desc gives it render-target use), but storage the GPU has not written holds only what the CPU wrote: there it takes its storage the same way (another game's
 // terrain patches, 260x260 R16, RG8, RGBA8, R11G11B10F and RGBA16 in a CPU_CACHED pool, written with no flush: zeros, so every patch was a flat plane at its base height; see gws_span for
 // Ocarina of Time's). Once the GPU writes that storage such a texture becomes a GPU texture (cpu_unc_drop), and over storage the GPU writes it keeps the flushed-range fill. An uncompressed
 // 3D texture with none of the flags below is taken from its storage in any pool: Xenoblade
 // Chronicles 3's particle steering fields (10x10x10 RGBA8 and RGBA16F, flags 0) were GPU textures of zeros, so every send-off particle moved along (-1, -1, -1) and sank into the ground;
-// the 3D textures it renders into carry IMAGE | COMPRESSIBLE. That is what Xenoblade Chronicles 3, Breath of the Wild and Tears of the Kingdom do, not an NVN rule: a 3D render target
+// the 3D textures it renders into carry IMAGE | COMPRESSIBLE. That is what another game, Breath of the Wild and Tears of the Kingdom do, not an NVN rule: a 3D render target
 // with neither flag and data in its storage at first use would still be drawn into (attach gives it render-target use), but a ReadTexels of it, or a second texture object over the
 // same storage, would read the storage rather than what the GPU drew. DM_NVN_STORAGE_FIRST_USE=0 turns this off (to measure it)
 static int tex_unc(const tex_t *t) { return !fmt_compressed(t->d.format) && t->d.target != NVN_TEXTURE_TARGET_3D; }   // the uncompressed 2D kind, which the GPU can render into
@@ -5532,7 +5532,7 @@ static void reup_note(const NvPkg *pk, const tex_t *t, unsigned taken, uint64_t 
          (unsigned long long)g_sub_serial, w, pk->stored);
 }
 // A sparse texture is bound from its first level whose pages, and those of every smaller level, are all mapped: a view of levels [r, n) samples as with a minimum LOD of r.
-// The translator drops TEX's LOD clamp and residency predicate, so Monster Hunter Rise's streamed textures were sampled at levels it had not mapped yet; those read 0, which ASTC
+// The translator drops TEX's LOD clamp and residency predicate, so another game's streamed textures were sampled at levels it had not mapped yet; those read 0, which ASTC
 // decodes as its error colour (magenta clothes on the title screen). Single-layer 2D textures only; the view follows each upload, as the mappings change only with one
 static void sparse_view(NvPkg *pk, const tex_t *t) {
     // r walks the guest's levels; the host texture lacks the k finest (DM_NVN_TEX_MIP_SKIP), so its view starts at r - k (vbase: the host's level)
@@ -5552,7 +5552,7 @@ static void sparse_view(NvPkg *pk, const tex_t *t) {
 static uint64_t g_texinfo_ser[8]; static int g_texinfo_n;
 // NVN storage is bytes, not descriptions: texture objects over one pool offset read and write one another's texels. A 4-sample colour target of W x H and the single-sample image
 // of 2W x 2H in its format over the same offset are one storage, sample s of pixel (x, y) being texel (2x + (s & 1), 2y + (s >> 1)), and an engine may draw through one and read
-// through the other: Metro 2033 Redux draws its effects (particles, beams, decals, the laser sight, the muzzle flash) into a 640x360 4-sample RGBA8_SRGB target over the bytes of
+// through the other: another game draws its effects (particles, beams, decals, the laser sight, the muzzle flash) into a 640x360 4-sample RGBA8_SRGB target over the bytes of
 // its 1280x720 scene target, which its upscale reads (0x3c0000 bytes each). As two Metal allocations the effects went where nothing read them. Metal lays the two out alike: on
 // Apple GPUs a 4-sample W x H texture placed over a 2W x 2H one in a heap holds every sample at that texel, compressed or not, in every colour format and size tried, when both
 // have the same compression; 2 and 8 samples do not, nor a compressed one over an uncompressed one (Metal sizes those apart), checked by t_storage_pair. So whichever of a pair is
@@ -5672,7 +5672,7 @@ static id<MTLTexture> pair_texture(const tex_t *t, MTLTextureDescriptor *d0) {
 static id<MTLTexture> image_texture(const tex_t *t, MTLTextureDescriptor *d0) {
     if (!image_shape(t) || !t->pool->mem || !(t->pool->flags & NVN_MEMORY_POOL_FLAGS_CPU_NO_ACCESS) || nvn_sparse_pool(t->pool)) return nil;
     // Family members are written uncompressed (DM_NVN_FAMILY_NOCOMPRESS, on unless =0). With lossless compression a member read after another resolution wrote the shared bytes
-    // decodes the other's compressed blocks as garbage: ASTRAL CHAIN's 1600x900 HDR targets (loaded, never cleared) came back from the 1440x810 pause menu with 1.1M non-finite
+    // decodes the other's compressed blocks as garbage: another game's 1600x900 HDR targets (loaded, never cleared) came back from the 1440x810 pause menu with 1.1M non-finite
     // pixels, which bloom spread into a strobing pink / white glow. Uncompressed, the inherited bytes are only misplaced texels of the same format, as on the console
     static int nocomp = -1; if (nocomp < 0) { const char *e = getenv("DM_NVN_FAMILY_NOCOMPRESS"); nocomp = !(e && !strcmp(e, "0")); }
     MTLTextureDescriptor *d = d0; if (nocomp) { d = [d0 copy]; d.allowGPUOptimizedContents = NO; }
@@ -5781,7 +5781,7 @@ static id<MTLTexture> tex_buffer(const tex_t *t) {
     // Metal makes a buffer texture only at an offset of its buffer that is a multiple of the device's alignment for the format (16 bytes on an M4 Pro, more on an iPhone), and the GPU
     // addresses a view made below it from the boundary below its offset (measured on an M4 Pro: R32Float views at offsets 4, 8 and 12 read elements 0, 0 and 0 instead of 1, 2 and 3,
     // shared and private buffers, bound directly or in an argument buffer; R32 image writes at offset 8 landed two elements early, Assassin's Creed II, GitHub PR #1399). Unreal puts
-    // buffer textures at 4-, 8- and 12-byte offsets in its pools (Octopath Traveler 0: offset 0x168; FINAL FANTASY RESONANCE's particle data). So the view starts at that boundary,
+    // buffer textures at 4-, 8- and 12-byte offsets in its pools (Octopath Traveler 0: offset 0x168; another game's particle data). So the view starts at that boundary,
     // wider by the elements in between (tbuf_lead), and every shader access moves its coordinates by them, from the shader's offset table (the translator's
     // TranslationFlags.MetalBufferImageBias): an image slot, a texture slot, and each element of an array of buffer textures. An access with no table entry (past the table's
     // DMSH_TBIAS_SLOTS) reads an aligned copy (tbuf_shadow). Below the element size the view stays a dummy
@@ -5808,7 +5808,7 @@ static void *tex_mtl_resolve(const tex_t *ct, int *in_storage, id<MTLTexture> __
     int off = atomic_load(&g_sub_thread_set) && !on_sub_thread();
     if (t->magic != MAGIC('T', 'E', 'X', 0)) { RED_ONCE(70, "texture object no longer valid (magic %#x, first case ser=%llu): no MTLTexture created", t->magic, (unsigned long long)t->serial); return NULL; }
     // t->pool is the game's object, named by a copy of the texture that an ID or a record keeps past its life: nvnMemoryPoolFinalize clears the magic, and the game then frees the memory, which
-    // then reads as anything. Everything below reads it: garbage in its vp sent an upload through a page table that was never there (nvn_sparse_protect, FINAL FANTASY RESONANCE, GitHub issue #934)
+    // then reads as anything. Everything below reads it: garbage in its vp sent an upload through a page table that was never there (nvn_sparse_protect, another game, GitHub issue #934)
     if (t->pool && t->pool->magic != MAGIC('P', 'O', 'O', 'L')) {
         id<MTLTexture> made = tex_made(t);
         static uint64_t n; if (n++ < 4) MLOG("texture of a memory pool that is gone ser=%llu %ux%u format %#x: %s (%llu so far)", (unsigned long long)t->serial, t->d.width, t->d.height, t->d.format,
@@ -5962,7 +5962,7 @@ static void *tex_mtl_resolve(const tex_t *ct, int *in_storage, id<MTLTexture> __
         return tex_mtl_result(got, owned);
     }
     {   // NVN textures over the same storage share its bytes. One that differs from a shared texture only by the other format of an sRGB / linear pair is a view of it: as its own Metal
-        // texture, Mario Kart World's Grand Prix movie (an RGBA8 render target the YUV pass writes, sampled by the composite through an RGBA8_SRGB texture) showed a frozen frame
+        // texture, another game's Grand Prix movie (an RGBA8 render target the YUV pass writes, sampled by the composite through an RGBA8_SRGB texture) showed a frozen frame
         // The other formats of the pair are looked up directly (srgb_twins), with the rest of the key unchanged; the descriptor is built only when one is shared
         const uint8_t *tw = srgb_twins(ak.d.format); id<MTLTexture> v = nil;
         for (int j = 0; j < 4 && tw[j] && !v; j++) {
@@ -6477,7 +6477,7 @@ static int g_enc_mode;          // How the current encoder was opened (rp_begin_
 // colors. geo_draw ends that pass before returning to ordinary command replay.
 static int g_geo_omit_colors, g_enc_geo_nocolor;
 // The render area of the open pass (0: its whole attachments). A draw pass on a very large target that loads what it keeps can stop at the far corner of its scissor: the GPU then does not load and store what lies beyond,
-// which keeps its contents. Splatoon Raiders' 6400x6400 ink map, each stamp's pass scissored to 1952x2940 at (0, 3460): about 0.95 → 0.32 ms a pass. Only the draw path opens such a pass, only from targets of 16 M pixels, and only when
+// which keeps its contents. Another game' 6400x6400 ink map, each stamp's pass scissored to 1952x2940 at (0, 3460): about 0.95 → 0.32 ms a pass. Only the draw path opens such a pass, only from targets of 16 M pixels, and only when
 // the area is at most half of it; a draw whose scissor leaves the area, and anything else that needs the pass (rp_begin), ends it first. DM_NVN_RP_AREA=0 turns it off
 static NSUInteger g_rp_aw, g_rp_ah; static void rt_dims(NSUInteger *tw, NSUInteger *th);
 static int rpa_on(void) { static int v = -1; if (v < 0) { const char *e = getenv("DM_NVN_RP_AREA"); v = !(e && !strcmp(e, "0")); if (!v) MLOG("DM_NVN_RP_AREA=0: passes on very large targets cover the whole target"); } return v; }
@@ -6683,7 +6683,7 @@ void pg_sub_begin_ext(uint64_t fence) { pg_sub_begin(fence); }
 void pg_commit_ext(id<MTLCommandBuffer> cb) { pg_commit(cb); }
 // The format an attachment is actually attached with: the view's format if the view changes the format and can be attached, otherwise the base texture's. Shared by attaching (attach) and pipeline prediction (pso_predict_rest) so both agree --
 // prediction used the base format, so for a pass written through an sRGB view (Mario's last pass) the predicted pipeline had the wrong format and the real one was compiled at the first draw (from d2r-mobile e2a0c9a9b)
-// A compressed texture as a render target (The Legend of Zelda: Breath of the Wild a 32x32 RGTC1 (BC4) texture, Tears of the Kingdom a 32x32x32 3D one drawn one depth plane per pass, both written
+// A compressed texture as a render target (another game a 32x32 RGTC1 (BC4) texture, Tears of the Kingdom a 32x32x32 3D one drawn one depth plane per pass, both written
 // through an RGBA16UI view: one pixel = one 8-byte block, i.e. BC4 encoded on the GPU). Metal can neither attach a compressed format as a colour attachment nor create compressed <-> uncompressed views
 // (the pipeline descriptor validation aborts the process). A BC texture with an uncompressed view whose pixel size equals the block size is drawn through a shadow (bcrt_attach); any other compressed target
 // is left out (a pass with no attachment at all skips its draws), with a red line
@@ -6693,7 +6693,7 @@ static int bc_block_bytes(MTLPixelFormat f) {   // bytes per 4x4 block of a BC f
     if (f < MTLPixelFormatBC1_RGBA || f > MTLPixelFormatBC7_RGBAUnorm_sRGB) return 0;
     return f <= MTLPixelFormatBC1_RGBA_sRGB || f == MTLPixelFormatBC4_RUnorm || f == MTLPixelFormatBC4_RSnorm ? 8 : 16;
 }
-// A depth texture drawn through a colour view of the same pixel size (Luigi's Mansion 3: a D16 texture through an R16 view at boot) is drawn the same way: Metal can neither attach a depth format
+// A depth texture drawn through a colour view of the same pixel size (another game: a D16 texture through an R16 view at boot) is drawn the same way: Metal can neither attach a depth format
 // as a colour attachment nor make a colour view of a depth texture, and the pipeline descriptor validation aborts the process. Only formats whose Metal pixel is the NVN pixel qualify (D16 and D32F;
 // D24S8 is Depth32Float_Stencil8 here, whose bytes are not the game's)
 static int shrt_block(MTLPixelFormat f, int *side) {   // bytes per block of a texture drawn through a shadow, and the block's side in pixels; 0 for any other format
@@ -6762,7 +6762,7 @@ static MTLPixelFormat rt_view_fmt(id<MTLTexture> base, const view_t *v, int has_
     if (tex_need_pfv(base.pixelFormat, (MTLPixelFormat)pf) && !(base.usage & MTLTextureUsagePixelFormatView)) return base.pixelFormat;
     return (MTLPixelFormat)pf;
 }
-// The same texture level / layer attached at more than one colour slot: only the first is attached, later ones are not (their writes are dropped). The G-buffer passes of The Legend of Zelda: Breath of the Wild attach the albedo and another buffer twice each
+// The same texture level / layer attached at more than one colour slot: only the first is attached, later ones are not (their writes are dropped). The G-buffer passes of another game attach the albedo and another buffer twice each
 // (c1 = c2, c3 = c4), and the channel write masks of c2 / c4 are always 0 (cmask 0x00f0f0ff). The Switch's ROP writes only the masked channels and the two slots do not interfere;
 // on Apple's TBDR each attachment has its own tile memory and the whole tile is stored back at the end of the pass, so the copy stored later (loaded, never written) overwrites the writes of the earlier one -- the order differs per 32x32 tile,
 // the albedo kept only scattered squares, and the whole 3D picture went black. A red line is printed when a dropped slot is used with a non-zero write mask (those writes are really lost)
@@ -6786,7 +6786,7 @@ static NSUInteger att_layers(MTLRenderPassAttachmentDescriptor *a, const view_t 
 }
 // A colour render target view of another format with the same texel size, on a texture made without the format-view usage (it costs lossless compression, so textures get it only
 // when needed): the texture is upgraded to that usage before the pass opens, as a clear or an image of another class does, and the view is attached. Drawing in the base format
-// instead was no fallback for a class change: Nintendo Switch Sports Resort packs its NDSR upscaler's input into an RGB9E5 texture through an R32_UI view, with a fragment shader
+// instead was no fallback for a class change: another game packs its NDSR upscaler's input into an RGB9E5 texture through an R32_UI view, with a fragment shader
 // (401877446d25d079) whose output is the packed bits as uint. On the RGB9E5Float attachment the pipeline took its float entry, which wrote the bits' float value (red in the millions,
 // green and blue 0), and every upscaled picture came out red; Metal refuses the uint entry for that attachment ("output of type uint4 is not compatible")
 // What was refused, so that a refusal costs one try, not a texture copy every pass: format pairs Metal made no view for after an upgrade (attach), and serials whose upgrade
@@ -6966,7 +6966,7 @@ static void *rp_begin_ex_(int clear_only) {
         NSUInteger tw = 0, th = 0; if (!cl) rt_dims(&tw, &th);
         if (tw * th >= (1u << 24)) { NSUInteger w = MIN(tw, (NSUInteger)MAX((long)R.sc.x + R.sc.w, 1)), h = MIN(th, (NSUInteger)MAX((long)R.sc.y + R.sc.h, 1));
             if (w * h * 2 <= tw * th) { pd.renderTargetWidth = w; pd.renderTargetHeight = h; g_rp_aw = w; g_rp_ah = h; } } }
-    // A pass covers only the smallest of its attachments, and so does a clear folded into its load action, while NVN clears the whole target. Bayonetta 2 (SDK 3.6) starts every frame with a
+    // A pass covers only the smallest of its attachments, and so does a clear folded into its load action, while NVN clears the whole target. Another game (SDK 3.6) starts every frame with a
     // 32x32 or 256x256 colour target beside its 1280x720 depth buffer and clears the depth there: only that corner was cleared, the scene behind failed the depth test against the
     // previous frames' depth everywhere else, and its story narration showed in the top-left corner of a black screen. A cleared attachment larger than the pass is cleared in a pass of its own first.
     // The same holds for layers: NVN clears every layer of the target's view, a load action only the pass's layers (one, unless the pass is layered). Little Nightmares clears its point
@@ -7062,7 +7062,7 @@ static void *rp_begin_ex_(int clear_only) {
     }
     g_enc_vis = 0; g_enc_has_vis = g_vis_on;
     // Layered rendering: a vertex shader that writes the layer selects the attachment layer per primitive only when the pass has renderTargetArrayLength; without it every layer went to the
-    // attached one. Pokémon Legends: Z-A builds its 32x32x32 colour grading LUT this way (b29f08619f379a83, one instance per depth plane) and tone-maps through it: only plane 0 was written and the
+    // attached one. Another game builds its 32x32x32 colour grading LUT this way (b29f08619f379a83, one instance per depth plane) and tone-maps through it: only plane 0 was written and the
     // whole picture came out black. The pass gets every layer the attachments have from their attached one on (3D: depth planes); the pass is split when the next draw's shader differs (draw)
     g_pass.layered = g_rp_layered;   // what the pass was opened for, even when the attachments have one layer (then the draws need no split)
     if (g_rp_layered) {
@@ -7189,7 +7189,7 @@ static void warm_start(void);
 // The shader map, the library directory and its tables, read once from any thread (the prefetch, mtl_prog_prefetch, runs on the game's threads)
 static void shmap_read_once(void) { static dispatch_once_t once; dispatch_once(&once, ^{ shmap_read(); }); }
 // That, then the prewarm (warm_start) once: the submit thread and the tools only. The flag is set before warm_start runs, so a call from inside it (pso_prebuild) returns at
-// once; inside the dispatch_once that call re-entered it and libdispatch aborted (Tears of the Kingdom and Pokémon Scarlet at boot, chain d0e99bd4b2fe)
+// once; inside the dispatch_once that call re-entered it and libdispatch aborted (Tears of the Kingdom and another game at boot, chain d0e99bd4b2fe)
 static void shmap_load(void) { shmap_read_once(); static int warmed; if (!warmed) { warmed = 1; warm_start(); } }
 // c1_full.tsv / cb_extent.tsv header match: exact "# chain b-<V> inputs <digest>", or followed by a space (older tables with a clock stamp)
 static BOOL table_head_ok(NSString *head, NSString *want) {
@@ -7323,7 +7323,7 @@ static void c1_store(NvShader *o) {
     if ([guardKey hasSuffix:@"_b"]) guardKey = [guardKey substringToIndex:guardKey.length - 2];
     os_unfair_lock_lock(&g_c1_lock);   // Both the warm-up thread and the submit thread load shaders
     // A dedicated c1 is 64 KiB of its own, zero past its data: a slice of a bank (zeroed when made), not an MTLBuffer of its own. Without c1_full.tsv (a partial library) every
-    // shader gets one, and one buffer each put about 10,000 allocations into the queue's residency set on Hyrule Warriors: Age of Imprisonment's way to its first field; every
+    // shader gets one, and one buffer each put about 10,000 allocations into the queue's residency set on another game's way to its first field; every
     // commit then spent its time in the kernel (the Metal 4 submission queue busy about 75% of the time, almost all system time), command allocators stayed in flight while the
     // GPU sat idle, and the game ran at about 10 fps. Slices of 4 MiB banks are 64 to a buffer
     int dedicated = o->geo_vertices || !g_c1_full_valid || [g_c1_full containsObject:guardKey];   // Geometry topology variants have independent control flow; only the base shader is in the guard table.
@@ -7402,10 +7402,10 @@ static void pso_user_record(const char *fmt, ...) {
     [g_pso_user_seen addObject:s]; fputs(line, f); fflush(f);
 }
 // A library's name for the pipeline archive's index (arch_key): a digest of its bytes (SHA-256, first 16 bytes in hex), the same at every start and in every container. Not the file
-// it came from: Metal hands out one MTLFunction per function content, device-wide, so two shader keys whose libraries are the same bytes (Unity's sprite shaders: Cuphead's
+// it came from: Metal hands out one MTLFunction per function content, device-wide, so two shader keys whose libraries are the same bytes (Unity's sprite shaders: another game's
 // c58ee1901c9eaaff, 229e46ed4370120b, bf6707736e88cca0 and 8e36438c7208b3c6 are one 23,038-byte library) share one function object, and fn4_note keeps the descriptor of whichever
 // of them was noted last. Which one that is depends on the order the prewarm's workers and the draws load them, so a key by file name changed from one start to the next and the
-// index missed bases the archive held: Cuphead compiled 8 or 9 of its 28 prewarm bases again at every start. By content, any of them gives the same key, and the pipeline is the same:
+// index missed bases the archive held: another game compiled 8 or 9 of its 28 prewarm bases again at every start. By content, any of them gives the same key, and the pipeline is the same:
 // one compile serves them all. A library with no name (one made from source: the diagnostic overrides, embedded kernels) has no key and is looked up in the files without an index
 static char g_lib_tag;
 static id<MTLLibrary> lib_tag(id<MTLLibrary> lib, NSString *name) { if (lib && name) objc_setAssociatedObject(lib, &g_lib_tag, name, OBJC_ASSOCIATION_COPY_NONATOMIC); return lib; }
@@ -7629,7 +7629,7 @@ static NvShader *shader_load(NSString *pc, int stage, int layer) {
     char err[160];
     if (nvn_refl_from_json(j, &o->rf, err, sizeof err)) { MLOG("[RED] shader %s reflection conversion failed: %s", pc.UTF8String, err); return nil; }
     if (o->rf.dyn && !DM_GAME_TEX_DYN_SLOTS) {   // dynamic texture handles (TEXD / SAMPD) only where the profile says the game picks them from c2's tables, as before otherwise
-        // (rf.c1 is freed by dealloc when o goes: freeing it here too was a double free, which aborted FINAL FANTASY RESONANCE at its first such shader)
+        // (rf.c1 is freed by dealloc when o goes: freeing it here too was a double free, which aborted another game at its first such shader)
         MLOG("[RED] shader %s reflection conversion failed: a texture handle the translator could not trace to one slot (profile key tex_dyn_slots off)", pc.UTF8String); return nil; }
     NSString *entry = j[@"entry"]; int ez = 0;   // ez: a vertex shader's entry is its near = 0 one
     if (stage == 0) {
@@ -7678,7 +7678,7 @@ static NvShader *shader_load(NSString *pc, int stage, int layer) {
     if (stage == 1) o->has_bz = [j[@"blend_zero"] boolValue];
     if (stage == 1) o->has_logic = [j[@"logic"] isKindOfClass:[NSDictionary class]];
     // A function that declares function constants cannot go into a pipeline until it is specialized, even when every constant is optional. SPIRV-Cross declares one for shaders that read a
-    // texel buffer (spvLinearTextureAlignmentOverride, used only through is_function_constant_defined; one of Pokémon Legends: Z-A's imgui pixel shaders, 2bd5037003980716): an empty set of
+    // texel buffer (spvLinearTextureAlignmentOverride, used only through is_function_constant_defined; one of another game's imgui pixel shaders, 2bd5037003980716): an empty set of
     // values keeps its default. Without it the first pipeline with that shader failed Metal's validation (`fragmentFunction main0 cannot be used to build a pipeline state`)
     if (j[@"entry_discard"]) {
         o->discard_fn = fn4_note([lib newFunctionWithName:j[@"entry_discard"]], lib, j[@"entry_discard"], nil);
@@ -8143,7 +8143,7 @@ static id<MTLTexture> tbuf_rows_copy(id<MTLTexture> t, id<MTLBuffer> src, size_t
 }
 // DM_TBUF_ALIGN=<bytes> (diagnostic): a larger linear-texture alignment than the device's, to reproduce an iPhone's on a Mac
 static NSUInteger tbuf_align(NSUInteger al) { static long v = -1; if (v < 0) { const char *e = getenv("DM_TBUF_ALIGN"); v = e && *e ? strtol(e, NULL, 0) : 0; if (v < 0) v = 0; } return (NSUInteger)v > al ? (NSUInteger)v : al; }
-// The format a texture buffer's rows are viewed in. dpf is the class the shader declares: a shader with no type answer declares float, and KTGL's (Pokemon Pokopia's light and decal lists, 32-bit
+// The format a texture buffer's rows are viewed in. dpf is the class the shader declares: a shader with no type answer declares float, and KTGL's (another game's light and decal lists, 32-bit
 // integer buffers in slots 16..21) fetches through it and takes the result's bits back with as_type<int>. Reading an integer texture through a float declaration is undefined in Metal,
 // so it is viewed as the float format of the same size, whose read hands the stored bits over unchanged
 static MTLPixelFormat tbuf_view_format(MTLPixelFormat pf, int dpf) {
@@ -8156,7 +8156,7 @@ static MTLPixelFormat tbuf_view_format(MTLPixelFormat pf, int dpf) {
     }
 }
 // Rows of a buffer texture the owner no longer holds, which its registered ID outlives (Unreal Engine 5.4 on the Switch 2 keeps its buffer descriptors so, in pools it reuses): no texture to keep them with, so by
-// what they view. A view retains its buffer: emptied with the pools, so that a finalized pool's memory goes. Yoshi and the Mysterious Book made a new view for nearly every bind before this, 30,000 a second.
+// what they view. A view retains its buffer: emptied with the pools, so that a finalized pool's memory goes. Another game made a new view for nearly every bind before this, 30,000 a second.
 // A finalized texture the owner still holds (its ghost entry, the sharing table) keeps its rows with its other views (vc_set_for): this direct-mapped table missed on about a third of the binds of Yoshi's
 // menus, which read finalized textures' rows only (114,091 binds to frame 5,100 made 40,308 views; kept with the texture, 169,774 made 788)
 enum { TB2_WAYS = 1024 };
@@ -8174,7 +8174,7 @@ static id<MTLTexture> tbuf_as_2d(int tid, id<MTLTexture> t, int dpf, uint64_t *r
     unsigned gi = (unsigned)((((uintptr_t)gbuf >> 4) ^ goff * 0x9E3779B97F4A7C15ull ^ gn * 31 ^ gvf) >> 7) % TB2_WAYS;
     if (g_tb2_gone[gi].v && g_tb2_gone[gi].buf == gbuf && g_tb2_gone[gi].off == goff && g_tb2_gone[gi].n == gn && g_tb2_gone[gi].vf == gvf) { g_tb2_binds++; *rid = g_tb2_gone[gi].rid; return (__bridge id<MTLTexture>)g_tb2_gone[gi].v; }
     uint64_t ra = vc_addr(root); vc_set *s = nvn_hm_get(&g_vc, &ra);   // kept with the buffer texture the rows are of
-    if (s && s->rows) {   // the rows hold what the buffer they view holds, whichever descriptor asks: Unreal Engine 5.4's vertex factories register new ones over the same memory, and comparing the texture as well made a new view per bind (Yoshi and the Mysterious Book: 14.7 million over 14.8 million binds)
+    if (s && s->rows) {   // the rows hold what the buffer they view holds, whichever descriptor asks: Unreal Engine 5.4's vertex factories register new ones over the same memory, and comparing the texture as well made a new view per bind (another game: 14.7 million over 14.8 million binds)
         id<MTLTexture> rv = (__bridge id<MTLTexture>)s->rows;
         if (rv.buffer == buf && rv.bufferOffset == goff && rv.pixelFormat == vf && s->rows_n == gn) { g_tb2_binds++; *rid = s->rows_rid; return rv; }
     }
@@ -8255,7 +8255,7 @@ static void pool_seen_clear(int id_) {
     }
 }
 // The ID now holds a texture of another type: the marks of the types shaders read it through were the old texture's, and kept they made the next walk report the new one as read
-// through them (Resident Evil 4 puts its 1x1 default texture into the IDs of the 256x256 cubes it lets go, and a 3D texture into an ID a 2D one had: "[pool-type] … read through a
+// through them (another game puts its 1x1 default texture into the IDs of the 256x256 cubes it lets go, and a 3D texture into an ID a 2D one had: "[pool-type] … read through a
 // type 5 texture pool table" the frame after, nine times over the opening). The read mark itself stays (see mtl_reg_tex); a shader that reads the new texture through a type marks it again
 static void pool_seen_retype(int id_) {
     if (id_ < 0 || id_ >= (int)(POOL_SEEN_WORDS * 32)) return;
@@ -8433,12 +8433,12 @@ static void *tex_by_id_ref(int tid) {
     v = base;
     // Channel swizzle: the view's if set, otherwise the one from texture building; identity builds no view (SMBW's font cache is (1 1 1 R): without the swizzle glyphs become white blocks).
     // Its channels name components of the NVN format, which the format's own mapping finds in Metal's (nvn_fmt_to_mtl: alpha 1 for RGBX and the like, red and blue swapped for the RGB565 family, all four reversed for RGBA4),
-    // the view format's if Metal has it, else the texture's (GitHub PR #66: The Legend of Zelda: Echoes of Wisdom's hearts are an RGB565 mask, drawn as red rectangles without the swap).
+    // the view format's if Metal has it, else the texture's (GitHub PR #66: another game's hearts are an RGB565 mask, drawn as red rectangles without the swap).
     // The swap is for bits in the guest's order, so only for textures that read guest memory in place (linear and buffer textures): every other host texture holds Metal's order, uploads
     // included (rb_packed_shift): for them only the format's alpha 1 remains
     uint8_t sw[4]; uint32_t view_pf = 0; int need_sw = treg_swizzle(&r, base.pixelFormat, base.buffer != nil, sw, &view_pf);
     // Stencil mode (nvnTextureViewSetDepthStencilMode STENCIL): the view reads the stencil of a depth-stencil texture, through Metal's stencil-only format. The shader declares a float texture and
-    // takes the raw bits (the translator has no integer texture type): a read of the integer view gives the stencil value in those bits. Pokémon Legends: Z-A's deferred lighting tests stencil bit 6
+    // takes the raw bits (the translator has no integer texture type): a read of the integer view gives the stencil value in those bits. Another game's deferred lighting tests stencil bit 6
     // this way and discards; reading depth instead, the bit followed the depth value and the whole lit picture was striped
     // A texture built in stencil mode (nvnTextureBuilderSetDepthStencilMode, Unreal Engine 4.27's stencil shader resources) reads stencil the same way unless a view sets the mode
     int want_st = r.has_v && r.v.set_dsmode ? r.v.dsmode == NVN_TEXTURE_DEPTH_STENCIL_MODE_STENCIL : r.t.stencil;
@@ -8457,7 +8457,7 @@ static void *tex_by_id_ref(int tid) {
             base = tex_upgrade_pfv(&rp->t, base, (MTLPixelFormat)pf);
             sg = treg_ep();
         }
-        // The view's levels count from the texture's level 0, which a sparse texture's host texture may start past (tex_level_shift): Resident Evil 4's streamed 512x512 and 1024x1024
+        // The view's levels count from the texture's level 0, which a sparse texture's host texture may start past (tex_level_shift): another game's streamed 512x512 and 1024x1024
         // textures, with only their two or three smallest levels mapped, are sampled through views of levels 1 + 0 and 2 + 0, which read past the host texture's one level and were left out
         NSUInteger lb = tex_level_shift(&rp->t, base), n = base.mipmapLevelCount + lb;
         NSUInteger l0 = r.v.set_levels ? r.v.base_level : 0;
@@ -8473,7 +8473,7 @@ static void *tex_by_id_ref(int tid) {
         NSUInteger ns = base.textureType == MTLTextureType3D ? 1 : (r.v.set_layers && r.v.nlayers ? r.v.nlayers : base.arrayLength * (base.textureType == MTLTextureTypeCube || base.textureType == MTLTextureTypeCubeArray ? 6 : 1) - s0);
         MTLTextureType tt = r.v.set_target ? ttype(r.v.target, base.textureType) : base.textureType;
         if (tt == MTLTextureType2D && ns > 1) ns = 1;
-        // A cube view whose layer range is not whole cubes of faces counts its layers in cubes, as the hardware's texture header does for cube maps (Pokémon Sword's environment maps:
+        // A cube view whose layer range is not whole cubes of faces counts its layers in cubes, as the hardware's texture header does for cube maps (another game's environment maps:
         // 6-layer 2D array textures sampled through views with target CUBEMAP and layers 0 + 1, as the outdoors loads). Metal counts faces, and its validation aborts on a cube view of 1 slice
         if ((tt == MTLTextureTypeCube || tt == MTLTextureTypeCubeArray) && ns % 6) {
             NSUInteger total = base.textureType == MTLTextureType3D ? 1 : base.arrayLength * (base.textureType == MTLTextureTypeCube || base.textureType == MTLTextureTypeCubeArray ? 6 : 1);
@@ -8510,13 +8510,13 @@ static inline __attribute__((always_inline)) void *tex_fast(int tid) {
     return tex_by_id_ref(tid);
 }
 // The texture type the shader declares differs from the one the descriptor gives: use a compatible view. Maxwell sample instructions carry their own dimension, and a non-array instruction reading a 2D array texture reads layer 0;
-// on Metal a 2D array bound to a texture2d argument is a type mismatch with undefined reads (measured: one fixed value). Super Mario 3D World + Bowser's Fury creates its pre-lighting buffer as a one-layer 2D array
+// on Metal a 2D array bound to a texture2d argument is a type mismatch with undefined reads (measured: one fixed value). Another game creates its pre-lighting buffer as a one-layer 2D array
 // and the deferred lighting shader samples it as 2D: the ambient light of the whole picture became one colour, washed out white. A 2D texture in a cube or 3D slot reads zero; any other mismatch is reported once. Caller holds g_rmu
 #define DMY_NT 10   // one dummy per MTLTextureType value, 1D (0) to TextureBuffer (9)
 static id<MTLTexture> dummy_tex(int dtt, int dpf); static uint64_t g_dummy_tex_rid[DMY_NT][4];
 // The layers a view of t takes for a slot declared as want, or 0 when no view bridges the two types. 2D, 2D array, cube and cube array are all layers to Maxwell, which keeps a cube's faces as six
 // of them; the declared type only says how many layers the view takes, for sampling and image access alike. Measured on an M4 Pro, a mismatched cube reads face 0 in every direction through a cube
-// array argument and layer 0 at every index through a 2D array argument (Splatoon Raiders binds a cube view in a slot its sky-like shader declares as a cube array, index 0); the view reads every
+// array argument and layer 0 at every index through a 2D array argument (another game binds a cube view in a slot its sky-like shader declares as a cube array, index 0); the view reads every
 // face. A cube read as 2D is face 0, as a non-array access of a 2D array is layer 0 (Atelier Ryza DX leaves cube textures in slots that its draws read as 2D, a different texture from run to run).
 // A Metal cube's arrayLength is 1 and a cube array's counts cubes
 static NSUInteger fit_layers(id<MTLTexture> t, MTLTextureType want) {
@@ -8531,15 +8531,15 @@ static NSUInteger fit_layers(id<MTLTexture> t, MTLTextureType want) {
 }
 static id<MTLTexture> tex_fit(int tid, id<MTLTexture> t, MTLTextureType want, uint64_t *rid) {
     MTLTextureType have = t.textureType; NSUInteger ns = fit_layers(t, want);
-    // A one-layer 2D texture in a cube slot has no cube view (Pokémon Legends: Z-A binds one to a cube sampler on its character creation screen, a placeholder for an environment map): the zero cube,
-    // a defined read, instead of a type mismatch whose reads are undefined. The same for a 2D array of fewer than 6 layers, which is how the host holds some 2D textures (Mario Kart 8 Deluxe binds
+    // A one-layer 2D texture in a cube slot has no cube view (another game binds one to a cube sampler on its character creation screen, a placeholder for an environment map): the zero cube,
+    // a defined read, instead of a type mismatch whose reads are undefined. The same for a 2D array of fewer than 6 layers, which is how the host holds some 2D textures (another game binds
     // an NVN 2D texture, format 0x44, at slot 10 of two pixel shaders that declare a cube there, as a race loads)
     if (!ns && (want == MTLTextureTypeCube || want == MTLTextureTypeCubeArray) && (have == MTLTextureType2D || (have == MTLTextureType2DArray && t.arrayLength < 6))) {
         // Uniform-controlled branches can leave unused cube inputs holding 2D descriptors (Echoes of Wisdom).
         // Binding alone cannot establish that a mismatched input is sampled; this supported fallback is informational.
         static int noted; if (!noted++) MLOG("cube binding fallback: texture ID %d has a 2D descriptor; zero cube bound (the shader may leave this input unused)", tid);
         id<MTLTexture> z = dummy_tex((int)want, NVN_DPF_FLOAT); *rid = g_dummy_tex_rid[want % DMY_NT][NVN_DPF_FLOAT]; return z; }
-    // The same for a 2D texture or 2D array in a 3D slot: Metal makes a 3D view only of a 3D texture. Batman: Arkham Knight's shaders sample a volume through separate texture slots where
+    // The same for a 2D texture or 2D array in a 3D slot: Metal makes a 3D view only of a 3D texture. Another game's shaders sample a volume through separate texture slots where
     // the game has left 2D render targets bound (553c51835a24a36a samples separate slot 2 as 3D at world coordinates, the slot holding a 720x406 RGBA16F target), from the first frames of
     // New Story on; the zero volume instead of a type mismatch whose reads are undefined. What the Switch's texture unit reads there is not known
     if (!ns && want == MTLTextureType3D && (have == MTLTextureType2D || have == MTLTextureType2DArray)) {
@@ -8561,15 +8561,15 @@ static id<MTLTexture> tex_fit(int tid, id<MTLTexture> t, MTLTextureType want, ui
     *rid = r->alt_rid; return v;
 }
 // tex_fit for an element of a handle array (TEXD, TEXU arrays): every element is declared as the type of the one the shader picks, and the others hold whatever the slots or handles do.
-// A 2D texture in a cube array is one the shader does not pick there (Paper Mario: The Thousand-Year Door's cube samples pick slot 13 or 28, beside 2D textures in the others): nil, so the
+// A 2D texture in a cube array is one the shader does not pick there (another game's cube samples pick slot 13 or 28, beside 2D textures in the others): nil, so the
 // caller binds the zero cube as tex_fit would, without the type mismatch report
 static id<MTLTexture> tex_fit_elem(int tid, id<MTLTexture> t, MTLTextureType want, uint64_t *rid) {
     if ((want == MTLTextureTypeCube || want == MTLTextureTypeCubeArray) && (t.textureType == MTLTextureType2D || (t.textureType == MTLTextureType2DArray && t.arrayLength < 6))) return nil;
     return tex_fit(tid, t, want, rid);
 }
 // A texture pool table (pool_gpu) holds textures of its declared type. To Maxwell 2D, 2D-array, cube and cube-array textures are all layers (fit_layers), and the host keeps cubes and
-// cube arrays as 2D arrays, so a type-strict table missed reads the guest makes correctly: a cube read through a cube table (every bindless cube read sampled zero: PRAGMATA's
-// reflections and ambient light), and PRAGMATA's Character_CabinDisplay material (ps ecd01ea9b68f5390), which samples its sprite slots, 2D textures, through a texture2d_array
+// cube arrays as 2D arrays, so a type-strict table missed reads the guest makes correctly: a cube read through a cube table (every bindless cube read sampled zero: another game's
+// reflections and ambient light), and another game's Character_CabinDisplay material (ps ecd01ea9b68f5390), which samples its sprite slots, 2D textures, through a texture2d_array
 // table (Cabin's monitor face was black). A table of another layered type holds the view tex_fit would make for a slot bind, for an ID a shader read through that type
 // (pool_seen_t). What no view serves (a 2D or 3D texture read as a cube, a non-square array as a cube) holds the dummy, as tex_fit binds the zero texture; GL and Vulkan leave
 // such a read undefined. Its own cache (palt), released with the ID's views (treg_drop_views). One view per table type: a texture read through two other types (a cube read as
@@ -8603,7 +8603,7 @@ static void pool_type_note(int id_, int have, int want) {
     MLOG("[RED] [pool-type] texture ID %d (ser=%llu %ux%u format %#x target %d) is Metal type %d, read through a type %d texture pool table: left out (dummy), no view serves it", id_,
          t ? (unsigned long long)t->serial : 0ull, t ? t->d.width : 0, t ? t->d.height : 0, t ? t->d.format : 0, t ? t->d.target : -1, have, want);
 }
-// A texture type mismatch no view bridges, reported once per shader and texture slot with what is bound: one report per run used to hide that Hyrule Warriors: Age of Calamity has
+// A texture type mismatch no view bridges, reported once per shader and texture slot with what is bound: one report per run used to hide that another game has
 // thousands of shaders reading its light and decal lists, buffer textures, through slots translated as 2D. For a buffer texture: its element count and how far its offset in the
 // pool buffer is from the alignment a linear texture there needs. The total goes on the memory stats line. Caller holds g_rmu
 static uint64_t g_tex_mis_n, g_tex_mis_shown;
@@ -8650,12 +8650,12 @@ static void img_fit_upgrade(void) {
 // The same view, in the texture's own class, for a swizzled view (the channel mapping of tex_by_id): Metal gives a swizzled view only the read usage (a base of usage 0x7, a view of 0x1),
 // so an RGBX8 or RGB565 image was bound as the dummy and its writes were lost. An image takes no channel mapping, as a Vulkan storage image view must have the identity swizzle.
 // The view also takes the type the shader declares, with the layers fit_layers gives, as tex_fit does for sampling: Metal drops the stores to a 2D array bound to a texture2d argument.
-// Mario Kart World's blob shadows (GitHub issue #1648): a compute pass writes the mips of each layer of two R8 2D arrays through one-layer array views in image slots its shader declares
+// Another game's blob shadows (GitHub issue #1648): a compute pass writes the mips of each layer of two R8 2D arrays through one-layer array views in image slots its shader declares
 // 2D; levels 1 and 2 stayed zero, and the decal that samples them drew a dark box around each kart's shadow
 // A 32-bit integer buffer image can also be read or written through a float declaration, as in LEGO Star Wars' exposure histogram. Use a float view of the same buffer so the integer
 // atomic slots and float load/store slots see the same bits, with the same coordinate bias (tbuf_lead).
 // An sRGB texture's image is its linear twin (pf_srgb_linear; no format-view usage needed for that pair): NVN's image loads and stores convert no sRGB, as OpenGL's image units, whose
-// formats have no sRGB ones, while Metal decodes a read and encodes a write through an sRGB format. Star Fox's upscaler network (ddc729bcdb4c8df9) samples its RGBA8_SRGB input, which
+// formats have no sRGB ones, while Metal decodes a read and encodes a write through an sRGB format. Another game's upscaler network (ddc729bcdb4c8df9) samples its RGBA8_SRGB input, which
 // the game encodes once more beforehand, and stores its output, sRGB-encoded already, into an RGBA8_SRGB image (1536x864): Metal encoded it a second time, and the picture came out
 // pale and washed out, its dark parts lifted (median 0.16 → 0.46) and with them the bloom's haze and the fur's grain
 static id<MTLTexture> img_fit(int tid, id<MTLTexture> t, int dpf, MTLTextureType want, uint64_t *rid) {
@@ -8764,7 +8764,7 @@ static id<MTLSamplerState> samp_by_id(int sid) {   // Caller holds g_rmu
     d.lodBias = p.lod_bias < -16 ? -16 : p.lod_bias > 15.99f ? 15.99f : p.lod_bias;   // SetLodBias: Maxwell's sampler bias, Metal 26's range [-16, 15.99]
     d.maxAnisotropy = p.aniso < 1 ? 1 : p.aniso > 16 ? 16 : (NSUInteger)p.aniso;
     if (p.cmp_mode) d.compareFunction = (MTLCompareFunction)(p.cmp_func - 1);
-    // Reduction (NVN 1 min / 2 max): the minimum or maximum of the texels a filtered sample covers, per channel (Metal 26). Pokémon Legends: Z-A builds its depth pyramid with a min sampler
+    // Reduction (NVN 1 min / 2 max): the minimum or maximum of the texels a filtered sample covers, per channel (Metal 26). Another game builds its depth pyramid with a min sampler
     // (151607c7a92386cc reads the level above at an explicit LOD) and tests occlusion boxes against it; averaged, the pyramid is nearer than the scene at depth edges. Metal ignores the reduction
     // with a nearest or no mip filter, so such samplers filter mips linearly: at the integer LODs reductions are used with that gives the same level, and a sampler without mips keeps to the base
     // level through the LOD clamp
@@ -8819,7 +8819,7 @@ static NvArena *arena_new(size_t minimum) {
     a->gpu = a->buf.gpuAddress; a->len = a->buf.length; a->cpu = a->buf.contents; res_add(a->buf); g_arena_made++; g_arena_live++; g_arena_live_bytes += a->len; return a;
 }
 // Arenas above ARENA_KEEP bytes are scratch for large one-off work (a geometry draw's capture, up to 256 MB each). They are kept for reuse while that work goes on and released once
-// none has been used for ARENA_IDLE submissions: OCTOPATH TRAVELER II draws a 129,032-triangle mesh through a geometry shader now and then in its battles (nvn_geometry.inc geo_split,
+// none has been used for ARENA_IDLE submissions: another game draws a 129,032-triangle mesh through a geometry shader now and then in its battles (nvn_geometry.inc geo_split,
 // about 32 arenas of up to 64 MB). Kept for good they left about 330 MB of Metal allocations behind after the battle; released at the next submission, every such frame allocated
 // them again and took 300 ms. The usual blocks above ARENA_KEEP_BLOCKS go the same way once idle (a peak of submissions in flight made them); DM_NVN_ARENA_TRIM=0 keeps them for the
 // rest of the run, as before. A block goes only once the GPU has completed the last submission that used it (its fence, g_done), and never the one a submission is writing
@@ -8987,7 +8987,7 @@ static void ubd_dirty(uint64_t lo, uint64_t hi) {
 // A CPU copy is safe only without GPU writers (including earlier submissions and sparse aliases). Otherwise copy on the GPU before
 // opening the draw's encoder. Guest writes and pool remaps invalidate reuse; scratch copies themselves do not change guest memory.
 // The same copy bounds a stream the draw reads past: Maxwell's fetch stops at the size the stream was bound with and reads zeros beyond it, Metal's reads on into
-// whatever follows. Such a stream (vbuf_need) gets the bound bytes followed by zeros up to the last byte the draw reads. Super Mario Odyssey's agl mist composite
+// whatever follows. Such a stream (vbuf_need) gets the bound bytes followed by zeros up to the last byte the draw reads. Another game's agl mist composite
 // draws 9 vertices from a 36-byte stream holding one full-screen triangle: the 6 vertices past it read the pool's next bytes, which drew a second triangle of the
 // mist over the scene (hard-edged white slabs in the Cascade Kingdom)
 #define VBUF_COPY_MAX (64u << 20)
@@ -9209,10 +9209,10 @@ static void bare_dims(NSUInteger *w, NSUInteger *h) {
 }
 // The open draw pass has a draw whose shaders write an image or a storage buffer. NVN orders later draws after those writes when the game asks with nvnCommandBufferBarrier
 // (ORDER_PRIMITIVES / ORDER_FRAGMENTS / ORDER_FRAGMENTS_TILED); Metal gives no order between draws of one render pass for shader writes, so such a barrier ends the pass and the next draw opens one
-// behind the full consumer barrier. FINAL FANTASY TACTICS - The Ivalice Chronicles composites its UI into the window texture in software, a read-modify-write of the image by draw after
+// behind the full consumer barrier. Another game composites its UI into the window texture in software, a read-modify-write of the image by draw after
 // draw in one attachment-less pass with barrier bits 0x12 between them: without the split a later element read the window before the earlier one had landed and wrote the old pixels
 // back (the dialog boxes had holes the size of their text)
-// The same barrier also orders the other way: the earlier draws' work finishes before a later draw writes, so a write cannot reach memory they still read. Xenoblade Chronicles 2 skins
+// The same barrier also orders the other way: the earlier draws' work finishes before a later draw writes, so a write cannot reach memory they still read. Another game skins
 // each character with a vertex-only draw that writes its blended bone matrices from slot 0 of one shared buffer, which the character's draws then read, and puts ORDER_PRIMITIVES before
 // the next character's: in one pass, the earlier character's later vertices read the next one's matrices (meshes stretched across the scene to another character, for a frame).
 // → the stages that write an image or a storage buffer: bit 0 vertex, bit 1 fragment, bit 2 another
@@ -9231,7 +9231,7 @@ static void order_note(NvProg *pr) {   // after each draw of the pass: does it r
 }
 // A draw that writes, after an ordering barrier in a pass whose earlier draws did not write (g_pass_order): when those draws read memory only in their vertex stage, or the barrier
 // orders only primitives (whose fragments NVN leaves unordered too), a barrier inside the pass from the vertex stage to the stages that write keeps the pass and its attachments (the
-// skinning draws come in the middle of Xenoblade Chronicles 2's geometry pass, and ending it there split it about a hundred times a frame). Otherwise, or for a write in another stage,
+// skinning draws come in the middle of another game's geometry pass, and ending it there split it about a hundred times a frame). Otherwise, or for a write in another stage,
 // or in a merged or deferred pass, whose encoder holds more than these draws, the pass ends first: Metal has no barrier from the fragment stage back to the vertex stage inside a pass
 static void order_draw(NvProg *pr, int merged) {   // merged: a merged (readable-tile, slice-merged) or deferred pass
     int w = g_enc && g_pass_order ? prog_swrites(pr) : 0;
@@ -9280,15 +9280,15 @@ static void udc_note_draw(NvProg *pr, uint32_t raster_mask) {
     }
 }
 // NVN's BindProgram(program, stage bits) binds per stage: the stages in the bits take that program's shaders (a null program unbinds them), the other stages stay.
-// Metroid Dread's depth prepass calls BindProgram(program, vertex | fragment), then BindProgram(null, fragment): only the vertex shader remains and depth is drawn.
+// Another game's depth prepass calls BindProgram(program, vertex | fragment), then BindProgram(null, fragment): only the vertex shader remains and depth is drawn.
 // Every bind used to replace S.prog as a whole, a null program meant "no program bound", and the prepass's ~140 draws per frame were all dropped: depth stayed empty, the G-buffer's depth EQUAL test passed no pixel, and scenes and characters were black.
 // When every stage comes from the same program, that program is the effective one (all of Mario's and Engage's binds are like this, so nothing changes for them); otherwise a composite is made: a host-made prog_t carrying only a serial, whose NvProg in the serial table takes each stage from its source program (a null fragment = a vertex-only pipeline)
 // NVN2's task and mesh bits (0x40, 0x80) of a program bind: stages 3 and 4, where those shaders are kept (hle_nvn.c st_host)
 static inline int gfx_stage_bits(int stages) { return (stages & 0x1f) | (stages & 0x40 ? 8 : 0) | (stages & 0x80 ? 16 : 0); }
 // A non-null graphics program bound with the vertex bit but carrying no vertex or mesh shader leaves the vertex stage bound as it was: Little Busters! Converted Edition
 // makes one single-stage program per shader and binds each with all graphics bits (BindProgram(vs, 0x1f), then BindProgram(ps, 0x1f)); without this the pixel bind replaced
-// the vertex slot, every draw had no vertex shader (pso_get_), and the screen stayed black. Fragment, geometry and tessellation still unbind when absent (Xenoblade Chronicles 2
-// binds vertex-only programs with 0x1f after VS+FS; Mario Kart World and Ocarina of Time bind depth-only task/mesh programs with 0xff / 0xc3), NVN2 mesh programs still replace
+// the vertex slot, every draw had no vertex shader (pso_get_), and the screen stayed black. Fragment, geometry and tessellation still unbind when absent (another game
+// binds vertex-only programs with 0x1f after VS+FS; another game and Ocarina of Time bind depth-only task/mesh programs with 0xff / 0xc3), NVN2 mesh programs still replace
 // the vertex slot, and NULL, compute-only and partially unmapped programs stay as before.
 static const prog_t *bind_stages(const prog_t *p, int stages) {
     if (p && (stages & 1)) {
@@ -9319,7 +9319,7 @@ static const prog_t *bind_stages(const prog_t *p, int stages) {
     return &cp[i];
 }
 // S.prog after S was copied back from a saved state (the precompile prediction, the fusion probe and redraw, deferred draws). A combined program is a slot of the ring above, and binds
-// replayed after the save can give the slot the saved pointer names to another combination. AI: THE SOMNIUM FILES (Unity 2017.4) binds its vertex and fragment programs apart; the
+// replayed after the save can give the slot the saved pointer names to another combination. Another game (Unity 2017.4) binds its vertex and fragment programs apart; the
 // prediction over a 280-draw submission (pso_predict_rest) made more than NCMP combinations, and the draw after it ran Legacy Shaders/VertexLit's shadow vertex shader with
 // PSYNC/BG_AlphaTest's shadow pixel shader, a pipeline Metal refused (the pixel shader reads two outputs that vertex shader does not write). The combination is taken again from S.bst
 static void prog_resolve(void) {
@@ -9453,7 +9453,7 @@ static MTLVertexFormat vfmt_for_ct(MTLVertexFormat f, int ct, int nvn_fmt) {
     else { if (iu < 0 && ii < 0) return f; if ((iu >= 8 && iu < 12) || (ii >= 8 && ii < 12)) return F[(iu >= 8 ? iu : ii) - 8]; }   // 32-bit integers into a float input: the same bits as floats
     // An integer input fed a normalized, half or packed format: Maxwell would hand the shader the bits of the converted float, which Metal cannot, and Metal refuses the whole pipeline
     // ("Vertex attribute … of type uint4 cannot be read using MTLAttributeFormatHalf2"). Read the same bytes as integers of the same layout instead, so the pipeline exists and the draw is kept.
-    // Fire Emblem: Three Houses: KTGL's character shaders read attribute 5 as integer bits (skinning data) and static meshes bind a Half2 there; with the pipeline refused, the characters'
+    // Another game: KTGL's character shaders read attribute 5 as integer bits (skinning data) and static meshes bind a Half2 there; with the pipeline refused, the characters'
     // shading draws were dropped and only black silhouettes remained (gender choice, in the prologue)
     if (ct == NVN_CT_UINT || ct == NVN_CT_INT) {
         static const struct { MTLVertexFormat f; uint8_t u; } P[] = {   // u = index into U / I with the same component size and count
@@ -9473,7 +9473,7 @@ static MTLVertexFormat vfmt_for_ct(MTLVertexFormat f, int ct, int nvn_fmt) {
 }
 // Integer shader inputs fed float-type vertex formats (half, unorm / snorm 8 and 16, 10:10:10:2, 11:11:10, BGRA8). Maxwell's fetch converts by the format and the register holds float32
 // bits, which such shaders take back with as_type<float> (`int_inputs` declared the input uint because its first translation only bit-cast it). Metal can neither convert into an integer
-// input nor build such a pipeline, and reading the raw bytes as integers (vfmt_for_ct's fallback) gives denormals: Fire Emblem: Three Houses' and Age of Calamity's soldiers and Claude came
+// input nor build such a pipeline, and reading the raw bytes as integers (vfmt_for_ct's fallback) gives denormals: another game' and Age of Calamity's soldiers and Claude came
 // out flat tan, their UVs collapsed onto one texel. So the replay converts these attributes on the CPU into float32 bits, four components with the missing ones (0, 0, 0, 1.0) as the fetch
 // fills them, in the frame arena, and the pipeline reads them as UInt4 / Int4 from buffer slots of their own (VCONV_SLOT0 + n, in reflection order; slots 1-12 are unused by translated shaders)
 enum { VCONV_SLOT0 = 1, VCONV_MAX = 12 };
@@ -9491,7 +9491,7 @@ static int vconv_ncomp(int f) {   // components of an NVN float-type vertex form
 }
 // 8- and 16-bit integer formats: Maxwell's fetch widens each component into the 32-bit register by the format's own signedness (sign for SINT, zero for UINT). Metal reads them only into
 // an input of the same signedness, and vfmt_for_ct's switch to the other sign keeps the 8 / 16 bits but widens them the other way. So an input of the other signedness takes the 32-bit
-// values converted here too. Fire Emblem: Three Houses: the terrain's heights are RGBA16I into a uint input; negative heights read as 32768-65535 and the ground under close-up
+// values converted here too. Another game: the terrain's heights are RGBA16I into a uint input; negative heights read as 32768-65535 and the ground under close-up
 // cameras was never drawn (the lighting then saw depth 0 and painted fog there)
 static int vconv_int(int f, int *bits, int *sgn) {   // components of an 8 / 16-bit integer format (with its component size and signedness); 0 = not one
     static const uint8_t T[16] = { 0x03, 0x04, 0x08, 0x09, 0x0F, 0x10, 0x14, 0x15, 0x1B, 0x1C, 0x20, 0x21, 0x27, 0x28, 0x2C, 0x2D };   // per component count: UI8, I8, UI16, I16
@@ -9621,7 +9621,7 @@ static int vin_on(NvShader *vs, const pso_key *k, int tf) {
     int need = 0; for (int v = 0; v < rf->nv && !need; v++) need = vin_ct(rf, v, vin_fmt(k, rf->v[v].nvn), 1) != rf->v[v].ct;
     return need && vin_fn(vs) != nil;
 }
-// A float input fed an 8 / 16-bit integer format takes the same 32-bit register values through a Float4 attribute, which Metal passes through bit for bit: Monster Hunter Rise's
+// A float input fed an 8 / 16-bit integer format takes the same 32-bit register values through a Float4 attribute, which Metal passes through bit for bit: another game's
 // skinned vertex shaders (40609cd5c1443df4, 1369a37113da0012) read RGBA8UI attribute 5 as flags (as_type<int>(x) & 2 ...) and also as a float, so the build leaves the input float
 static int vconv_wanted(const nvn_refl *rf, int v, const pso_key *k, int on) {   // does Metal input v of this pipeline take converted data (on: it uses the shadow inputs, vin_on)
     int a = rf->v[v].nvn, ct = rf->v[v].ct, ib, is;
@@ -9798,7 +9798,7 @@ static int vc_draw_range(const p_draw *dw, const p_draw_idx *di, int64_t *lo, in
     uint32_t mn, mx; if (!di || !ix_range(di, &mn, &mx)) return 0;
     *lo = (int64_t)mn + di->base_vertex; *hi = (int64_t)mx + di->base_vertex; return 1;
 }
-// Kept conversions: a conversion whose source bytes have not changed is bound again in later submissions, not made again. A football stadium's streams (EA SPORTS FC 27, 8- and
+// Kept conversions: a conversion whose source bytes have not changed is bound again in later submissions, not made again. A football stadium's streams (another game, 8- and
 // 16-bit integers into float inputs) come to 7.65 million vertices a submission, 122 MB written every frame: 26.8 ms of the submitting thread on an M4. A key (range, format,
 // layout) is only noted at its first submission, with 64 samples of its source; from the next one that finds the samples unchanged, its conversion is made into a buffer of its own and kept while
 //   - no game or host write reached the source: the pages wholly inside it are write-protected (nvn_dirty_protect, as a kept index range), and the bytes before and after them, in
@@ -10052,8 +10052,8 @@ static int pf_int_kind(MTLPixelFormat f);
 static const char *pso_fout_hint(NvShader *fs, const uint32_t cfmt[8], char *b, size_t n);
 // The class each colour target of this pipeline takes (bit n: target n unsigned, bit 8 + n: signed; a float or normalized one neither), over the outputs main0 declares, into *cls, and
 // whether one of them is not the class main0 declares it as: then the fragment takes the typed-output entry point specialized for *cls (typed_fn). The hardware writes an output's bits to
-// its target whatever the shader computed, so the pipeline's formats say what the outputs are: Luigi's Mansion 3's G-buffer is all integer (R32Uint, RGBA8Uint), Pokémon Sword's has colour
-// 1 RGBA16Uint between two float targets, Kirby and the Forgotten Land's colour 5 is R8Uint beside float ones (GitHub issue #2760). Not for a merged pass (its fragment is the
+// its target whatever the shader computed, so the pipeline's formats say what the outputs are: another game's G-buffer is all integer (R32Uint, RGBA8Uint), another game's has colour
+// 1 RGBA16Uint between two float targets, another game's colour 5 is R8Uint beside float ones (GitHub issue #2760). Not for a merged pass (its fragment is the
 // readable-tile version, bf_fn)
 static int pso_cls(const pso_key *k, NvShader *fs, uint32_t *cls) {
     int need = 0; *cls = 0;
@@ -10240,7 +10240,7 @@ static void bz_bind(id<MTLCommandEncoder> en, const uint8_t *lm) {
 // NVN's logic operations (ColorStateSetLogicOp: the bits a pixel shader writes combined with the target's, in place of blending; integer and normalized targets, as in OpenGL and Vulkan): Metal has none.
 // A pipeline drawn with an operation other than COPY takes the typed-output entry point with its operation on (typed_fn), or in a shader without one fn's entry point from the shader's side library <key>_bx, instead
 // (dmsh_logic.py: <entry>_l runs the body, reads each output's attachment and combines the two), and its draws bind the operation and the targets' channel masks at fragment buffer
-// DMSH_LOGIC_BUFFER (lo_bind). Xenoblade Chronicles 2 ORs probe indices into its RG32Uint light probe lists; Skyward Sword HD ORs fog into the alpha of its RGBA8Unorm frame. A target
+// DMSH_LOGIC_BUFFER (lo_bind). Another game ORs probe indices into its RG32Uint light probe lists; Skyward Sword HD ORs fog into the alpha of its RGBA8Unorm frame. A target
 // with no bits to combine (floating point, sRGB, signed) keeps COPY, with a red line. The operation takes the place of blending (blending stays off in pso_desc), as both APIs define
 static inline int lop_on(void) { return S.color.logic_op != NVN_LOGIC_OP_COPY; }
 static int unorm_chan_masks(MTLPixelFormat f, uint32_t m[4]) {   // the bits each channel of a normalized colour format stores (alpha of a format without it: any, Metal drops the write); 0: not one
@@ -10263,7 +10263,7 @@ static uint32_t lop_key(const pso_key *k, NvShader *fs, int merged) {   // pso_k
         uint32_t bits[4]; any = 1;
         if (unorm_chan_masks((MTLPixelFormat)k->cfmt[i], bits)) norm = 1; else if (pf_int_kind((MTLPixelFormat)k->cfmt[i])) other = 1;
     }
-    if (!any) return 0;   // no colour written (Xenoblade Chronicles 2's probe boxes mark stencil with the operation still set): nothing to combine
+    if (!any) return 0;   // no colour written (another game's probe boxes mark stencil with the operation still set): nothing to combine
     if (merged) { RED_ONCE(134, "logic operation %u in a merged pass (shader %s): drawn with COPY", S.color.logic_op, fs->key); return 0; }
     int u = 0; if (fs->u_logic) for (int i = 0; i < 8; i++) u |= k->cfmt[i] && pf_int_kind((MTLPixelFormat)k->cfmt[i]) == 1;   // an unsigned target the typed-output entry point serves
     if (!u && (other || !norm)) { RED_ONCE(133, "shader %s draws with logic operation %u into a target with no bits to combine (floating point, sRGB, signed) or an integer target it has no entry point for: drawn with COPY", fs->key, S.color.logic_op); return 0; }
@@ -10321,7 +10321,7 @@ static MTLRenderPipelineDescriptor *pso_desc(const pso_key *k, NvShader *vs, NvS
     MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
     d.vertexFunction = vs && vs->mesh_kind != 2 ? vs->fn : nil; d.fragmentFunction = fsfn ? fsfn : fs ? fs->fn : nil;   // mtk_pso copies the raster state only: a mesh function is not a vertex function
     // Diagnostic DM_NVN_HILITE=fragment shader key,...: these draws use a solid-color fragment instead (keys 1–6 in order magenta / green / cyan / yellow / blue / white), to see where the geometry lands
-    // Pipelines are built on several threads at once: the keys and the library are set up once (a lazy setup raced, and a thread used a library another had just replaced: Hades II, 6 keys)
+    // Pipelines are built on several threads at once: the keys and the library are set up once (a lazy setup raced, and a thread used a library another had just replaced: another game, 6 keys)
     if (fs) { static char keys[6][24]; static int nk; static id<MTLLibrary> hl; static dispatch_once_t once;
         dispatch_once(&once, ^{ const char *e = getenv("DM_NVN_HILITE");
             for (const char *q = e; q && *q && nk < 6; q = strchr(q, ',') ? strchr(q, ',') + 1 : q + strlen(q)) { size_t n = strcspn(q, ","); if (n > 23) n = 23; memcpy(keys[nk], q, n); keys[nk++][n] = 0; }
@@ -10336,11 +10336,11 @@ static MTLRenderPipelineDescriptor *pso_desc(const pso_key *k, NvShader *vs, NvS
             break; } }
     // Colour targets of another class than main0 declares (pso_cls), logic operations (lop_key), and dual-source blending (pso_reads_src1: target 0 reads output 1 as its second
     // source): all three go through the typed-output entry point main0_u in the lazily-loaded side library <key>_bx (dmsh_entry.py fs_uint), specialized per set of classes and
-    // fixed-function flags (typed_fn). A float output meeting an integer attachment, or the reverse: a pipeline built on its own is refused (Kirby and the Forgotten Land's 76 shaders
+    // fixed-function flags (typed_fn). A float output meeting an integer attachment, or the reverse: a pipeline built on its own is refused (another game's 76 shaders
     // writing an R8Uint colour 5, GitHub issue #2760: most of the scene missing on the iPhone), one from a Metal 4 base is not, and the target takes undefined values with no error
-    // (Kirby Star Allies' material target; DRAGON BALL: Sparking! ZERO's virtual texture page table, which held 255 everywhere and left the landscape flat green). Under dual-source
+    // (another game' material target; another game's virtual texture page table, which held 255 everywhere and left the landscape flat green). Under dual-source
     // blending main0_u returns output 1 as [[color(0), index(1)]] and omits outputs 1..7 (Maxwell leaves attachments 1..7 as they were); a shader without dual-source support blends
-    // with zero for the second source (blend_zero_src1), since passing SRC1 to Metal with no index(1) output crashes Metal 4's blend compiler (Pokémon Legends: Arceus). A pipeline of
+    // with zero for the second source (blend_zero_src1), since passing SRC1 to Metal with no index(1) output crashes Metal 4's blend compiler (another game). A pipeline of
     // the declared classes with an alpha test only keeps main0's alpha test entry point, which needs no specialization (at_fn)
     uint32_t targets = 0; for (int i = 0; i < 8; i++) if (k->cfmt[i]) targets |= 1u << i;   // not a merged pass: target i is output i
     uint32_t cls = 0; int typed = 0, typed_at = 0, dual_fn = 0;
@@ -10382,7 +10382,7 @@ static MTLRenderPipelineDescriptor *pso_desc(const pso_key *k, NvShader *vs, NvS
         int l = merged ? k->lmap[i] : i;
         uint32_t m = l == 0xff ? 0 : (k->chmask >> (4 * l)) & 0xf;
         // Output numbers the fragment shader does not write: zero write mask, no blending. Maxwell writes only the targets in the shader's output map and leaves the others untouched (whatever the blend state and channel mask);
-        // on Metal an attachment the shader does not write has undefined contents, and with blending enabled that undefined value is blended in. Super Mario 3D World + Bowser's Fury's volume draws after the G-buffer (50d813761ca3f1f9 and others) write only outputs 0 and 2,
+        // on Metal an attachment the shader does not write has undefined contents, and with blending enabled that undefined value is blended in. Another game's volume draws after the G-buffer (50d813761ca3f1f9 and others) write only outputs 0 and 2,
         // while targets 1 (normals) and 3 (pre-lighting) have SRC_ALPHA blending and all channels enabled
         int unwritten = fs && fs->rf.color_known && !fsfn && l != 0xff && (!(fs->rf.color_mask >> l & 1) || (dual_fn && l >= 1));
         if (unwritten) m = 0;
@@ -10390,7 +10390,7 @@ static MTLRenderPipelineDescriptor *pso_desc(const pso_key *k, NvShader *vs, NvS
         // (the translator stores only the mapped ones). Lichii traced a NaN band above Ocarina of Time's horizon to this; its agl_common depth pass maps output 2's R only
         else if (fs && fs->rf.omap_known && !fsfn && l != 0xff) m &= fs->rf.omap >> (4 * l) & 0xf;
         c.writeMask = (m & 1 ? MTLColorWriteMaskRed : 0) | (m & 2 ? MTLColorWriteMaskGreen : 0) | (m & 4 ? MTLColorWriteMaskBlue : 0) | (m & 8 ? MTLColorWriteMaskAlpha : 0);
-        // Integer targets: no blending. Maxwell ignores the blend enable on them; Metal refuses the pipeline (an assertion even without the API validation layer): Luigi's Mansion 3's integer G-buffer (PR #105)
+        // Integer targets: no blending. Maxwell ignores the blend enable on them; Metal refuses the pipeline (an assertion even without the API validation layer): another game's integer G-buffer (PR #105)
         if (!k->logic && l != 0xff && k->blend_en >> l & 1 && !unwritten && !pf_int_kind(c.pixelFormat)) {   // a logic operation takes the place of blending (lop_key)
             blend_st bl = adv_blend(k->blend[l]);
             if (fs && fs->rf.color_known && (!(fs->rf.color_mask & 2) || (dual && !dual_fn)) && !fsfn) {
@@ -10467,7 +10467,7 @@ static MTLRenderPipelineDescriptor *pso_desc(const pso_key *k, NvShader *vs, NvS
 // (with the prebuild, about 850 MB more for Breath of the Wild) is not measured against an iPhone's limit yet. arch_admit checks address space before any archive or compiler is opened.
 // The prebuild's bases can also come made offline, bundled with the
 // app (DM_PSO_BUNDLE, pso_bundle_open). newArchiveWithURL maps a file on the Mac's internal disk (clean pages, not in the footprint) and reads one on an external drive into memory, whole and for the
-// whole run (Kirby Star Allies: 1.13 GB), and it offers no choice: docs/reference/memory.md
+// whole run (another game: 1.13 GB), and it offers no choice: docs/reference/memory.md
 static int pso4_on(void) {
     static int v = -1;
     if (v < 0) {
@@ -10547,7 +10547,7 @@ static dispatch_queue_t g_arch_q; static _Atomic int g_arch_new, g_arch_new_vd, 
 // request's AIR script and the function's bitcode, mapped before newArchiverIdWithBinaryKey takes _queue, then added under _queue, before the compile reports back. A compile
 // under way across a write came back with both nil and crashed there (dispatch_data_create_map on nil); eight threads compiling into one serializer written every 150 ms
 // crashed 3 runs of 3, and still 6 of 6 when the write waited for the compiles under way but let new ones start; a serializer per period crashed in none of 118 runs, every
-// pipeline found in the files. The flush used to hold a lock against every such compile instead, and one compile that did not return (Super Mario Odyssey's alRenderMaterialUber
+// pipeline found in the files. The flush used to hold a lock against every such compile instead, and one compile that did not return (another game's alRenderMaterialUber
 // with the front end at -O2: 33.7 minutes until Metal gave up, GitHub issue #294) held the flush, and the flush every compile and draw that came after it. Now such a compile
 // holds back the file of its own period and nothing else
 static _Atomic uint64_t g_arch_deaths;   // all unwritten periods predating a compiler-service death are untrusted, including ones already handed over
@@ -11423,7 +11423,7 @@ static int pso4_compiler(void) { pso4_init(); return g_comp4 != nil; }   // rend
 // option; the dispatch gives the threadgroup size), so the lookup names the function alone too, by the descriptor shader_load noted (fn4_note). One the bundle does not hold
 // (no bundle, a shader outside the map, an OS update that dropped the bundle's binaries) is looked up in this device's own archive files; on a miss it is built through the
 // MTLDevice as before, and compiled again through the Metal 4 compiler into the current flush period on a background queue (arch_harvest), so the next start takes it from the
-// file that period writes: the MTLDevice's build is the one the system's shader cache serves, the capture compiles it whole (Star Fox's first 5 at its title: 1.2 ms in all
+// file that period writes: the MTLDevice's build is the one the system's shader cache serves, the capture compiles it whole (another game's first 5 at its title: 1.2 ms in all
 // through the MTLDevice, 95 ms through the capture), so the dispatch never waits for the capture. Before, such a pipeline was built again at every start, and in full at each
 // one after the system's shader cache dropped it. A function with constants is looked up and captured by its specialized descriptor (fn_spec; fn_off's, without the border corrections,
 // which pso_offline.py builds into the bundle), and built through the MTLDevice from the specialization fn_dev makes. Not looked up and not captured: the embedded kernels, which have no
@@ -11649,7 +11649,7 @@ static void pso_col4(MTL4RenderPipelineColorAttachmentDescriptor *a, MTLRenderPi
 // pso_desc's fixed state (everything but the functions, the vertex layout and the colour state) in a Metal 4 descriptor: its base's, and again its specialization's.
 // newRenderPipelineDescriptorForSpecialization hands back the colour state open and the fixed state at its defaults (1 sample, alpha to coverage off, no input primitive class,
 // amplification count 1) whatever the base was built with, and the specialized pipeline is described by that descriptor. The GPU draws with the base's state, but Metal's API validation
-// reads the descriptor: a pipeline of a 4x pass read as 1-sample and stopped validation at its bind (PRAGMATA's 4x depth-only passes, "color/raster sample count (4) does not match
+// reads the descriptor: a pipeline of a 4x pass read as 1-sample and stopped validation at its bind (another game's 4x depth-only passes, "color/raster sample count (4) does not match
 // the renderPipelineState's (1)", at the first gameplay frame). One function for both, so the specialization always says what its base was built with. t_pso_msaa
 static void pso_fixed4(MTL4RenderPipelineDescriptor *m, MTLRenderPipelineDescriptor *d) {
     m.rasterSampleCount = d.rasterSampleCount; m.alphaToCoverageState = d.alphaToCoverageEnabled ? MTL4AlphaToCoverageStateEnabled : MTL4AlphaToCoverageStateDisabled;
@@ -11736,7 +11736,7 @@ static id<MTLRenderPipelineState> pso_build_ex(MTLRenderPipelineDescriptor *d, i
         return [g_comp4 newRenderPipelineStateWithDescriptor:whole compilerTaskOptions:nil error:e];
     }
     // A pipeline specialized from a base with open colour state gives its fragment function 0 for [[primitive_id]], where one built whole gives the real IDs (macOS 27.2, Apple M6: 4 triangles of a draw
-    // counted per ID, 16384 0 0 0 against 4096 each, whatever the vertex function). So a fragment shader that reads the ID gets a whole pipeline, with no base to share. Fire Emblem Fortune's Weave's
+    // counted per ID, 16384 0 0 0 against 4096 each, whatever the vertex function). So a fragment shader that reads the ID gets a whole pipeline, with no base to share. Another game's
     // ambient occlusion draws 4 triangles and writes the array layer of each one's primitive ID: every one wrote layer 0, so 3 pixels in 4 had no sun light. A platform limit: the ID has no other source
     if (rast && g_comp4 && [d.label isEqualToString:PSO_WHOLE]) {
         MTL4RenderPipelineDescriptor *whole = pso_desc4(d, 0, off);
@@ -12094,7 +12094,7 @@ static _Atomic int g_pre_running, g_pre_flushing; static _Atomic int g_pre_next,
 static int g_pre_tail_ms = 10000;   // bounded wait in prepare_prebuild for the last in-flight compiles after every pair is handed out (tests may shorten)
 // Pairs whose base failed to build, kept with the system build and the stamp they failed under (prebuild_failed.tsv beside prebuilt.tsv): prebuilt.tsv is written with them, and a
 // later start with both the same leaves them to the draws instead of building them again, which would fail the same way (Metal reports a compile that its compiler service
-// could not finish only after retrying it itself: Super Mario Odyssey's alRenderMaterialUber at -O2, 33.7 minutes, on every start in the background). Another system build (a new
+// could not finish only after retrying it itself: another game's alRenderMaterialUber at -O2, 33.7 minutes, on every start in the background). Another system build (a new
 // GPU compiler) or another stamp tries them again. g_pre_known: those lines by pair ("vertex<TAB>pixel"); g_pre_fails: this run's new lines
 static NSDictionary<NSString *, NSString *> *g_pre_known; static NSMutableArray<NSString *> *g_pre_fails; static os_unfair_lock g_pre_fail_lock = OS_UNFAIR_LOCK_INIT;
 static _Atomic int g_pre_known_n;   // pairs left to the draws because they failed on an earlier start
@@ -12591,7 +12591,7 @@ static void warm_load_begin(void) {
 }
 static _Atomic long g_warm_done;   // lines done (the prepare screen's count)
 // A prewarm list may name shaders of another version of the game: the bundled list of the version the profile was brought up on, packed with another version (the NSP script's
-// derived profile: Hollow Knight: Silksong's 1.0.30000 list named 16 shaders its base game 1.0.27776 does not have), or a device's pso_user.tsv kept across a game update.
+// derived profile: another game's 1.0.30000 list named 16 shaders its base game 1.0.27776 does not have), or a device's pso_user.tsv kept across a game update.
 // A line with a key the shader map does not have is dropped quietly (the keys are counted in the "prewarm done" line); the game never draws with it
 static NSString *warm_map_stage(NSString *key) {
     NSString *mk = [key hasSuffix:@"_b"] ? [key substringToIndex:key.length - 2] : key;   // library names are <map key>_b
@@ -12947,7 +12947,7 @@ static NSArray<NSString *> *warm_paths(const char *e) {
     NSString *seed = [g_shmap_path.stringByDeletingLastPathComponent stringByAppendingPathComponent:@"pso_manifest.tsv"];
     NSMutableArray<NSString *> *all = [NSMutableArray array];
     // A profile without a bundled seed list still warms what this device recorded: returning here left pso_user.tsv growing at every start and never read, and the
-    // pipeline archive never compacted (Donkey Kong Bananza: 2,132 lines unread, 88 archive files opened in 7 s)
+    // pipeline archive never compacted (another game: 2,132 lines unread, 88 archive files opened in 7 s)
     if ([NSFileManager.defaultManager fileExistsAtPath:seed]) [all addObject:seed];
     else MLOG("[RED] pipeline prewarm: seed list does not exist: %s", seed.UTF8String);
     NSString *user = pso_user_path();
@@ -13158,7 +13158,7 @@ static uint32_t tbuf_lead(int tid, id<MTLTexture> t) {
 }
 // A buffer texture whose view starts before its offset (tbuf_lead), read through a binding with no offset table entry (a shader whose buffer textures take more than the table's
 // DMSH_TBIAS_SLOTS entries), is read through a copy of its own bytes at an aligned offset of a shared staging block, made at its first binding in each submission. The fallback of
-// the offset table: FINAL FANTASY RESONANCE's particle vertex factories read their CPU-written particle data so (village fires, smoke and muzzle flashes drawn at the wrong scale or
+// the offset table: another game's particle vertex factories read their CPU-written particle data so (village fires, smoke and muzzle flashes drawn at the wrong scale or
 // flickering) before their slot arrays had entries. The copy holds what the CPU wrote before the submission was encoded: a GPU write in the same submission, or in one still running,
 // is not seen, and a pool the CPU cannot access is bound as is (reported once). Caller holds g_rmu
 enum { TBS_BLOCK = 4u << 20, TBS_CACHE = 512 };
@@ -13198,7 +13198,7 @@ static id<MTLSamplerState> dummy_samp(void) {
     return s;
 }
 static uint64_t dummy_samp_rid(void) { static uint64_t rid; if (!rid) rid = dummy_samp().gpuResourceID._impl; return rid; }
-// The pools a handle traced to no slot reads (nvn_refl.h TEXP / SAMPP, dmsh_reflect.py pool_arrays): Mario Party Superstars' characters take their light textures' handles from a storage
+// The pools a handle traced to no slot reads (nvn_refl.h TEXP / SAMPP, dmsh_reflect.py pool_arrays): another game' characters take their light textures' handles from a storage
 // buffer. One buffer per element type and pool base: the bound n (DMSH_POOL_HEAD bytes), then the resource ID of each ID of the pool bound at the draw (base = S.tex_base / S.samp_base,
 // as ubo_tex_id adds), the dummy where an ID holds nothing or a texture of another type, and the dummy at n for IDs past the table. Patched or rebuilt when a registration or a texture's
 // storage changes (g_reg_gen, g_ser_gen); the old buffer goes when the submissions that used it have completed. Every texture is in the residency set already (res_add at creation). Caller holds g_rmu
@@ -13255,7 +13255,7 @@ static void ids_keep(int k, pool_ids *l, const pool_ids *old) {   // an earlier 
     for (int i = 0; i < old->n; i++) ids_add(k, l, old->v[i]);
 }
 // Whether a registered texture's storage still exists, before pool_gpu makes a texture no draw has bound: a game leaves IDs registered after it is done with their textures, and the
-// first pool walk in Mario Party Superstars crashed once in nvn_sparse_protect (pkg_upload ← tex_by_id ← pool_gpu) on a garbage pool->vp, which ID it was was not caught, as FINAL
+// first pool walk in another game crashed once in nvn_sparse_protect (pkg_upload ← tex_by_id ← pool_gpu) on a garbage pool->vp, which ID it was was not caught, as FINAL
 // FANTASY RESONANCE did later (GitHub issue #934; treg_gone, tex_mtl_ now stop that on every route). So: its memory pool object is live (nvnMemoryPoolFinalize clears the magic; freed
 // and reused memory does not hold it) and an ordinary pool's storage lies in a pool the host maps (mtl_addr; otherwise the upload would read the guest address on the CPU)
 static int tex_storage_live(const tex_t *t) {
@@ -13385,7 +13385,7 @@ static int stand_layers(const treg_t *r, unsigned *s0, unsigned *ns, MTLTextureT
     return *s0 + *ns <= depth && *ns <= STAND_LAYERS;
 }
 // A texture in a sparse pool gets a stand-in too, from the levels it reads when every page behind them is mapped. Such a pool's storage is read through its page table (nvn_sparse_copy:
-// an unmapped page of its address range stops the host with SIGBUS), each layer's bytes from the stand-in's first level to the layer's end (at most STAND_SPARSE_GATHER). PRAGMATA puts its
+// an unmapped page of its address range stops the host with SIGBUS), each layer's bytes from the stand-in's first level to the layer's end (at most STAND_SPARSE_GATHER). Another game puts its
 // streamed textures in sparse pools and maps their small levels first: left out by the walk (12 GB allocated against a budget of 0.9 GB), the materials first read at the tower-to-tablet
 // cut read the dummy, and the G-buffer's base colour was 0.068 on that frame against 0.18 on the next
 enum { STAND_SPARSE_GATHER = 256u << 10 };
@@ -13437,7 +13437,7 @@ static int stand_make_(int id_) {
     if (!stand_layers(r, &s0, &ns, &tt) || !stand_shape_of(t, &sh)) return 0;
     if (t->d.flags & NVN_TEXTURE_FLAGS_SPARSE) { uint32_t tw, th, td; int nt = nvn_tex_sparse_tiles(&t->d, &tw, &th, &td); if (nt < 0 || sh.l0 < (unsigned)nt) return 0; }   // a sparse texture's levels from its mip tail on (laid out as any texture's, sparse_make), not its tiled ones
     // A sparse pool's: every page behind the layers' levels mapped, checked before a texture is cut from the heap. A page not mapped yet (the game maps a streamed texture's small
-    // levels after registering it: PRAGMATA's tablet materials, an ID registered 1,542 frames before the cut, held the dummy at the cut while its twins held their stand-ins) waits for
+    // levels after registering it: another game's tablet materials, an ID registered 1,542 frames before the cut, held the dummy at the cut while its twins held their stand-ins) waits for
     // a mapping over its pages, the only thing that can map it: treg_sparse_notes lets it be looked at again, so walks and table patches do not look at it in between
     if (sp) for (unsigned y = 0; y < ns; y++) { uint64_t lo, hi;
         if (!stand_span(t, s0 + y, sh.l0, &lo, &hi)) return 0;
@@ -13808,7 +13808,7 @@ static uint64_t pool_walk(int samp, int dtt, int dpf, int base, __unsafe_unretai
         g_psnap_gen++; g_stat_pool_patched++;
         *out = b; return p->gpu;
     } while (0);
-    // A change the patch cannot take starts another walk. Small pools pay little (Mario Party Superstars: 0.1 ms), but Ocarina of Time registers something between most of its draws in a pool of
+    // A change the patch cannot take starts another walk. Small pools pay little (another game: 0.1 ms), but Ocarina of Time registers something between most of its draws in a pool of
     // 33,024 IDs: 8 walks a frame, a quarter of the replay, each with a new buffer and a residency commit. So past POOL_SUB_MS of walks a submission the table stands until the next submission.
     // A read of an ID registered since then finds the dummy for that long; a replaced texture stays alive until the submission that may read it has completed. A table with views of retired
     // registrations from an earlier submission does not stand: those views have gone
@@ -14209,7 +14209,7 @@ static id<MTLBuffer> support_buf(void) {
 }
 static uint64_t support_gpu(void) { static uint64_t gpu; if (!gpu) gpu = support_buf().gpuAddress; return gpu; }
 // Raw global memory (binding kind DMSH_KIND_GMEM_MAP): a shader that loads or stores at an address it read from memory, which the translator could tie to no storage buffer
-// (Ryujinx GlobalToStorage.TryGenerateRawStorageOp), finds the pool holding the address in this table and goes through a pointer to the pool's GPU address. Donkey Kong Bananza: gsys's
+// (Ryujinx GlobalToStorage.TryGenerateRawStorageOp), finds the pool holding the address in this table and goes through a pointer to the pool's GPU address. Another game: gsys's
 // vertex shader writes {count 0, instances 1} into each indirect draw record whose address its storage buffer lists, every frame before the terrain's culling refills them; with the
 // stores dropped, the terrain's walls and floor were never drawn (instance count 0) and the counts grew frame after frame.
 // Layout (dmsh_abi.h DMSH_GMEM_MAP_*): sorted by start, entry 0 empty, then the pools as disjoint ranges (a pool overlapping an earlier one keeps only its part past that one's end: every
@@ -14316,15 +14316,15 @@ static void gmem_commit_patch(void) {
         if (k->log) ((__bridge NvGmlLog *)k->log)->map = map; }
 }
 // Where those stores land is known only once the GPU has run them, while the host's uniform shadows and its CPU reads of guest memory must not miss a GPU write (sbw / gw). Counted as a
-// write anywhere, they refused every shadow of the submission and of the next ones: Donkey Kong Bananza's tunnel ran at 70 ms a frame, 4,533 passes a frame ended to land deferred updates.
+// write anywhere, they refused every shadow of the submission and of the next ones: another game's tunnel ran at 70 ms a frame, 4,533 passes a frame ended to land deferred updates.
 // So each store also sets the bit of its pool table entry in a write log (DMSH_KIND_GMEM_LOG, a bitmap), each draw or dispatch with such stores gets its own log from a small pool, and the
 // host learns the pools from it: until the learned set has stayed the same over GML_STABLE logs in a row, the stores count as a write anywhere; then as writes over the learned pools. A log
 // read on completion that shows an entry in no learned pool adds that pool (before the set has settled, it starts the count again); if that submission had used the prediction, the shadows
 // that relied on it are checked against the pool it missed (g_gsr): [RED] only when one lies in it. The missed pools are old ones the stores reach for the first time as the level streams in,
-// not new ones (Donkey Kong Bananza: added 3.5-294 s before; no shadow covered a missed page in 7 misses when the log held pages). Pools, not pages: the game allocates new records as the
-// level streams in, in the same pools (learned page by page, Donkey Kong Bananza's tunnel still met a new page 213 logs in), and a shader that writes a whole frame ran out of slots in a set
+// not new ones (another game: added 3.5-294 s before; no shadow covered a missed page in 7 misses when the log held pages). Pools, not pages: the game allocates new records as the
+// level streams in, in the same pools (learned page by page, another game's tunnel still met a new page 213 logs in), and a shader that writes a whole frame ran out of slots in a set
 // of pages (Ocarina of Time's movie compute)
-// GML_STABLE: 2 logs. While the set is learned every geometry draw after the stores waits for the GPU (geo_cpu_hazard): 8 logs gave Donkey Kong Bananza 9 frames of 300-540 ms
+// GML_STABLE: 2 logs. While the set is learned every geometry draw after the stores waits for the GPU (geo_cpu_hazard): 8 logs gave another game 9 frames of 300-540 ms
 // when gameplay began. A pool found later is checked against the shadows that relied on it (g_gsr)
 enum { GML_WORDS = DMSH_GMEM_MAP_ENTRIES / 32, GML_BYTES = GML_WORDS * 4, GML_MAX = 4096, GML_STABLE = 2 };
 static pthread_mutex_t g_gml_mu = PTHREAD_MUTEX_INITIALIZER;
@@ -14353,10 +14353,10 @@ static void gml_read(id<MTLBuffer> b, id<MTLBuffer> map, int predicted, uint64_t
         pthread_mutex_lock(&g_mu); int p = pool_peek(e[0]); double age = p >= 0 ? (double)(now - g_pools[p].born) / 1e6 : -1; pthread_mutex_unlock(&g_mu);
         if (age >= 0) { if (age < age_lo) age_lo = age; if (age > age_hi) age_hi = age; }
         g_gml_lo[g_gml_n] = e[0]; g_gml_hi[g_gml_n++] = e[1]; added++;
-        if (g_gml_n <= 64) MLOG("raw global memory: stores reach %#llx..%#llx (pool table entry %d)", (unsigned long long)e[0], (unsigned long long)e[1], i * 32 + __builtin_ctz(bits));   // which pools a store went to: a game's CPU data in one (PRAGMATA's draw items) means a misplaced store
+        if (g_gml_n <= 64) MLOG("raw global memory: stores reach %#llx..%#llx (pool table entry %d)", (unsigned long long)e[0], (unsigned long long)e[1], i * 32 + __builtin_ctz(bits));   // which pools a store went to: a game's CPU data in one (another game's draw items) means a misplaced store
     }
     // Once the prediction has begun, a pool found late is added and the prediction goes on: going back to a write anywhere until more logs agreed (8 then) made every geometry draw
-    // after the stores wait for the GPU (geo_cpu_hazard), 400-2,000 ms frames for a second or more after each miss in Donkey Kong Bananza, and bought nothing, as the next late
+    // after the stores wait for the GPU (geo_cpu_hazard), 400-2,000 ms frames for a second or more after each miss in another game, and bought nothing, as the next late
     // pool is missed the same way and every miss is checked (g_gsr)
     if (added && g_gml_stable < GML_STABLE) g_gml_stable = 0; else if (g_gml_stable < INT_MAX) g_gml_stable++;
     if (predicted && added) g_gml_miss += added;
@@ -14462,7 +14462,7 @@ static int border_need(NvShader *sh, int nvn_stage) {
 // pso_key.border of a draw of pr in the current state (pso_key_fill): the draw fetches its pipeline again when this changes (draw_)
 static int prog_border(NvProg *pr) { __unsafe_unretained NvShader *vs = pr->sh[0], *fs = pr->sh[1]; return (vs && border_need(vs, vs->stage)) || border_need(fs, 1); }
 // A table of the handles in one of the game's uniform buffers, which a shader indexes at run time (element k = the handle at off + 8k): nothing tells how many the game keeps there, and the argument
-// buffer has one pointer for it, so the table is as long as the last handle the buffer holds. Kirby Air Riders keeps 197 handles up to element 392 in a 4,096-element buffer, and 34,000 textures
+// buffer has one pointer for it, so the table is as long as the last handle the buffer holds. Another game keeps 197 handles up to element 392 in a 4,096-element buffer, and 34,000 textures
 // registered: only those a table names are made here, where pool_gpu's walk over every ID took 16 GB and most of the frame. A table is looked at again in each pass, in each submission (a compute-only
 // submission keeps the last pass's serial), and after a write queued in this submission over its bytes (htab_written: an inline update an open pass defers, a copy, a fill), and rebuilt when the handles
 // or the registered IDs have changed: into a new buffer, as commands already encoded hold the old one. The read bitmap's address stays 0: the translator marks no read of a table (dmsh_reflect.py
@@ -14537,14 +14537,14 @@ static uint32_t g_draw_binst;   // the current draw's base instance (draw), for 
 static __unsafe_unretained id<MTLBuffer> g_c0_dim_buf; static size_t g_c0_dim_off;   // where encode_args put them for this dispatch (nil: the shader reads no c0); an indirect dispatch copies its GPU-written counts there
 // The pixel stage's sample position rows of c0, for the current pass's sample count. GLSLC lowers gl_SamplePosition (and interpolation at a sample) to a byte of a table at 0x620,
 // indexed by the sample index (PIXLD.MYINDEX) and the pixel's place in a location grid: index = ((((y & w) << z) + (x & z)) << log2 samples) + (sample & mask), with
-// {mask, log2 samples, z, w} at 0x630; each byte holds the sample's x (low nibble) and y (high nibble) in 1/16 pixel. Metroid Prime Remastered's G-buffer shaders pack it into an
+// {mask, log2 samples, z, w} at 0x630; each byte holds the sample's x (low nibble) and y (high nibble) in 1/16 pixel. Another game's G-buffer shaders pack it into an
 // integer target (30 of its pixel shaders read it); left at 0, every sample sat in the pixel's corner instead of its centre (0x88 for one sample). Metal rasterizes at its default
 // positions, the same for every pixel, so the grid masks stay 0 and the table holds those positions. Only one sample was met: the nibble order for several is the hardware's
 // (nouveau's sample locations), not seen in a game.
 // NVN2's table (ounce) holds each nibble as a signed offset from the pixel centre instead (the corner form with bit 3 flipped, so 0x00 for one sample): its shaders either
-// flip it back before use (PRAGMATA's 154 sample position readers: (byte ^ 0x88) nibbles / 16 - 0.5, added to the pixel centre) or pass the nibbles as they are to IPA's
+// flip it back before use (another game's 154 sample position readers: (byte ^ 0x88) nibbles / 16 - 0.5, added to the pixel centre) or pass the nibbles as they are to IPA's
 // offset, which is signed from the centre (its pixel shader 4a9d4507eea6c837; Mesa NAK's load_barycentric_offset subtracts the half pixel from its corner table for the same
-// operand). With the corner form there, every sample position read half a pixel up and left. Whether NVN1's table is the same was not checked (Metroid Prime Remastered
+// operand). With the corner form there, every sample position read half a pixel up and left. Whether NVN1's table is the same was not checked (another game
 // only stores the byte): open
 static void c0_sample_rows(uint8_t *d, uint32_t samples, int ounce) {
     static uint8_t table[2][17][DMSH_C0_SAMPLE_BYTES]; static uint32_t made[2];   // per driver and sample count, made on first use
@@ -14563,7 +14563,7 @@ static void c0_sample_rows(uint8_t *d, uint32_t samples, int ounce) {
 }
 static uint64_t g_geo_bind[5];
 // Which game shaders a failed command buffer encoded. A GPU fault's error names no pass or shader (Metal 4's commit feedback has only the error and two times), and a fault does not always stop
-// the game (Splatoon Raiders, issue #1289: survivable page faults every minute or so before the fatal one), so what the failures have in common narrows the suspects. Each command buffer keeps the
+// the game (another game, issue #1289: survivable page faults every minute or so before the fatal one), so what the failures have in common narrows the suspects. Each command buffer keeps the
 // list of the shaders it encoded, each once. On an error this command buffer caused, the list is printed, then the shaders of all such failures so far, most often failed first, each as
 // `key failed/ran`: in how many failed command buffers, of how many that encoded it. A shader that runs everywhere has a low ratio. Counts rather than an intersection: one failure with another
 // cause would empty an intersection for good. A victim of another's fault and a submission refused after one ran nothing of their own and do not count. The list leaves out the host's own passes
@@ -14625,9 +14625,9 @@ static void cbs_feedback(cbs_list *l, NSError *err, const char *where) {   // fr
 }
 // A uniform slot bound shorter than its shader reads it at fixed offsets (nvn_rbind.fixw, the translator's count): Maxwell gives 0 for a read past a constant buffer's size, and games
 // rely on it. Metal has no bounds, so the binding's bytes go into an arena block with zeros up to the end of those reads, and the slot points there. Checked once a binding, where the
-// translator used to compare every read with the size (GitHub issue #2066: a fifth of the GPU's time in Donkey Kong Bananza); a read at a computed offset is still compared in the
+// translator used to compare every read with the size (GitHub issue #2066: a fifth of the GPU's time in another game); a read at a computed offset is still compared in the
 // shader (NVN_RB_CBSIZE). The bytes are the ones the slot would have pointed at: the deferred updates' when they cover the binding, a partly updated block's copy, else the memory.
-// Paper Mario: The Thousand-Year Door binds 16 bytes to a slot read up to byte 0x930, and the GPU hung on the light count it read at 0x900 (GitHub issue #1860)
+// Another game binds 16 bytes to a slot read up to byte 0x930, and the GPU hung on the light count it read at 0x900 (GitHub issue #1860)
 // The size that bounds a slot is the one the console's driver gives the GPU, the bound size rounded up to 256 bytes (ub_bound): nvnCommandBufferBindUniformBuffer writes
 // (size + 0xff) & ~0xff in NVN1's driver (method 0x8e0) and ((size + 0xff) >> 8) << 20 in NVN2's (method 0xe02), so a read between the bound size and the next multiple of 256
 // gives the memory there, not 0. Ocarina of Time binds 16, 64, 144, 192, 464, 976, 16,960 and 41,600 bytes (GitHub issue #2218). live: the bytes of the binding that are
@@ -14654,7 +14654,7 @@ static uint64_t cbuf_slot(NvShader *sh, int nvn_stage, const nvn_rbind *b, __uns
     void *mb; uint64_t mo, gpu;
     if (!u || !u->addr || !mtl_gpu_addr(u->addr, u->size ? u->size : 1, &mb, &mo, &gpu)) {   // reads 0 (the all-zero bank), as an unbound texture slot does, instead of through a null pointer
         // A slot the game bound empty itself (address 0, size 0): every read is past the binding's size, which reads 0 on Maxwell as for a short binding (ub_padded), so the zero bank
-        // is what it reads. Resident Evil 4 binds compute slot 1 so before every dispatch of 4e06df4bbdf9b7c9, whose cb1 reads it does not use. Noted once; a slot never bound and
+        // is what it reads. Another game binds compute slot 1 so before every dispatch of 4e06df4bbdf9b7c9, whose cb1 reads it does not use. Noted once; a slot never bound and
         // an address in no pool stay red
         if (u && !u->addr && !u->size && (S.ubo_set[nvn_stage] >> reg & 1)) {
             static int noted; if (!noted++) MLOG("stage %d cb%d is bound empty by the game (address 0, size 0): shader %s reads it as 0, as a read past a binding's size is (frame %llu)", nvn_stage, reg, sh->key, (unsigned long long)atomic_load(&g_cur_frame));
@@ -14684,7 +14684,7 @@ static uint64_t cbsize_table(int nvn_stage, __strong id<MTLBuffer> *use) {
 }
 // A storage buffer by address (SBUFU / SBUFQ) has no size: on the console the shader reads the GPU's page table as far as it indexes from the address, the pages mapped there and 0 for an
 // unmapped one. The host binds the Metal buffer that holds the address, a memory pool, a large pool's chunk or a sparse pool's mapped run, and a read past its end reached whatever lay
-// after it in the GPU's address space: PRAGMATA's GI voxeliser ef4ad01151918469 reads 0x150000 bytes and more from the base of a 1 GB sparse pool with one 0xc0000-byte run mapped
+// after it in the GPU's address space: another game's GI voxeliser ef4ad01151918469 reads 0x150000 bytes and more from the base of a 1 GB sparse pool with one 0xc0000-byte run mapped
 // there, and the other memory's bytes became hot surfel colours that the GI spread through the R53 hangar (GitHub issue #2618). So the translator compares each access with the memory
 // bound (Ryujinx TranslationFlags.MetalStorageBounds), from the shader's length table (dmsh_abi.h DMSH_SBLEN_BANK): the binding's words before the address, then those plus the
 // words from it to the buffer's end. Out of it a load gives 0 and a store or an atomic is dropped, as on an unmapped page. buf nil: a dummy, nothing readable
@@ -15042,21 +15042,21 @@ static int encode_args_full(id<MTLCommandEncoder> en, NvShader *sh, int nvn_stag
                 }
             } else { slots[aid] = dummy_buf_gpu(); USE(dummy_buf(), MTLResourceUsageRead); sblen_put(sblen, b, nil, 0); }
             if (bl) PD("B %llu st%d sbufp reg%d %s addr=%#llx size=%llu %s", g_stat_pass, nvn_stage, reg, hit ? "real" : "dummy", u ? (unsigned long long)u->addr : 0ull, u ? (unsigned long long)u->size : 0ull, b->rw ? "rw" : "ro");
-        } else if (b->kind == NVN_RB_SBUFU) {   // B: a storage buffer whose GPU address the game keeps in its own uniform buffer (Monster Hunter Rise's compute shaders: c3 + 0x38); read like a bindless handle
+        } else if (b->kind == NVN_RB_SBUFU) {   // B: a storage buffer whose GPU address the game keeps in its own uniform buffer (another game's compute shaders: c3 + 0x38); read like a bindless handle
             uint64_t addr; ubo_read(nvn_stage, reg, b->off, 8, &addr); addr = ucb_handle_addr(addr);
             void *mb; uint64_t mo, gpu;
             if (addr && mtl_gpu_addr(addr, 1, &mb, &mo, &gpu)) { slots[aid] = gpu; USE((__bridge id<MTLBuffer>)mb, b->rw ? MTLResourceUsageRead | MTLResourceUsageWrite : MTLResourceUsageRead); if (b->rw) sbw_note(addr, sbw_len(0, mb, mo), SBW_GPU);
                                                                  sblen_put(sblen, b, (__bridge id<MTLBuffer>)mb, mo); }   // size not known: bounded by the buffer that holds it
             else { slots[aid] = dummy_buf_gpu(); USE(dummy_buf(), MTLResourceUsageRead); sblen_put(sblen, b, nil, 0); }
             if (bl) PD("B %llu st%d sbufu reg%d+%#x addr=%#llx %s", g_stat_pass, nvn_stage, reg, b->off, (unsigned long long)addr, b->rw ? "rw" : "ro");
-        } else if (b->kind == NVN_RB_SBUFQ) {   // B: a storage buffer whose GPU address the game pushed (c[24] at b->off, both blocks: PRAGMATA's compute buffer entries); resolved like NVN_RB_SBUFU
+        } else if (b->kind == NVN_RB_SBUFQ) {   // B: a storage buffer whose GPU address the game pushed (c[24] at b->off, both blocks: another game's compute buffer entries); resolved like NVN_RB_SBUFU
             uint64_t addr = 0; const uint8_t *pb = S.push[nvn_stage == 5 ? 1 : 0]; if (b->off + 8u <= sizeof S.push[0]) memcpy(&addr, pb + b->off, 8);
             addr = ucb_handle_addr(addr);
             void *mb; uint64_t mo, gpu;
             if (addr && mtl_gpu_addr(addr, 1, &mb, &mo, &gpu)) { slots[aid] = gpu; USE((__bridge id<MTLBuffer>)mb, b->rw ? MTLResourceUsageRead | MTLResourceUsageWrite : MTLResourceUsageRead); if (b->rw) sbw_note(addr, sbw_len(0, mb, mo), SBW_GPU);
                                                                  sblen_put(sblen, b, (__bridge id<MTLBuffer>)mb, mo); }
             else { slots[aid] = dummy_buf_gpu(); USE(dummy_buf(), MTLResourceUsageRead); sblen_put(sblen, b, nil, 0);
-                   // An unmapped page of a sparse pool's reservation reads 0 on the GPU, as the dummy does: Resident Evil 4's 0ee0c5f004239ce2 at frame 5 is pushed an address 0x4400000 into
+                   // An unmapped page of a sparse pool's reservation reads 0 on the GPU, as the dummy does: another game's 0ee0c5f004239ce2 at frame 5 is pushed an address 0x4400000 into
                    // a 1 GB sparse pool, on a page the game has not mapped by then. Noted once, not red; any other address is
                    static int sp_noted; int nvn_vpool_unmapped(uint64_t); int sp = (!sp_noted || !g_red_once[165]) && nvn_vpool_unmapped(addr);
                    if (sp && !sp_noted) { sp_noted = 1; MLOG("shader %s: the buffer address the game pushed at c[24] + %#x, %#llx, is an unmapped page of a sparse pool: bound to the zero buffer, as the GPU reads such a page as 0 (frame %llu)",
@@ -15101,12 +15101,12 @@ static int encode_args_full(id<MTLCommandEncoder> en, NvShader *sh, int nvn_stag
                     // starts (0x310). Measured on Link's Awakening's light culling (light_culling_compute.bfsha): tile index = workgroup y × c0[0x200] + workgroup x, and c0[0x280] is
                     // the address of uniform buffer 7 (the light parameters, 144 bytes per light); Breath of the Wild's compute shaders read 0x280 / 0x290 / 0x2d0 of the same table
                     // Graphics stages: 0x610, right after the pixel stage's storage buffer table, holds the largest point size, to which GLSLC clamps a shader-written
-                    // gl_PointSize (Super Mario Odyssey's agl point sprites, alPointSpriteShader: gl_PointSize = min(size attribute, c0[0x610])). It is not SetPointSize: the game
+                    // gl_PointSize (another game's agl point sprites, alPointSpriteShader: gl_PointSize = min(size attribute, c0[0x610])). It is not SetPointSize: the game
                     // sets that to 1 and sizes its sprites itself (the fog splats ask for 3-18 px). Left at 0, every sprite had size 0, so the splats that push the Cap Kingdom
                     // fog aside never reached its velocity fields and the fog did not part around Mario. 2047 is Maxwell's point size limit (Metal clamps to its own)
                     if (nvn_stage != 5) { const float max_point = 2047.0f; memcpy(d + DMSH_C0_POINT_SIZE, &max_point, 4); }
                     // Graphics stages: 0x644 holds the draw's base instance. Maxwell's instance ID leaves it out (GL's gl_InstanceID), and GLSLC adds this word where a shader needs the
-                    // absolute instance (gl_InstanceID + gl_BaseInstance): Pokémon Legends: Z-A's occlusion boxes (a793f436dcabd350, one box per draw at base instance 61, 62, …) pick their
+                    // absolute instance (gl_InstanceID + gl_BaseInstance): another game's occlusion boxes (a793f436dcabd350, one box per draw at base instance 61, 62, …) pick their
                     // transform this way, and 1,550 reads in 793 of its vertex shaders. Left at 0, every box was box 0: all six queries came back empty, and the game, taking its characters for
                     // hidden, posed their legs straight back from the hips. 0x640 (read by 58 shaders, added to the vertex ID) stays 0: what the driver puts there is not established
                     if (nvn_stage != 5) memcpy(d + DMSH_C0_BASE_INSTANCE, &g_draw_binst, 4);
@@ -15129,7 +15129,7 @@ static int encode_args_full(id<MTLCommandEncoder> en, NvShader *sh, int nvn_stag
                     const uint64_t *tx = S.tex[nvn_stage], *im = S.img[nvn_stage]; int dyn = sh->rf.dyn;
                     #define C2_HANDLE(h) ((uint32_t)(sh->rf.pool ? (h) : bound_handle(h)))
                     for (int r = 0; r < DMSH_C2_IMG_SLOTS; r++) { uint32_t ih = C2_HANDLE(im[r]); memcpy(d + DMSH_C2_IMG + DMSH_C2_ROW * r, &ih, 4); }
-                    for (int r = 0; r < DMSH_C2_TEX_SLOTS; r++) {   // a combined slot past 31 is written when it is bound and the image slot it shares is not (Hades II binds texture slot 34, no image)
+                    for (int r = 0; r < DMSH_C2_TEX_SLOTS; r++) {   // a combined slot past 31 is written when it is bound and the image slot it shares is not (another game binds texture slot 34, no image)
                         if (r >= 32 && (!tx[r] || (r - 32 < DMSH_C2_IMG_SLOTS && im[r - 32]))) continue;
                         uint32_t v = !dyn ? C2_HANDLE(tx[r]) : !(uint32_t)tx[r] ? 0 : (uint32_t)r | (uint32_t)r << 20; memcpy(d + DMSH_C2_TEX + DMSH_C2_ROW * r, &v, 4); }
                     for (int r = 0; r < DMSH_C2_SEP_SLOTS; r++) { uint64_t h = tx[NVN_SEPTEX_SLOT0 + r]; uint32_t v = !dyn ? C2_HANDLE(h) : h ? (uint32_t)r : 0; memcpy(d + DMSH_C2_SEPTEX + DMSH_C2_ROW * r, &v, 4); }
@@ -15268,7 +15268,7 @@ static int state_op(uint32_t op, const void *a) {
             if (b != (tex ? S.tex_base : S.samp_base)) { if (tex) S.tex_base = b; else S.samp_base = b; args_dirty_all(); }
             break; }
         // The compute stage has a binding of its own: a compute bind used to replace the one bound program, so a draw after a dispatch found the compute program (or none) and was
-        // dropped, and a dispatch after a graphics bind found no compute shader. Hyrule Warriors: Age of Calamity interleaves them; its movie's NV12 → RGB draw was dropped and the intro played black
+        // dropped, and a dispatch after a graphics bind found no compute shader. Another game interleaves them; its movie's NV12 → RGB draw was dropped and the intro played black
         case OP_BIND_PROGRAM: { const p_bind_program *bp_ = a;
             // Native NVN2 selects RT from the initialized program's identity,
             // before intersecting the caller mask. Any nonzero mask binds RT;
@@ -15441,7 +15441,7 @@ static void pso_bg_look(const pso_key *k, MTLRenderPipelineDescriptor *full, MTL
 static void pso_predict_rest_(void);
 static void pso_predict_rest(void) { uint64_t t0 = bp_now(); shader_prefetch_rest(); pso_predict_rest_(); g_pt_pred_n++; g_pt_pred_ns += bp_now() - t0; }
 // state_op also sets the scissor, which lives in R, not S: it is restored with S. Without that the replay went on with the last scissor of the rest of the submission until its next
-// OP_SCISSOR. OCTOPATH TRAVELER II (Unreal Engine 4.27) with pipelines built on demand: from Castti's opening flashback and the battlefield of Hikari's opening on, the picture was bright
+// OP_SCISSOR. Another game (Unreal Engine 4.27) with pipelines built on demand: from Castti's opening flashback and the battlefield of Hikari's opening on, the picture was bright
 // green and white, in every run with the prediction and in none without it (DM_NVN_PREDICT=0); a short prewarm list hid it, as fewer pipelines missed
 static void pso_predict_rest_(void) {
     if (!g_exec_next) return;
@@ -15527,7 +15527,7 @@ static void pso_predict_rest_(void) {
 
 
 // SetRenderTargets naming the targets of the open pass goes on in that pass. On a tile-based GPU a new pass loads and stores its whole attachments however little it draws; on the Switch the call costs nothing.
-// Splatoon Raiders sets its 6400x6400 ink map again before each of about 150 occlusion queries a frame (one draw each, sampling the map, writing nothing): 150 passes of about 1 ms, 42 GB of attachment loads a frame,
+// Another game sets its 6400x6400 ink map again before each of about 150 occlusion queries a frame (one draw each, sampling the map, writing nothing): 150 passes of about 1 ms, 42 GB of attachment loads a frame,
 // about 6 fps in the first level. What a pass end gave the draws around it is covered this way: sampling a colour attachment by fb_prepare; a game barrier by barrier_game; sampling the depth attachment (or what the host cannot see, bindless) ends the pass there, since
 // its memory holds nothing of this pass until then; and a draw writing depth or stencil after a draw of the pass read that attachment ends it too (fb_prepare), since the GPU stores the pass tile by tile, so the earlier reads would see the later writes in the tiles already done.
 // Its water reads the scene's depth and the next draw writes the water's own: without that rule, grey blocks of tiles all over the sea. A pass with no colour attachment ends as before. DM_NVN_RT_CONTINUE=0 ends every pass as before
@@ -15607,7 +15607,7 @@ static void sm_plan(NvProg *pr) {
     g_sm_plan.on = 1; g_sm_plan.lo = lo; g_sm_plan.hi = hi;
 }
 // Face-split draws (DM_NVN_FACE_SPLIT, on by default; 0 off, ab alternates with DM_AB). A full-screen draw whose colour targets are several layers of one texture level, a target per
-// layer, computes all of them in each fragment thread: Mario Kart World filters its reflection cube maps so (GearPassShader 4744589bb8f9f7dd, DrivePassShaderDefault 765844f5609bb11b), each
+// layer, computes all of them in each fragment thread: another game filters its reflection cube maps so (GearPassShader 4744589bb8f9f7dd, DrivePassShaderDefault 765844f5609bb11b), each
 // of the six outputs from its own face's direction with 32 cube samples, levels 64x64 down to 2x2, three chains a frame. A 64x64 level is 128 SIMD groups of 192 samples each, which the GPU
 // cannot keep enough of in flight. Drawn once per layer instead, each draw with a pipeline that has only that output (the compiler drops the others' work: pso_build_ex PSO_FACE) and
 // sends it to the one layered attachment (the encoder's colour attachment map) at its layer (the vertex amplification view mapping slice-merged passes use), the same samples run in six
@@ -15639,7 +15639,7 @@ static void fsp_plan(NvProg *pr, const p_draw *dw, const p_draw_idx *di) {
     for (int i = 0; i < 8; i++) g_fsp_ps[i] = nil;
     for (int i = 0; i < n; i++) if (!(fs->rf.color_mask >> i & 1) || !((S.chmask.mask >> (4 * i)) & 0xf)) return;   // every target written: the pass's store follows its one attachment's writes (sd_finish)
     // The pipelines of the draw before, when its face 0 key is this one's: a face's key differs from face 0's only in where the format stands, so the others are the same too. A cube
-    // filter chain draws its levels with one program, and the six key fills and lookups a draw made were about 1 % of the replay thread in a Mario Kart World race (M3 Max)
+    // filter chain draws its levels with one program, and the six key fills and lookups a draw made were about 1 % of the replay thread in a another game race (M3 Max)
     static pso_key last; static int last_n; static __unsafe_unretained id<MTLRenderPipelineState> last_ps[8];
     for (int i = 0; i < n; i++) {
         uint32_t cf[8] = {0}; cf[i] = (uint32_t)t.pixelFormat;
@@ -15740,7 +15740,7 @@ static id<MTLFunction> bf_fn(NvShader *fs, const int *fx, uint8_t fbmask, const 
     [fs->bffn addObject:s]; os_unfair_lock_unlock(&g_bf_fn_lock); return f;
 }
 // Component cmp of vector vec of the uniform slot as the draw reads it: the last write queued in this submission when that is an inline update covering it (pend_read), else memory
-// when nothing queued writes it; not read otherwise. Splatoon Raiders sets its ink stamps' coordinate scale by an inline update before each stamp
+// when nothing queued writes it; not read otherwise. Another game sets its ink stamps' coordinate scale by an inline update before each stamp
 // A uniform reference: constant buffer slot << 16 | vec4 index (0..4095, a 64 KB buffer) << 2 | component (nvn_refl.m)
 static int ubo_float(int slot, uint32_t ref, float *out) {
     int sl = ref >> 16, vec = ref >> 2 & 4095, cmp = ref & 3, kind;
@@ -15757,7 +15757,7 @@ static int ubo_float(int slot, uint32_t ref, float *out) {
 // Looking forward in replay order from after this draw: sample count reset encountered first -> does not matter (return 1); sample count report encountered first, or the end cannot be seen (submit ends) -> matters (return 0)
 // A pixel-position sample (dmsh_fetch.py 'frag_pos', gl_FragCoord.xy * (U, V)) reads this pixel's texel center when U and V, as this draw reads them, are 1 / the W x H target's size
 // (within 1/256 of a texel at the far edge). gl_FragCoord is the pixel center whatever the viewport, and a lower-left window origin stores the image bottom-up, so its rows and
-// gl_FragCoord.y move together. Splatoon Raiders' ink stamps read their 6400x6400 map at gl_FragCoord * (1/6400) (GitHub #1063)
+// gl_FragCoord.y move together. Another game' ink stamps read their 6400x6400 map at gl_FragCoord * (1/6400) (GitHub #1063)
 static int fpos_proof(NvShader *fs, int c, NSUInteger W, NSUInteger H) {
     float u, v;
     if (c < 0 || c >= 32 || !(fs->rf.fc_fpos >> c & 1) || !W || !H || !ubo_float(1, fs->rf.fc_scale[c][0], &u) || !ubo_float(1, fs->rf.fc_scale[c][1], &v)) return 0;
@@ -15765,7 +15765,7 @@ static int fpos_proof(NvShader *fs, int c, NSUInteger W, NSUInteger H) {
 }
 static unsigned mtl_pf_chmask(MTLPixelFormat pf);
 // A sampled view whose channel mapping gives what a read of the tile gives: the format's own channels in place, and those it lacks either as they are or as the 0, 0, 1 a sample fills
-// in, which a tile read fills in too (t_feedback checks RG8 on the GPU; an M4 Pro gives 0, 0, 1 for every R and RG format). Splatoon Raiders' RG8 ink map is sampled through (red, green, zero, one)
+// in, which a tile read fills in too (t_feedback checks RG8 on the GPU; an M4 Pro gives 0, 0, 1 for every R and RG format). Another game' RG8 ink map is sampled through (red, green, zero, one)
 static int sw_tile(id<MTLTexture> t) {
     MTLTextureSwizzleChannels s = t.swizzle; MTLTextureSwizzle a[4] = {s.red, s.green, s.blue, s.alpha}; unsigned has = mtl_pf_chmask(t.pixelFormat);
     for (int q = 0; q < 4; q++) if (a[q] != (MTLTextureSwizzle)(MTLTextureSwizzleRed + q) && ((has >> q & 1) || a[q] != (q == 3 ? MTLTextureSwizzleOne : MTLTextureSwizzleZero))) return 0;
@@ -15785,7 +15785,7 @@ static int scr_proof(NvProg *pr, int locn, NSUInteger W, NSUInteger H) {
 // One draw of the later pass: verify and produce the specialization. Returns 0 = cannot be proven (the caller ends the merged render pass and reopens with the original targets)
 // Diagnostic DM_NVN_KEYDUMP=<fragment shader key prefix>[:<count, default 6>[:<frame interval>]]: watch only this class of draws (for real devices; no frame number to guess). The first N matching draws force PASSDUMP's per-binding lines on (K / B / d:
 // textures with format / view / channel swizzle, samplers with LOD clamps), plus [kd] lines: vertex attribute formats, each vertex stream (first 4 vertices of per-vertex streams, all instances of per-instance streams) and every value of each uniform buffer of both stages.
-// Run the same switch once on the Mac and once on the device and compare item by item to see which input differs on the device (Super Mario 3D World + Bowser's Fury's magenta squares in 1-1: particle 5e4de7561c670fee, iPhone only, not reproducible on the Mac)
+// Run the same switch once on the Mac and once on the device and compare item by item to see which input differs on the device (another game's magenta squares in 1-1: particle 5e4de7561c670fee, iPhone only, not reproducible on the Mac)
 static void kd_floats(const char *what, int reg, uint64_t addr, uint64_t size, uint64_t cap) {
     void *mb; uint64_t mo; const uint8_t *base;
     if (!addr || !size) { fprintf(stderr, "[kd]   %s r%d unbound\n", what, reg); return; }
@@ -15823,7 +15823,7 @@ static int kd_draw(NvProg *pr, const p_draw *dw, const p_draw_idx *di) {
             const p_bind_buf *u = &S.ubo[stg][sh->rf.b[i].reg]; kd_floats(stg ? "fragment uniform" : "vertex uniform", sh->rf.b[i].reg, u->addr, u->size, 4096); } }
     return 1;
 }
-// Diagnostic DM_NVN_MAGSCAN=<fragment key>:<scan every N frames, default 30>:<frames per phase, default 600>: on-device self-check for the magenta squares (Super Mario 3D World + Bowser's Fury 1-1, iPhone only, not reproducible on the Mac).
+// Diagnostic DM_NVN_MAGSCAN=<fragment key>:<scan every N frames, default 30>:<frames per phase, default 600>: on-device self-check for the magenta squares (another game 1-1, iPhone only, not reproducible on the Mac).
 // In a scan frame, as soon as each render pass ends, a compute kernel reads its color attachments (read goes through the same format decode as the game's shader samples) and gathers per 16x16 block: the magenta pixel count (R and B both >= 0.8 of the largest channel, G <= 0.1 of it),
 // the non-finite pixel count and each channel's min / max. An attachment with a block holding one single magenta value throughout (exactly what the squares in the iPhone screenshot are, aligned to the 16-pixel grid) or with non-finite values gets a [mag] line (index of the pass within the frame, distance from the pass holding this particle, attachment serial / format / size, block position and value).
 // Four phases rotate: phase 0 draws as usual, phase 1 drops every draw of this fragment shader, phases 2 / 3 keep the geometry and replace the fragment output with a constant (grey / bright magenta). Comparing the phases tells whether this draw causes it
@@ -15956,7 +15956,7 @@ void ms_after(void) {
     }
 }
 // Same-pass feedback sampling: a texture view this draw's fragment stage samples includes the level and layer of a color attachment of the current render pass, and the pass writes that attachment
-// (agl's post-effect program in Super Mario 3D World + Bowser's Fury, Captain Toad and Super Mario Odyssey writes the tone-mapped RGB10A2 image as an attachment while sampling it). On the Switch the read
+// (agl's post-effect program in another game, Captain Toad and another game writes the tone-mapped RGB10A2 image as an attachment while sampling it). On the Switch the read
 // returns the content from before this draw; on Metal, writing and sampling the same attachment within one render pass is undefined: the M4 Pro happens to read correctly, while the A20 Pro and the Apple M6
 // now and then read whole 16x16 blocks as (1,0,1), (0,0,0) or (0,1,0) (blocks of the compressed attachment caught while another tile stores them).
 // The fix: before such a draw opens its render pass, end the current render pass (the attachment lands in memory), copy that level and layer into a snapshot texture in the replay stream, make this draw
@@ -16034,7 +16034,7 @@ static fb_cache_t *fb_snap(uint64_t ser, int lv, int sl, MTLPixelFormat pf, NSUI
 // 1 / the target's size (fpos_proof), reads this pixel of the attachment:
 // on Apple's GPUs the readable-tile version (<key>_bf, dmsh_fetch.py) reads it from the tile ([[color(k)]]), which holds every earlier fragment of the pass in order. That is what NVN
 // guarantees such a draw after a barrier (and one of the values it leaves undefined without one), so the draw needs no snapshot and the pass goes on. Breath of the Wild's and Tears
-// of the Kingdom's G-buffer decals (4d3d5a4408c2e8d9, 7d1b1cac266f08f2) sample their targets so, and Splatoon Raiders' ink stamps their ink map (6a5b76a60670e513, a pass and a full
+// of the Kingdom's G-buffer decals (4d3d5a4408c2e8d9, 7d1b1cac266f08f2) sample their targets so, and another game' ink stamps their ink map (6a5b76a60670e513, a pass and a full
 // 80 MB snapshot each before, GitHub #1063). Only in an open pass (its formats name the pipeline) or the pass the draw opens once its formats are learned (fb_early_after), only a single-level 2D view
 // that is the attachment's level and layer in its own format with no channel mapping beyond filling missing channels (sw_tile), and not with the alpha test, a logic operation, multisampling, or a geometry or slice-merged draw. The pipeline is built in the background on first use, as sm_amp_get does: until it is there the draw
 // takes a snapshot, so no frame waits for the compiler. lmap is the identity over the shader's outputs (an attachment it does not write keeps its content, as in pso_desc)
@@ -16196,7 +16196,7 @@ static uint32_t fb_depth_planes(int tid, uint64_t ser) {
         default: return FB_DS_BOTH;
     }
 }
-// Which planes the fragment shader's uniform handles (TEXU) read: resolve as encode_args reads them. Fire Emblem Fortune's Weave's
+// Which planes the fragment shader's uniform handles (TEXU) read: resolve as encode_args reads them. Another game's
 // decals are bindless and write depth; taking every bindless shader as a depth reader ended the pass before each of them (about 30 passes a frame, each loading and storing four targets).
 // texa: whether a table of handles in c2 (TEXA), not read here, counts as naming it
 static uint32_t fb_texu_reads(NvShader *fs, uint64_t ser, int texa) {
@@ -16218,7 +16218,7 @@ static uint32_t fb_texu_reads(NvShader *fs, uint64_t ser, int texa) {
 //   (NVN makes rendering visible to texture reads only through one). Ocarina of Time's cave and cliff fixtures (25a8adc977ff813d, a full-screen triangle that samples the scene depth
 //   and writes it with LEQUAL, then its decals) painted black and sky-blue blocks over the rock; at Death Mountain Trail's cave entrance 1,000 such draws took about 190 copies, with
 //   the same picture as a copy for each (PR #1917);
-// - a draw that samples a plane an earlier draw or clear wrote, and does not write it itself, ends the pass first and reads the stored plane. Red Dead Redemption's
+// - a draw that samples a plane an earlier draw or clear wrote, and does not write it itself, ends the pass first and reads the stored plane. Another game's
 //   cloud fog (c0ab3c051753e36d) samples it through a uniform-buffer handle after the billboards and terrain of its pass: 8x8 blocks of bare sky over the trees (PR #1866);
 // - a draw that samples it first in its pass reads it directly, and a later draw that writes the same plane ends the pass (g_fb_dread).
 // Reads it can name (a texture or image slot, a uniform-buffer handle by serial: fb_texu_reads), so it runs in depth-only passes too; there a handle table in c2 (TEXA), which it cannot
@@ -16511,10 +16511,10 @@ static void fb_prepare(NvProg *pr) {
             NSUInteger tn = t.textureType == MTLTextureType2DArray || t.textureType == MTLTextureTypeCubeArray || t.textureType == MTLTextureType2DMultisampleArray ? t.arrayLength * (t.textureType == MTLTextureTypeCubeArray ? 6 : 1) : t.textureType == MTLTextureTypeCube ? 6 : 1;
             if (ts + tn <= (NSUInteger)sl || ts > (NSUInteger)sl) continue;   // nor its layer: not feedback
             // What the draw is given depends on the levels it reads (fb_reach), a: the attachment's level in the view. The attachment's level read through a texture holds no defined data
-            // on Apple's GPUs while its pass renders it, and a linear mip filter fetches the level above an integer LOD even at weight 0: Donkey Kong Bananza's environment cube (128x128,
+            // on Apple's GPUs while its pass renders it, and a linear mip filter fetches the level above an integer LOD even at weight 0: another game's environment cube (128x128,
             // 8 levels, R11G11B10F, levels 1..7 each drawn from the one above with an explicit level) got NaN texels from sampling its full view; its reflections spread them over the scene
             // through the cube's prefilter, and bloom turned them into white blotches.
-            // - One level other than the attachment's (a pinned sampler): a view of that level alone, whichever side it lies on. Donkey Kong Bananza's bloom chains (576x324 R11G11B10F,
+            // - One level other than the attachment's (a pinned sampler): a view of that level alone, whichever side it lies on. Another game's bloom chains (576x324 R11G11B10F,
             //   5 levels) upsample with ad1a5991aaad135e, its sampler's LOD clamp n + 1..n + 1; the view of the levels below clamped that read to n - 1: the stage intro's neon letters
             //   came out fat and filled. Several levels, all above the attachment's: the view as it is.
             // - Levels from below the attachment's, or no sampler known (a mip-chain pass that picks the level below with an explicit LOD through a sampler that clamps nothing: the cube
@@ -16592,7 +16592,7 @@ static void fb_prepare(NvProg *pr) {
 }
 // ---------- Indirect draws Metal cannot take as they are ----------
 // Quads and triangle fans (DrawArraysIndirect), and indexed quads / fans / 8-bit indices (DrawElementsIndirect). The {count, instances, first, ...} record is usually written by the GPU earlier
-// in the frame (Hyrule Warriors: Age of Calamity draws GPU-driven effects as indirect quads in its first battle), so the CPU cannot expand it at replay. A compute pass converts each record into
+// in the frame (another game draws GPU-driven effects as indirect quads in its first battle), so the CPU cannot expand it at replay. A compute pass converts each record into
 // MTLDrawIndexedPrimitivesIndirectArguments in the frame arena, and the draw becomes an indexed indirect draw: arrays index the shared g_quad_ib / g_fan_ib with first as the base vertex,
 // indexed ones are expanded into a 32-bit list of at most IXC_CAP indices. The compute pass cannot run inside a render pass. When the first such draw is met, ixc_run converts it and every
 // such draw after it up to the next buffer write outside a render pass (copy, update / fill, texture → buffer, dispatch: they bump g_wr_epoch), so each record is read after its last writer
@@ -16750,7 +16750,7 @@ static void fsp_encode(id<MTLRenderCommandEncoder> en, MTLPrimitiveType mp, cons
         else enc_r_draw(en, mp, dw->first, dw->count);
     }
 }
-// Face-split draws merged by level (DM_NVN_FACE_MERGE, on by default; 0 off, ab alternates with DM_AB). Mario Kart World filters three cube chains a frame (two cube textures, one
+// Face-split draws merged by level (DM_NVN_FACE_MERGE, on by default; 0 off, ab alternates with DM_AB). Another game filters three cube chains a frame (two cube textures, one
 // of them an array of two cubes), seven levels each, every level a face-split pass of its own (fsp_plan): 21 passes. Each level of a chain samples only the chain's source cube, so the
 // three chains' passes of one level size can be one pass with three attachments: 21 passes a frame become 7, and the GPU time of a race frame is about 0.5 ms shorter on an M3 Max
 // (docs/reference/rendering.md, "Face-split passes of one level size, one per texture"). When a face-split pass is about to open, fsm_plan scans the ops after its draw in
@@ -17190,7 +17190,7 @@ static uint32_t mdi_count(uint64_t cnt) {
 }
 static int mdi_live(uint64_t cnt, int i) { return (uint32_t)i < mdi_count(cnt); }
 // ---------- Indirect-count multi-draws masked on the GPU ----------
-// The wait above held the submitting thread for the GPU at every GPU-driven pass: in Monster Hunter Rise's Kamura Village, 14 of the 20 ms a submission took on an iPhone were that wait
+// The wait above held the submitting thread for the GPU at every GPU-driven pass: in another game's Kamura Village, 14 of the 20 ms a submission took on an iPhone were that wait
 // (6 ms of work), and the game ran at 36–54 fps. Instead a compute pass copies each such draw's record into the frame arena, or zeros for a draw past the count, and the draw reads the copy:
 // past the count it draws nothing, and the CPU never waits. As in ixc_run, a compute pass cannot run inside a render pass: at the first such draw with no copy yet, mdx_run copies it and every
 // such draw after it in replay order up to the next write that could change a record or count (a dispatch, copy, fill or texture → buffer copy, which bump g_mdx_epoch; a uniform update only
@@ -17202,7 +17202,7 @@ typedef struct { uint64_t ind, cnt, out, tag; } mdx_ent;   // out: GPU address o
 static mdx_ent g_mdx[MDX_SLOTS]; static int g_mdx_n; static uint64_t g_mdx_tag = 1, g_mdx_ep = ~0ull, g_mdx_sub, g_mdx_runs, g_mdx_splits, g_mdx_draws, g_mdx_fast, g_mdx_pre, g_mdx_wr = ~0ull; static const uint8_t *g_mdx_stop;
 // g_mdx_wr: the shader-write count (g_vbuf_write_epoch, swrite_note) when this tag's first copies were made, ~0 before. Draws can write records too, which NVN orders for indirect
 // fetch by ORDER_PRIMITIVES or ORDER_INDIRECT_DATA (GAME_BARRIER_FULL): such a barrier after a shader write since then ends the copies (g_mdx_epoch, at OP_BARRIER), and the draws after it copy again.
-// A primitive barrier also orders a draw-written visibility flag used as a count; keeping its earlier zero copy hid Bayonetta 3's colour draws after its depth prepass.
+// A primitive barrier also orders a draw-written visibility flag used as a count; keeping its earlier zero copy hid another game's colour draws after its depth prepass.
 // The kernel mdx_mask: dm/gfx/msl/mdx.metal
 static int mdx_wanted(const p_draw *dw, const p_draw_idx *di) { return dw ? dw->mdi_cnt && !ixc_wanted(dw, NULL) : di->mdi_cnt && !ixc_wanted(NULL, di); }
 static mdx_ent *mdx_slot(uint64_t ind, uint64_t cnt) {   // its entry in this tag, or the free slot for it
@@ -17269,7 +17269,7 @@ static void mdx_run(const p_draw *dw, const p_draw_idx *di) {
                                           (unsigned long long)g_mdx_runs, (unsigned long long)g_mdx_draws, (unsigned long long)g_mdx_fast, (unsigned long long)g_mdx_splits, (unsigned long long)g_mdx_pre, (unsigned long long)g_mdi_waits);
 }
 // A render pass about to open for a draw that is not such a multi-draw: the multi-draws after it (up to the next write, as mdx_run scans) are copied now, before the pass, so that none of
-// them opens the copy inside the pass and splits it. Mario Kart World's scene passes (2048x1152, colour and depth loaded again: 20 MB) were split this way at every frame. Once per epoch
+// them opens the copy inside the pass and splits it. Another game's scene passes (2048x1152, colour and depth loaded again: 20 MB) were split this way at every frame. Once per epoch
 // and submission: a scan taken up to its stop leaves nothing for a second one. Only in a game that has drawn such a multi-draw or an indirect mesh draw (g_mdx_runs): in others the scan
 // would walk each submission's draws for nothing. DM_NVN_MDX_PRESCAN=0 turns it off (its cost or gain: ab with DM_AB)
 static void mdx_prescan(void) {
@@ -17660,10 +17660,10 @@ static void draw_(const p_draw *dw, const p_draw_idx *di) {
     image_prepare(pr, 0x1f);
     draw_gs_check(pr);   // a geometry stage left with no function (see prog_fold_gs)
     if (!g_geo_program && S.rast_discard && S.tf_on) { tf_draw(pr, dw, di); return; }
-    // Feedback captures rasterized draws too (Donkey Kong Country: Tropical Freeze's fur).
+    // Feedback captures rasterized draws too (another game's fur).
     if (!g_geo_program && S.tf_on && pr && pr->sh[0] && pr->sh[0]->tf_fn) tf_draw(pr, dw, di);
     // Rasterizer discard suppresses fragments, not vertex execution or its storage and image writes (the build gives such a vertex shader main0_discard).
-    // Xenoblade Chronicles 3 uses vertex-only work before its skinned-model draws; Metroid Prime Remastered fills its fog volume with image stores from points.
+    // Another game uses vertex-only work before its skinned-model draws; another game fills its fog volume with image stores from points.
     if (S.rast_discard && (!pr->sh[0] || !pr->sh[0]->discard_fn)) { PD("Z %llu draw skipped: rasterizer discard with no vertex storage or image writes vs=%s", g_stat_pass + !g_enc, pr->sh[0] ? pr->sh[0]->key : "-"); return; }
     if (g_nubd && (g_enc || ubd_lazy()) && ubd_conflict(pr, dw, di)) { g_ubd_conflicts++; rp_end(); ubd_land(); }   // land the deferred inline updates before this draw (see ubd_conflict)
     vertex_dump(pr->sh[0], dw, di);
@@ -17795,7 +17795,7 @@ static void draw_(const p_draw *dw, const p_draw_idx *di) {
       float bi[3] = {0, 0, 0}; if (own_bias) { bi[0] = S.po.units; bi[1] = S.po.factor; bi[2] = S.po.clamp; }
       // Depth on the far plane (docs/reference/rendering.md), a workaround for Apple's rasterizer: a vertex shader with z = w puts every vertex at the viewport's far value, and
       // NVIDIA's GPU fills such a triangle with exactly that value, but Apple's gives many of its pixels a depth up to 2^-23 short of it (any depth that is the same at all three
-      // vertices comes out inexact; an M4 Pro and an M5: 9 to 43 % of the pixels). Two layers drawn there then fight: Mario Kart 8 Deluxe's Sky-High Sundae draws a red panorama
+      // vertices comes out inexact; an M4 Pro and an M5: 9 to 43 % of the pixels). Two layers drawn there then fight: another game's Sky-High Sundae draws a red panorama
       // and the blue sky over it there, and the blue lost its depth test by one step in blocks. A constant bias of 16 units past the far value with depth clamping puts every
       // pixel exactly on it (2 units already did). Only a far value above the near one: Metal scales a float target's bias by the depth's exponent, so near 0 (a reversed range)
       // the bias is nothing and the pixels stay 2^-24 off (open). A draw with the game's own polygon offset keeps it; a geometry or tessellation stage writes its own position
@@ -17960,7 +17960,7 @@ static void draw_(const p_draw *dw, const p_draw_idx *di) {
             id<MTLBuffer> ab; arena_at at = arena_take(((size_t)nt * 12 + 15) & ~(size_t)15, &ab);
             uint32_t *d = (uint32_t *)(void *)at.cpu;
             // With primitive restart on, the restart index (compared before the base vertex is added) ends a fan or quad and the next one starts after it: they were joined across it,
-            // and the extra triangles cleared parts of Luigi's Mansion 3's cached shadow depth (straight light edges on the garage floor, PR #110). At most nt triangles come out
+            // and the extra triangles cleared parts of another game's cached shadow depth (straight light edges on the garage floor, PR #110). At most nt triangles come out
             uint32_t count = nvn_expand_primitive(d, src, (uint32_t)di->count, (unsigned)isz, (unsigned)prim, S.restart.on, S.restart.index);
             if (count) enc_r_draw_indexed(en, mp, count, MTLIndexTypeUInt32, at.gpu, (NSUInteger)count * 4, di->instances ? di->instances : 1, di->base_vertex, di->base_instance);
             return;
@@ -18041,7 +18041,7 @@ static void warm_claim(void) {
 }
 // A Mac development run can build a missing stage here while nvnProgramSetShaders still has the input bytes.
 // A program's libraries are loaded in the background when the game makes the program (most of them while it loads a scene), and the next submission
-// takes them (warm_claim) instead of its first draw loading each on the submit thread: in Donkey Kong Bananza a level's first frames loaded 3 to 7 libraries there, 20-90 ms
+// takes them (warm_claim) instead of its first draw loading each on the submit thread: in another game a level's first frames loaded 3 to 7 libraries there, 20-90 ms
 // with the drive idle and up to 4 s with it busy. A draw that comes before its library has loaded loads it itself, as before. DM_NVN_PREFETCH=0 turns it off
 static _Atomic uint64_t g_progpf_loaded;
 static int prefetch_on(void) { static int v = -1; if (v < 0) { const char *e = getenv("DM_NVN_PREFETCH"); v = !(e && !strcmp(e, "0")); } return v; }
@@ -18084,7 +18084,7 @@ void mtl_prog_prefetch(const prog_t *cp) {
     if (prefetch && mesh[4]) mtk_prefetch(mesh[3], mesh[4], mesh[1]);
 }
 // Dispatches share the open copy encoder (a Metal 4 compute encoder) with the copies and dispatches around them, each ordered after everything the encoder already holds by a barrier inside it,
-// as a texture copy is (blit). An encoder of their own, with full queue barriers on both sides, cost the GPU a drain per dispatch: Hyrule Warriors: Age of Calamity's battles after the first cutscene
+// as a texture copy is (blit). An encoder of their own, with full queue barriers on both sides, cost the GPU a drain per dispatch: another game's battles after the first cutscene
 // run about 1,060 small dispatches a frame, and the Mac GPU went from 6.7 to 16 ms a frame at the same draws, the iPhone's from 15 to about 50 (17 fps).
 // DM_NVN_PASSGPU, which times each dispatch, gives each its own encoder again (g_dispatch_own: tests set it to 1 for that path)
 static int g_dispatch_own = -1;
@@ -18101,7 +18101,7 @@ static id<MTL4ComputeCommandEncoder> dispatch_enc(void) {
     return e;
 }
 // Indirect dispatch clamp (DM_NVN_DISPATCH_CLAMP, default on; =0 off): a GPU-written {x, y, z} of more than DPC_MAXTOTAL threadgroups in all dispatches nothing; any
-// other record passes unchanged. Real frames stay far below (PRAGMATA's largest direct dispatch: 96 x 54); a group count the GPU wrote from bad data would otherwise run
+// other record passes unchanged. Real frames stay far below (another game's largest direct dispatch: 96 x 54); a group count the GPU wrote from bad data would otherwise run
 // for ever, and committed work is not reclaimed when the process exits. No dimension is cut on its own: a 1D dispatch of more than 65535 groups is a real one, and cutting
 // it (as a first version did) left part of its work undone
 #define DPC_MAXTOTAL (1u << 22)
@@ -18125,7 +18125,7 @@ static int dpc_clamp_enc(id ce, uint64_t rec, __strong id<MTLBuffer> *ob, size_t
     return 1;
 }
 // DM_CTL bufsnap (hle_hid.c): guest memory as the GPU leaves it right after the next dispatch of a shader, copied in the same encoder behind a barrier and saved when the
-// submission completes. A read of guest memory at some later moment sees what later work of the frame, or the next frame's clear, left there (PRAGMATA's culling chain)
+// submission completes. A read of guest memory at some later moment sees what later work of the frame, or the next frame's clear, left there (another game's culling chain)
 static pthread_mutex_t g_bs_mu = PTHREAD_MUTEX_INITIALIZER; static char g_bs_key[32], g_bs_path[512]; static uint64_t g_bs_addr; static size_t g_bs_n; static int g_bs_on;
 void dm_gfx_bufsnap(const char *key, uint64_t a, size_t n, const char *path) {
     pthread_mutex_lock(&g_bs_mu); snprintf(g_bs_key, sizeof g_bs_key, "%s", key); snprintf(g_bs_path, sizeof g_bs_path, "%s", path); g_bs_addr = a; g_bs_n = n; g_bs_on = 1; pthread_mutex_unlock(&g_bs_mu);
@@ -18153,7 +18153,7 @@ static void bufsnap_after(NvShader *cs, id ce) {
 }
 // Compute dispatches are ordered by the game's own barriers, as NVN orders them (DM_NVN_DISPATCH_BARRIER=full: each after everything before it in its encoder, as before; game, the
 // default; ab alternates the two with the DM_AB phases, for measurement). NVN makes a dispatch's writes visible to later work when the game asks with nvnCommandBufferBarrier; the full
-// order made the GPU run every dispatch of an encoder one at a time. Kirby Air Riders' particle systems are about 230 dispatches a frame in one encoder: 6.6-9.8 ms of GPU time at
+// order made the GPU run every dispatch of an encoder one at a time. Another game' particle systems are about 230 dispatches a frame in one encoder: 6.6-9.8 ms of GPU time at
 // about 30 us each, 0.4-1.2 ms ordered by the game's barriers, 0.15 ms with no barrier at all (measured with the copy encoder's barriers removed, which also drops the ones the game asked for, and faults). Their
 // memory ranges cannot replace the game's barriers: the systems share the buffers they write, and 91 % of the dispatches met an earlier one's range. A dispatch gets a barrier when the
 // game issued one since the dispatch before it, when it reads a range a copy wrote or writes one a copy read or wrote since the last barrier (uniform updates, uploads: the host's own
@@ -18254,7 +18254,7 @@ static id<MTLComputePipelineState> dispatch_pso(NvShader *cs) {
     cps_key k = {(__bridge const void *)cs, (uintptr_t)off};
     id<MTLComputePipelineState> ps = hm_get_id(&g_cps, &k);
     if (!ps) {
-        if (cs->cps_failed) return nil;   // asked again at every dispatch, Mario Kart World's refused shaders took 3,138 pipeline builds in 60 s
+        if (cs->cps_failed) return nil;   // asked again at every dispatch, another game's refused shaders took 3,138 pipeline builds in 60 s
         NSError *e = nil; uint64_t bt = bp_now(); ps = cps_new_b(cs->fn, off, &e);
         g_bp_pso_n++; g_bp_pso_ns += bp_now() - bt;
         if (!ps) {
@@ -18327,7 +18327,7 @@ static void dispatch_(const p_dispatch *dp) {
     if (!ps && !(ps = dispatch_pso(cs))) return;
     if (up_mfx_wanted(cs) && !dp->ind && up_mfx_encode(cs)) return;   // the game's upscaler, drawn by MetalFX instead (DM_UPSCALER=metalfx)
     // Threadgroup memory past Metal's 32 KB, in a device buffer (dmsh_rewrite.py tg_spill): a slice for every workgroup of the grid. An indirect dispatch's grid is in GPU memory, written earlier
-    // in the frame: the replay waits for the GPU (as an indirect-count multi-draw does, mdi_wait) and reads it. Mario Kart World's spilled dispatches are all direct, of 1 to 3 workgroups
+    // in the frame: the replay waits for the GPU (as an indirect-count multi-draw does, mdi_wait) and reads it. Another game's spilled dispatches are all direct, of 1 to 3 workgroups
     uint64_t tg_groups = 0;
     if (cs->rf.tg_spill) {
         uint32_t n[3] = {(uint32_t)dp->x, (uint32_t)dp->y, (uint32_t)dp->z};
@@ -18583,7 +18583,7 @@ static void copy_b2t(const p_copy_b2t *c, uint32_t size) {
         for (int z = 0; z < nz; z++)
             enc_b_copy_buffer_texture(b, sb, mo + z * img, row, img, MTLSizeMake(c->r.width, c->r.height, 1), t, layer0 + c->r.zoffset + z, hl, MTLOriginMake(c->r.xoffset, c->r.yoffset, 0));
     // The copy writes the texture's storage too, as the hardware's does, when the CPU can read it: stored on the GPU after it, from the same source bytes (gsb_store_buf). Yoshi's Crafted
-    // World's texture streamer (Unreal's RHIAsyncReallocateTexture2D) copies resident levels on the GPU into a texture it fills from the CPU, uploaded from its storage; Star Fox streams
+    // World's texture streamer (Unreal's RHIAsyncReallocateTexture2D) copies resident levels on the GPU into a texture it fills from the CPU, uploaded from its storage; another game streams
     // BC7 arrays a level of a layer per copy; LEGO Star Wars: The Skywalker Saga fills BC6H volumes a slice per copy and moves them by copying their storage (GitHub #1856)
     gsb_store_buf(c->tex, level, is3d ? (unsigned)c->r.zoffset : layer0 + (unsigned)c->r.zoffset, (unsigned)nz, &c->r, gsrc, grow, gimg);
     if (paired) bcp_after(c->tex, level, &c->r);
@@ -18591,7 +18591,7 @@ static void copy_b2t(const p_copy_b2t *c, uint32_t size) {
 
 // Texture copies a blit cannot do -- a format change, a scaled region or a mirrored one (MIRROR_X / MIRROR_Y) (Link's Awakening converts its 1408x792 RG11B10F scene to RGBA16F every frame; Super Mario 3D World scales 1920x1080 to 1280x720
 // when leaving the title): one render pass per layer that draws the source region into the destination region, nearest or (LINEAR_FILTER) bilinear. Float, unorm and sRGB formats only, 2D / 2D array,
-// destinations that can be render targets; anything else returns 0 and keeps the red line. Depth (Depth32Float / Depth32Float_Stencil8 / Depth16Unorm into the same format; Kirby Air Riders halves a 4096x4096 Depth16Unorm shadow map) is drawn by writing depth from the fragment shader,
+// destinations that can be render targets; anything else returns 0 and keeps the red line. Depth (Depth32Float / Depth32Float_Stencil8 / Depth16Unorm into the same format; another game halves a 4096x4096 Depth16Unorm shadow map) is drawn by writing depth from the fragment shader,
 // always nearest, and stencil is written from the fragment shader too ([[stencil]] export, read through an X32_Stencil8 view of the source). Link's Awakening halves its depth-stencil buffer twice
 // (1920x1080 → 960x540 → 480x270) and its depth-of-field mask pass only writes where stencil bit 1 is clear: with the stencil left as the new texture's undefined content, the mask kept its
 // clear value 1.0 (full blur) everywhere and the whole picture was out of focus. Without a stencil view the stencil is cleared to 0 instead
@@ -18676,7 +18676,7 @@ static int copy_t2t_draw(id<MTLTexture> s, id<MTLTexture> d, unsigned sl, unsign
     return 1;
 }
 // nvnCommandBufferDrawTexture: the source region of a texture (texels, through the handle's sampler) drawn into the destination region of each bound colour target (pixels in the window's
-// coordinates, which are the targets' own rows in either window origin, since the host keeps the Switch's memory layout). Streets of Rage 4 draws each movie frame (the intro, the
+// coordinates, which are the targets' own rows in either window origin, since the host keeps the Switch's memory layout). Another game draws each movie frame (the intro, the
 // title's flames) into its 1920x1080 scene target this way, from a second texture pool; without it the screen stayed black. The handle's IDs are the host table's (moved to the
 // bound pools when this command executes). As a texture copy, its own render pass per target after the pass in progress (the analyses treat it as one),
 // with the scissor and the channel mask; a float or unorm target only, and blending is not applied (a red line when it is on)
@@ -18998,7 +18998,7 @@ static id<MTLTexture> copy_t2t_enc(const p_copy_t2t *c) {
             enc_b_copy_texture(blit(), s, sz0, sl, MTLOriginMake(0, 0, 0), MTLSizeMake(sw, sh, 1), d, dz0, dl, MTLOriginMake(0, 0, 0));
             return d;
         }
-        // A single-sample source: a filtered scale of the whole level into the destination, converting the format (Bayonetta 2, SDK 3.6: 320x176 → 80x48 RGBA8 every frame, a quarter of
+        // A single-sample source: a filtered scale of the whole level into the destination, converting the format (another game, SDK 3.6: 320x176 → 80x48 RGBA8 every frame, a quarter of
         // its 1280x720 frame and a quarter of that, rounded up to 16; and its 1280x720 BGRA8 frame into an RGBA8 texture of the same size), drawn as a scaling copy with bilinear filtering
         if (s.sampleCount == 1 && d.sampleCount == 1 && c->src->d.target != 2 && c->dst->d.target != 2) {
             if (!(d.usage & MTLTextureUsageRenderTarget) && !mtl_fmt_block(d.pixelFormat) && !fmt_int_or_ds(d.pixelFormat)) d = tex_upgrade(c->dst, d, MTLTextureUsageRenderTarget, d.pixelFormat);
@@ -19011,7 +19011,7 @@ static id<MTLTexture> copy_t2t_enc(const p_copy_t2t *c) {
             return nil;
         }
         // Metal requires the resolve target to match the multisample source's dimensions. When a game resolves between different sizes (e.g. handheld mode resolving
-        // a 1920x1080 4x render target into 1280x720: Digimon Story Time Stranger, issue #872), resolve into a cached private staging texture of the source's size
+        // a 1920x1080 4x render target into 1280x720: another game, issue #872), resolve into a cached private staging texture of the source's size
         // and blit the common (0, 0) corner unscaled into the destination.
         id<MTLTexture> rdst = d; unsigned rdl = dl, rdz = dz0;
         if (sw != dw || sh != dh) {
@@ -19050,7 +19050,7 @@ static id<MTLTexture> copy_t2t_enc(const p_copy_t2t *c) {
     PD("t src=%llu lv%u sl%u xyz=%d,%d,%d dst=%llu lv%u sl%u xyz=%d,%d,%d size=%d,%d,%d", c->src->serial, sl, sz0, c->sr.xoffset, c->sr.yoffset, c->sr.zoffset,
        c->dst->serial, dl, dz0, c->dr.xoffset, c->dr.yoffset, c->dr.zoffset, c->sr.width, c->sr.height, c->sr.depth);
     int s3 = c->src->d.target == 2, d3 = c->dst->d.target == 2, nz = c->sr.depth ? c->sr.depth : 1;
-    // The draw path renders into the destination: one made without render-target use (packaged) gets it first, as a whole-level clear does (Paper Mario: The Thousand-Year Door copies a
+    // The draw path renders into the destination: one made without render-target use (packaged) gets it first, as a whole-level clear does (another game copies a
     // 128x128 RGBA8 render target into an RG8 texture, mirrored in Y)
     if ((c->sr.width != c->dr.width || c->sr.height != c->dr.height || s.pixelFormat != d.pixelFormat || (c->flags & (NVN_COPY_FLAGS_MIRROR_X_BIT | NVN_COPY_FLAGS_MIRROR_Y_BIT))) && !s3 && !d3
         && !(d.usage & MTLTextureUsageRenderTarget) && !mtl_fmt_block(d.pixelFormat) && d.sampleCount == 1 && !fmt_int_or_ds(s.pixelFormat) && !fmt_int_or_ds(d.pixelFormat))
@@ -19060,7 +19060,7 @@ static id<MTLTexture> copy_t2t_enc(const p_copy_t2t *c) {
         && !(c->flags & ~(NVN_COPY_FLAGS_ENGINE_2D_BIT | NVN_COPY_FLAGS_LINEAR_FILTER_BIT | NVN_COPY_FLAGS_MIRROR_X_BIT | NVN_COPY_FLAGS_MIRROR_Y_BIT))
         && copy_t2t_draw(s, d, sl, sz0, dl, dz0, &c->sr, &c->dr, !!(c->flags & NVN_COPY_FLAGS_LINEAR_FILTER_BIT), c->flags))   // format change / scaling / mirroring: draw it (see copy_t2t_draw)
         return d;
-    // The depth plane of a depth-stencil texture into a depth-only one, or back (EA SPORTS FC 27's Frostbite copies its 1920x1080 Depth32Float_Stencil8 target into a Depth32Float
+    // The depth plane of a depth-stencil texture into a depth-only one, or back (another game's Frostbite copies its 1920x1080 Depth32Float_Stencil8 target into a Depth32Float
     // texture): a blit copies only between equal formats, so the 32-bit float depth goes through a buffer, taken from and written to the combined texture's depth plane
     if (!s3 && !d3 && c->sr.width == c->dr.width && c->sr.height == c->dr.height && (c->sr.depth ? c->sr.depth : 1) == 1 && (c->dr.depth ? c->dr.depth : 1) == 1
         && !(c->flags & ~NVN_COPY_FLAGS_ENGINE_2D_BIT & ~NVN_COPY_FLAGS_LINEAR_FILTER_BIT) && s.sampleCount == 1 && d.sampleCount == 1
@@ -19127,7 +19127,7 @@ static void copy_t2t(const p_copy_t2t *c) {
 // bilinearly into the output with a red line: the frame stays whole, without the temporal gain
 enum { DLSS_F_DEPTH_INVERTED = 1 << 3, DLSS_F_AUTO_EXPOSURE = 1 << 6 };
 // The networks are named by their serials (hle_nvn.c nvnDlssNetworkInitialize), so one made again in the same memory is another network here. A scaler replaced (new sizes, or its
-// slot taken by another network: nvnDlssNetworkFinalize tells the replay nothing, and Fast Fusion had made 8 networks by its 9th minute) is held until this submission completes
+// slot taken by another network: nvnDlssNetworkFinalize tells the replay nothing, and another game had made 8 networks by its 9th minute) is held until this submission completes
 // (defer_obj_release): a Metal 4 command buffer does not retain what is encoded into it, and the network's earlier evaluations in the submission still use it. Dropped at once, the
 // commit crashed in -[_MTL4MachineLearningCommandEncoder encodeToCommandQueue:] ("-[AGXG17XFamilyMLContext executable]: unrecognized selector"). A new network takes the slot used
 // least recently: slot 0 was always taken, which could be the network the game was drawing with.
@@ -19136,7 +19136,7 @@ enum { DLSS_F_DEPTH_INVERTED = 1 << 3, DLSS_F_AUTO_EXPOSURE = 1 << 6 };
 // runs from that size's (the content filling them; no less than the device's least) up to the most the device takes, and each evaluation sets its own content size. Keyed by the input's size, every new size made
 // a scaler again (a Metal compile) and lost the history. An input whose scale falls outside the range (smaller than the device's most) makes one for its own scale, as before
 // DLSS's bias-current-colour mask is MetalFX's reactive mask: both run from 0 (the network's own history) to 1 (the current colour alone, history ignored), in the input's
-// pixels, so the scaler is made for the mask's format and takes its texture and corner (Star Fox: R8, 0 or 1, over a band at the top and bottom of its cinematics). A mask
+// pixels, so the scaler is made for the mask's format and takes its texture and corner (another game: R8, 0 or 1, over a band at the top and bottom of its cinematics). A mask
 // format MetalFX makes no scaler for is dropped with a red line and the scaler made without it (mask 0 everywhere), rather than losing the scaler to the bilinear stand-in
 // MetalFX's temporal scaler writes alpha 1 even when its RGBA input has another alpha. NVN2 DLSS preserves all four colour channels: after MetalFX has produced RGB,
 // draw the input alpha over its output with an alpha-only write mask. The pipeline and argument table are host objects used only inside rec_cb_block, on the real command buffer.
@@ -19278,7 +19278,7 @@ static void dlss_eval(const p_dlss *c) {
         static int once; if (!once++) MLOG("[RED] DLSS: rectangles away from the origin need macOS / iOS 27's MetalFX; taken from the origin");
     }
     const p_dlss a = *c; const int reset = c->reset || e->fresh; e->fresh = 0;
-    // Match the scaler's RGB extent. The record's ow/oh retain the builder's original size after NetworkResize (Star Fox: 1920x1080 builder, 960x540 output texture).
+    // Match the scaler's RGB extent. The record's ow/oh retain the builder's original size after NetworkResize (another game: 1920x1080 builder, 960x540 output texture).
     id<MTLBuffer> alpha_pb = nil; size_t alpha_po = 0; NSUInteger ow = sc.outputWidth, oh = sc.outputHeight;
     if (keep_alpha) {
         int sx = c->base[DLSS_COLOR][0], sy = c->base[DLSS_COLOR][1], dx = c->base[DLSS_OUTPUT][0], dy = c->base[DLSS_OUTPUT][1];
@@ -19326,7 +19326,7 @@ static void dlss_eval(const p_dlss *c) {
     });
 }
 
-// The colour channels a Metal format has, as a channel write mask: a clear whose mask covers them all writes every texel whole (FINAL FANTASY TACTICS - The Ivalice Chronicles clears an
+// The colour channels a Metal format has, as a channel write mask: a clear whose mask covers them all writes every texel whole (another game clears an
 // R8 render target with mask 0x1)
 static unsigned mtl_pf_chmask(MTLPixelFormat pf) {
     switch ((int)pf) {
@@ -19408,7 +19408,7 @@ static const char *cctx_snap(void) {
 __attribute__((weak)) int nvn_game_fps(void) { return 60; }   // hle_nvn.c provides the strong definition
 int mtl_fps_target(void) { static int env = -2; if (env == -2) { const char *e = getenv("DM_FPS"); env = e ? atoi(e) : -1; if (env != 30 && env != 60) env = -1; else MLOG("DM_FPS=%d: frame rate pinned by the test switch", env); }
     int g = nvn_game_fps(); return env > 0 ? env : g == 30 || g == 40 || g == 120 ? g : 60; }   // 40: frame step in ticks of 1/120 s (hle_nvn.c fps_step_cap)
-// Hand a submission to the GPU in segments (DM_NVN_CUT=draw count, 0 = off; default 64): when the game holds back the next frame's submit until this frame's GPU work is done (The Legend of Zelda: Breath of the Wild: the main thread's nvnSyncWait on the fence of the frame just submitted),
+// Hand a submission to the GPU in segments (DM_NVN_CUT=draw count, 0 = off; default 64): when the game holds back the next frame's submit until this frame's GPU work is done (another game: the main thread's nvnSyncWait on the fence of the frame just submitted),
 // the GPU sits idle for the milliseconds the host spends translating inside the submit (in the shrine each frame is GPU 13 ms + translation 7 ms back to back). Each time this many draws have accumulated, the command buffer encoded so far is committed between two passes: the GPU runs the earlier passes while the CPU translates the later ones.
 // Cut only when no encoder is open and no pass is deferred / merged / hoisted; commit this batch's uploads first (later draws use them). The fence signal and completion work stay on the last segment only: the queue executes in commit order and every encoder starts with a queue barrier
 // A buffer → texture copy is cut after as well, at the next pass boundary whatever the draw count (g_cut_copy, set by copy_b2t). It can run while the host encodes the rest.
@@ -19783,7 +19783,7 @@ void mtl_exec(const uint8_t *p) {
                 // (clear_ds_tri), in or before a pass: before the first draw and for a partial stencil mask in a pass it used to clear the whole target (PR #108)
                 unsigned sm = (unsigned)c->stencil_mask & 0xff;
                 // A partial stencil mask with no pass open and a depth clear over the whole target: only the stencil needs the triangle, and the depth half is the pass's load action, so
-                // the depth plane is not loaded only to be cleared (Donkey Kong Bananza: 22.8 MB of depth and stencil loaded a frame for a stencil mask of 1, 4.6 MB this way)
+                // the depth plane is not loaded only to be cleared (another game: 22.8 MB of depth and stencil loaded a frame for a stencil mask of 1, 4.6 MB this way)
                 if (R.rt.depth && !g_enc && c->depth_mask && sm && sm != 0xff && scissor_full(R.rt.depth, &R.rt.dview, R.rt.has_dview)) {
                     R.clear_d = 1; R.cd = c->depth; p_clear_ds s = *c; s.depth_mask = 0; clear_ds_tri(&s); break;
                 }
@@ -19947,7 +19947,7 @@ void dm_gfx_shot_at(long k, const char *path) {
 // DM_NVN_SHOT_OUT=WIDTHxHEIGHT (for picture quality metrics): the present-frame screenshot instead captures the result "upscaled to this resolution by the present pass", i.e. the picture the player sees on a screen
 // of that size (with DM_PRESENT_UPSCALE=metalfx through MetalFX, on the Metal 4 queue: present_offscreen_m4); screen=0 (texture dump) is unaffected.
 // Without it, a window the game crops (nvnWindowSetCrop) is captured the same way at the window texture's own size: what is outside the crop is never presented and holds
-// whatever the texture held before (Bastion crops its 1920x1080 window textures to 1600x900; the strip outside was black in some runs and purple in others, which regress.py
+// whatever the texture held before (another game crops its 1920x1080 window textures to 1600x900; the strip outside was black in some runs and purple in others, which regress.py
 // took for a rendering change). An uncropped window is read as it is, so its shots are the texture's own pixels
 static void shot(id<MTLTexture> src, const char *path, int screen, const int crop[4]) {
     static int out_w = -1, out_h;
@@ -20432,7 +20432,7 @@ static id<MTLTexture> fx_encode(fx_state *fx, id<MTL4CommandBuffer> cb, id<MTLTe
     return out;
 }
 // ---------- A game's own upscaler drawn by MetalFX (DM_UPSCALER) ----------
-// Donkey Kong Bananza upscales its frame with agl's NDSR network: one compute dispatch (agl_ndsr.pck, 24 variants; Splatoon Raiders ships 20) reading the scene colour (texture slot 0, R11G11B10F; see up_mfx_color)
+// Another game upscales its frame with agl's NDSR network: one compute dispatch (agl_ndsr.pck, 24 variants; another game ships 20) reading the scene colour (texture slot 0, R11G11B10F; see up_mfx_color)
 // and writing the output picture (image slot 1), between the render-resolution passes and the output-resolution ones, which draw the UI over it. Its push constants (c[24], S.push[1])
 // give the two rectangles: input origin x, y and last texel relative to it (inclusive), then the same for the output. On an M1 the network takes 3.5-5 ms a frame in handheld mode
 // (960x540 → 1920x1080), MetalFX's spatial scaler about 1 ms. With DM_UPSCALER=metalfx (the launcher's Game's upscaler: MetalFX), a dispatch of one of the game's upscaler shaders
@@ -20463,7 +20463,7 @@ static int up_mfx_on(void) {
     return v;
 }
 // The colour a variant of the network takes and writes, from the sRGB curves in its code (their constants are immediates, whole bytes in the code). The variants differ inside a pack, so this is the shader's and not the game's:
-// Bananza's all encode linear input (0.0031308, 1 / 2.4 as floats) and come in threes: no decode at the end (the output stays encoded), a decode clamped to 0-1, a decode up to 128. Splatoon Raiders' all read colour that is encoded
+// Bananza's all encode linear input (0.0031308, 1 / 2.4 as floats) and come in threes: no decode at the end (the output stays encoded), a decode clamped to 0-1, a decode up to 128. Another game' all read colour that is encoded
 // already and come in twos: no decode, a decode clamped to 0-1 (as half floats: 0.04045, 2.4 and 1 / 12.92 rounded to 0.0404358, 2.3984375 and 0.0774536). Only the variants with linear output are drawn, in these two shapes; a variant
 // with encoded output keeps the game's shader. A constant counts from 8 uses, far fewer than a curve per channel of every output tile: two bytes also match by chance.
 // A third shape converts by squaring: Ocarina of Time's agl_ndsr_vr.pck and agl_ndsr_vr_light.pck networks read colour a pass before them square-rooted (gamma 2, into RGB9E5) and
@@ -20763,7 +20763,7 @@ static int present_now(const tex_t *t, double period, uint64_t frame, uint64_t t
     { static double last; double w, h; present_shape(src, crop, &w, &h); double a = w / h;
       if (fabs(a - last) > last * 0.001) { last = a; MLOG("present: picture shape %.0fx%.0f (%.3f:1) for the front end's layout", w, h, a); front_picture_shape((int)w, (int)h); } }
     // A texture made on first resolution joins the residency set (res_add), which a submission commits; a window texture presented before any submission has used it was still
-    // outside the committed set when the display command buffer sampled it. Super Smash Bros. Ultimate presents its window texture in its first frames before drawing into it:
+    // outside the committed set when the display command buffer sampled it. Another game presents its window texture in its first frames before drawing into it:
     // the display queue page-faulted (kIOGPUCommandBufferCallbackErrorPageFault) and macOS then ignored every later command buffer of the process, so the window stayed pink
     // (headless runs never present, and every game before drew into a window texture before presenting it). A commit with nothing new costs nothing
     res_commit();
@@ -21462,7 +21462,7 @@ static uint64_t present_enqueue(const tex_t *t, double period, const int crop[4]
     atomic_store(&dm_present_ns, now_ns()); if (copy) *copy = 0;
     if (g_classic || atomic_load(&g_present_discard) || atomic_load(&g_present_suspended)) return 0;
     // A texture whose content comes from its storage is uploaded when it is first resolved (and again when its pages change), in an upload batch only the submit thread may open.
-    // Bastion fills both window textures with WriteTexels at boot (main+0x9374) and presents one before drawing into it: resolved on the present thread, the upload aborted the host.
+    // Another game fills both window textures with WriteTexels at boot (main+0x9374) and presents one before drawing into it: resolved on the present thread, the upload aborted the host.
     // Resolve it here, where the game queues the present, and commit the batch, so the display command buffer comes after the upload on the queue and the present thread finds it uploaded.
     // A texture first used by the present is resolved here too: its first use decides whether it is taken from its storage (tex_cpu_content), so tex_from_storage cannot tell before,
     // and resolved on the present thread a window texture holding the CPU's data in a pool the CPU can write was uploaded there and aborted the host (t_nvn, whose window textures
@@ -21516,7 +21516,7 @@ void mtl_present_progress(uint64_t *queued, uint64_t *done) { pthread_mutex_lock
 // its swapchain holds, and still need not wait for the screen. Before, a snapshot present handed the texture back at once (ticket 0) and only the ring slot paced the
 // acquire. The slot is counted when the queue worker replays the present, so a game that acquires its next texture before presenting the current frame, or before the
 // worker has replayed that present, then ran a frame further ahead of the GPU per ring slot, and one that sizes its
-// CPU-written per-frame buffers on the swapchain's depth rewrote data a queued frame's draws still read: Xenoblade Chronicles 3's scene came out one flat colour in a
+// CPU-written per-frame buffers on the swapchain's depth rewrote data a queued frame's draws still read: another game's scene came out one flat colour in a
 // third to a half of the frames (2 slots 32/80, 4 slots 49/80, snapshots off 0/80; LNPANDY/NX2Apple#1117)
 // Without the display link (DM_PRESENT_LINK=0) the acquire paces the game on the host's own clock (hle_nvn.c: the texture's slot time, nvn_pace), and the present thread holds
 // each frame on screen for its period (presentAfterMinimumDuration). Nothing ties the two clocks to what the screen really shows: a texture is the game's again once its

@@ -4,7 +4,7 @@ The constructor reserves 12 GB in one address region, three adjacent 4 GB ranges
 iPhone's address space cannot hold 12 GB, and the failed reservation is unchecked: the first 64 KB page writes to NULL + 0x20000ffff. Each range is sized from the constants in this
 one function, so the cut is a platform limit that nothing outside the game's code can make: pointers are real addresses, and the layout comes from these instructions.
 
-The structure, every part checked on each candidate or nothing is cut (Mario + Rabbids Kingdom Battle and Sparks of Hope build it with other encodings, field offsets and callees):
+The structure, every part checked on each candidate or nothing is cut (another game and Sparks of Hope build it with other encodings, field offsets and callees):
 - mov xA, #4 GB, stored to three adjacent fields F, F+8, F+0x10 of the object (x0, or xS after mov xS, x0), the sizes of the 64 KB, 512 KB and large ranges;
 - bl to the size of the metadata; then mov w1, wzr; mov x2, xzr; bl R, the reservation of the metadata, whose base goes to [xS, #F+0x28];
 - mov xB, #12 GB; mov w1, wzr; mov x0, #12 GB; mov x2, xzr; bl R, the reservation of the ranges, whose base and end go to [xS, #F+0x18], the end being an add of xB;

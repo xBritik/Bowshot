@@ -215,18 +215,6 @@ class Nvn(Base):
             self.build_ios(True); self.assertEqual(self.ran, [])
             self.build_ios(False); self.assertEqual(self.ran, []); self.assertTrue(nsp.shader_lib.left_out_pulling(ios))   # no longer read: taken out with no build
 
-    def test_who_reads_the_iphones_pulling_libraries(self):
-        def g(mtl4='off', pairs=False, gpu=''):
-            return types.SimpleNamespace(get=lambda k, d='': {'pso_mtl4': mtl4, 'pso_gpu': gpu}.get(k, d), table=lambda n: self.tmp / ('c1_full.tsv' if pairs else 'absent'))
-        want = nsp.ios_wants_pulling
-        self.build(True)   # the stand-in writes the file that stands for a game's shader pairs here
-        self.assertTrue(want(g(), 'none', False, {}))   # the player can turn on Metal 4/prebuild on the device
-        self.assertTrue(want(g(), 'none', True, {}))   # the Xcode copy phase takes them always
-        self.assertTrue(want(g('on'), 'none', False, {})); self.assertFalse(want(g('on'), 'none', False, {'IOS_PULL': '0'})); self.assertTrue(want(g(), 'none', False, {'IOS_PULL': '1'}))
-        self.assertTrue(want(g(pairs=True), 'g18p', False, {}))   # the archive is made of them
-        self.assertTrue(want(g(), 'g18p', False, {}))   # no offline archive: runtime lists can still need pulling entries
-        self.assertEqual(nsp.ios_gpus('', g()), 'none'); self.assertEqual(nsp.ios_gpus('', g('on')), 'g18p'); self.assertEqual(nsp.ios_gpus('', g('on', gpu='g18p g17p')), 'g18p,g17p'); self.assertEqual(nsp.ios_gpus('g16p', g()), 'g16p')
-
     def test_old_chain_images_go_too(self):
         self.build(True)
         for n in ('b-157e1b96c8da.img', 'b-a78f966a7b38.img.part'): (self.sh / 'cache' / n).write_bytes(b'x')

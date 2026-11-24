@@ -12,8 +12,8 @@ The chain, each link unique or nothing is cut:
 - its call sites, each a bl (no b to it): x0 there is the object, already made (GCreateMalloc mallocs it, or a bss object in nninitStartup). DRAGON BALL Sparking! ZERO (UE 5.1) has two,
   one lazy construction inlined twice (in nninitStartup and in a getter): if the global is null, malloc 0x1c38 bytes, construct, store; a b to it (a tail call) stops the chain, as a nop there
   would fall through into the next function.
-Checked on the five Unreal 4 / 5 mains on the game drive (OCTOPATH TRAVELER 0 and II, DRAGON QUEST VII Reimagined, Pikmin 4, FINAL FANTASY RESONANCE), which gave the call sites of their
-registered cuts. Unreal Engine 3 (Batman: Arkham Knight) inlines the constructor; its cut stays its build's (its patches.py).
+Checked on the five Unreal 4 / 5 mains on the game drive (another game and II, another game, another game, another game), which gave the call sites of their
+registered cuts. Unreal Engine 3 (another game) inlines the constructor; its cut stays its build's (its patches.py).
 Usage on its own: ue_malloc.py <module>... (what the chain finds in each)"""
 import re, struct, sys, os
 

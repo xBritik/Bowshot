@@ -39,7 +39,7 @@ def casp(rs, rt, rn, x=True, acq=True, rel=True):
     return 0x08207C00 | x << 30 | acq << 22 | rs << 16 | rel << 15 | rn << 5 | rt
 
 
-CASES = {   # Sonic Frontiers Definitive Edition main+0x19ce5c4 first
+CASES = {   # Another game main+0x19ce5c4 first
     'caspal x18, x19, x4, x5, [x16]': casp(18, 4, 16),
     'casp x4, x5, x18, x19, [x16]': casp(4, 18, 16, acq=False, rel=False),
     'caspa w18, w19, w2, w3, [x0]': casp(18, 2, 0, x=False, rel=False),

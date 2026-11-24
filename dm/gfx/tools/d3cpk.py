@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Diablo III's console packages (Diablo III: Eternal Collection on the Switch: CPKs/*.cpk and Update/CPKs/*.cpk, 37 files, 16 GB). Not CRI's CPK: the file starts with the u32 0xa1b2c3d4
+# Diablo III's console packages (another game on the Switch: CPKs/*.cpk and Update/CPKs/*.cpk, 37 files, 16 GB). Not CRI's CPK: the file starts with the u32 0xa1b2c3d4
 # (little-endian; the game's reader, main+0x76088c in 2.7.7, also takes it byte-swapped) and a version (6 or 7), then bit-packed tables (per entry a 64-bit name hash and three fields
 # of 24, 1 and 17 bits in 2.7.7's CoreCommon.cpk; the widths are header words) and the data in 64 KiB sectors (version 7: header +0x3c; 16 KiB sub-blocks, +0x40, each covered by a CRC).
 # Each file of the data is either stored or one zlib stream behind a 6-byte record {u32 decoded length, u16 stored length}; the game's SNO assets (0xdeadbeef headers) are such streams.

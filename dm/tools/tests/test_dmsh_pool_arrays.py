@@ -141,7 +141,7 @@ class Reflect(unittest.TestCase):
         self.assertEqual((b['fp_s_cb0_40000000']['kind'], b['fp_s_cb0_40000000']['arg_id']), (abi.KIND_SAMP_POOL, 3))
         self.assertEqual((b['fp_i_cb2_48_rg32ui']['kind'], b['fp_i_cb2_48_rg32ui']['reg'], b['fp_i_cb2_48_rg32ui']['arg_id']), (abi.KIND_IMG, 0, 36))
 
-    def test_table_of_uniform_handles(self):   # Kirby Air Riders' light probes: texture words in c[4] at element 390, the sampler word at c2 byte 0x570; the index stays the element's
+    def test_table_of_uniform_handles(self):   # Another game' light probes: texture words in c[4] at element 390, the sampler word at c2 byte 0x570; the index stays the element's
         src = '''struct spvDescriptorSetBuffer0
 {
     array<texture2d_array<float>, 8192> cp_t2da_cb196612_10570000 [[id(0)]];

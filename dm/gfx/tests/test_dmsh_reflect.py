@@ -134,7 +134,7 @@ class BufferImageOffsets(unittest.TestCase):
 
 
 class PoolTable(unittest.TestCase):
-    # Global memory traced to no storage buffer (Donkey Kong Bananza's gsys vertex shader c9a56f796ea4a4cd): the translator reserves the host's pool table as a storage buffer
+    # Global memory traced to no storage buffer (another game's gsys vertex shader c9a56f796ea4a4cd): the translator reserves the host's pool table as a storage buffer
     # under the sentinel cb slot; it is not a game buffer, and it writes when one of the notes is a store or an atomic
     def reflect(self, notes):
         source = 'struct spvDescriptorSetBuffer0\n{\n    device uint* vp_s0 [[id(0)]];\n    device uint* vp_s1 [[id(1)]];\n};\n'
@@ -183,11 +183,11 @@ class DriverTableArrays(unittest.TestCase):
         source = 'struct spvDescriptorSetBuffer0\n{\n' + ''.join(f'    {t} {n} [[id({i})]];\n' for t, n, i in members) + '};\n'
         return REFLECT('synthetic', 'ps', source, {'sbufs': []})
 
-    def test_combined_handles(self):   # Luigi's Mansion 3's shadow cascades: element k = the handle at c2 byte 8k
+    def test_combined_handles(self):   # Another game's shadow cascades: element k = the handle at c2 byte 8k
         got = self.reflect([('array<texture2d_array<float>, 301>', 'fp_t2das_cb2_0', 0), ('array<sampler, 301>', 'fp_t2das_cb2_0Smplr', 301)])
         self.assertEqual([(b['kind'], b['off'], b.get('soff')) for b in got], [('tex_c2a', 0, None), ('samp_c2a', 0, None)])
 
-    def test_one_separate_sampler_word(self):   # EA SPORTS FC 27's lights: texture words from c2 byte 0, the sampler word at c2 byte 0x570 ORed into each
+    def test_one_separate_sampler_word(self):   # Another game's lights: texture words from c2 byte 0, the sampler word at c2 byte 0x570 ORed into each
         got = self.reflect([('array<texture2d<float>, 301>', 'fp_t2d_cb196610_10570000', 0), ('array<sampler, 301>', 'fp_t2d_cb196610_10570000Smplr', 301)])
         self.assertEqual([(b['kind'], b['off'], b.get('soff')) for b in got], [('tex_c2a', 0, 0x570), ('samp_c2a', 0, 0x570)])
 
@@ -197,7 +197,7 @@ class DriverTableArrays(unittest.TestCase):
 
 
 class UniformArraysWithDriverSampler(unittest.TestCase):
-    def test_sampler_word_in_c2(self):   # Kirby Air Riders' shadows: texture handles in c[6], the separate sampler word at c2 byte 0x570
+    def test_sampler_word_in_c2(self):   # Another game' shadows: texture handles in c[6], the separate sampler word at c2 byte 0x570
         source = 'struct spvDescriptorSetBuffer0\n{\n    array<depth2d<float>, 32> fp_t2ds_cb196614_10570000 [[id(0)]];\n    array<sampler, 32> fp_t2ds_cb196614_10570000Smplr [[id(32)]];\n};\n'
         tex, samp = REFLECT('synthetic', 'ps', source, {'sbufs': []})
         self.assertEqual((tex['kind'], tex['reg'], tex['off'], tex.get('soff')), ('tex_ubo', 3, 0, None))
@@ -238,7 +238,7 @@ UNFILLABLE = builder_unfillable()
 
 
 class DriverReads(unittest.TestCase):
-    def test_computed_c2_index_reads_the_filled_tables(self):   # EA SPORTS FC 27's lights: (*spvDescriptorSet0.fp_c2)._m0[int(_237)][_239]
+    def test_computed_c2_index_reads_the_filled_tables(self):   # Another game's lights: (*spvDescriptorSet0.fp_c2)._m0[int(_237)][_239]
         self.assertEqual(UNFILLABLE('float _241 = (*spvDescriptorSet0.fp_c2)._m0[int(_237)][_239];'), [])
 
     def test_computed_c0_index_is_refused(self):
@@ -247,7 +247,7 @@ class DriverReads(unittest.TestCase):
     def test_c2_word_outside_the_tables_is_refused(self):
         self.assertEqual(UNFILLABLE('float x = (*spvDescriptorSet0.fp_c2)._m0[0].x;'), ['c2+0x0'])
 
-    # Metroid Prime Remastered's sample position lookup (04023899305e93e1): the 0x630 row's masks and shifts, then a byte of the table at 0x620 by a computed index
+    # Another game's sample position lookup (04023899305e93e1): the 0x630 row's masks and shifts, then a byte of the table at 0x620 by a computed index
     SAMPLE_LOOKUP = ('int _79 = int(_70) & as_type<int>((*spvDescriptorSet0.fp_c0)._m0[99].w);\n'
                      'float _107 = (*spvDescriptorSet0.fp_c0)._m0[int(_103)][_105];')
 
@@ -257,7 +257,7 @@ class DriverReads(unittest.TestCase):
     def test_sample_rows_are_not_filled_for_other_stages(self):
         self.assertEqual(UNFILLABLE(self.SAMPLE_LOOKUP, 'vs'), ['c0 dynamic index', 'c0+0x630'])
 
-    # PRAGMATA's sample position lookup without the grid (a689530d00090ebf): a byte of the table at 0x620 + the sample index, row 98
+    # Another game's sample position lookup without the grid (a689530d00090ebf): a byte of the table at 0x620 + the sample index, row 98
     SAMPLE_BYTE = ('float _115 = as_type<float>(gl_SampleID);\n'
                    'int _141 = as_type<int>(_115) + 1568;\n'
                    'uint _144 = uint(int(uint(_141) >> uint(2)));\n'

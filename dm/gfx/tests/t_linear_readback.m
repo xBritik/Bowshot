@@ -99,7 +99,7 @@ static void scaled_copy_case(void) {
 //   0: LINEAR, 32-byte rows: uploaded from its storage at its stride, and ReadTexels reads its pixels; then an NVN copy into it, a CPU write, reads on another thread and an upload
 //   1: LINEAR, 64-byte rows: stays a view
 //   2: LINEAR, 32-byte rows, read by ReadTexels on another thread before its first use: the read has its pixels, and the first use on the submit thread still uploads it
-//   3: IMAGE|LINEAR, 32-byte rows, only sampled (Hades II's Bink planes, GitHub issue #1956): CPU-written while the GPU has not written its storage, uploaded again after a CPU
+//   3: IMAGE|LINEAR, 32-byte rows, only sampled (another game's Bink planes, GitHub issue #1956): CPU-written while the GPU has not written its storage, uploaded again after a CPU
 //      write; a recorded GPU write into it makes it a GPU texture that keeps its content
 //   4: IMAGE|LINEAR, 32-byte rows, its storage written by the GPU before its first use: a GPU texture, not CPU-written, its first fill at its stride
 //   5: LINEAR_RENDER_TARGET, 32-byte rows, only sampled: CPU-written, as 3

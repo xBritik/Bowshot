@@ -177,7 +177,7 @@ int main(void) { @autoreleasepool {
     CHECK(pixels(0,255,0,0),"CPU counter write after completed report replaces pending zero");
 
     // The samples-passed counter is one running total in queue order. A game that never resets it reads
-    // end - begin of two reports (Red Dead Redemption); this is the process's first samples-passed command.
+    // end - begin of two reports (another game); this is the process's first samples-passed command.
     // Slots left at a submission's end are read at its own completion, before a later submission reuses
     // the visibility buffer (the half-scissored second draw lands in the same slot of the same buffer).
     uint64_t *r0=(uint64_t *)(memory+EVENT+384),*r1=(uint64_t *)(memory+EVENT+448),*r2=(uint64_t *)(memory+EVENT+512);
@@ -235,7 +235,7 @@ int main(void) { @autoreleasepool {
     submit(0,P(nvnCommandBufferEndRecording)(&command),&sync);finish(&sync);
     CHECK(pixels(0,0,255,0),"query in flight keeps its block drawing");
 
-    // An operand no report writes, written by GPU work queued before the condition (Portal 2's D3D9 layer has a shader write each mesh's visibility word): memory does not hold
+    // An operand no report writes, written by GPU work queued before the condition (another game's D3D9 layer has a shader write each mesh's visibility word): memory does not hold
     // it yet when the condition is evaluated, so the block draws; with no such writer, memory decides
     uint64_t *pair=(uint64_t *)(memory+0xb0000),*ones=(uint64_t *)(memory+0xb1000);
     const char *gpu_written[] = {"operand a queued copy writes: drawn", "operand a queued buffer clear writes: drawn", "operand nothing on the GPU writes: memory decides (equal, not drawn)",

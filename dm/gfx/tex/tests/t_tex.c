@@ -104,7 +104,7 @@ int main(void) {
     differential_shapes();
     printf("L linear render targets without the separate LINEAR flag\n");
     {
-        // Persona 5 Royal asks for 16x16 RGBA8, flags 0x44, stride 128: 2 KB,
+        // Another game asks for 16x16 RGBA8, flags 0x44, stride 128: 2 KB,
         // including row padding. Treating it as block-linear returned only 1 KB.
         nvn_texdesc d = {1, 0x25, 0x44, 0, 16, 16, 1, 1, 128, 0, 0};
         nvn_texlayout L; nvn_tex_layout(&d, &L);
@@ -245,7 +245,7 @@ int main(void) {
         free(st); free(lin);
     }
 
-    // ---------- S sparse layout: Monster Hunter Rise's streamed 1024×1024 ASTC 6×6 sRGB textures (flag SPARSE, packaged block height 8 GOBs), level 0 checked against the game's data ----------
+    // ---------- S sparse layout: another game's streamed 1024×1024 ASTC 6×6 sRGB textures (flag SPARSE, packaged block height 8 GOBs), level 0 checked against the game's data ----------
     // A 64 KB tile is 16 GOBs × 8 GOBs here. Level 0 (171 block columns = 43 GOBs) is padded to 48 GOBs × 3 block rows = 9 tiles: its dumped data decodes with no all-zero block that way
     // (2,183 unpadded). Level 1 (86 = 22 GOBs → 32, 2 block rows) is 4 tiles; level 2 (43 block columns, less than a tile's 64) starts the mip tail, packed as before; storage in whole tiles
     printf("S sparse layout (64 KB tiles: tiled levels padded to whole tiles, then the mip tail)\n");

@@ -8,7 +8,7 @@ Stage memory, in shared memory (memory()), all of it zero when the body starts:
   word 0        the workgroup's number (ISBERD mode 0x78): a task's is the draw's first task + its threadgroup, a mesh shader's with no task its block's first + its threadgroup
 
 A mesh shader with no task also gets an object function, main0_o: Metal launches at most METAL_MAX_GRID threadgroups in a mesh grid, a limit the object grid does not have, and a draw's
-workgroups went past it (Ocarina of Time's foliage: up to 1,056 a draw, PRAGMATA's 6,623; past the limit the GPU read out of bounds). Each of its one-thread threadgroups launches a
+workgroups went past it (Ocarina of Time's foliage: up to 1,056 a draw, another game's 6,623; past the limit the GPU read out of bounds). Each of its one-thread threadgroups launches a
 block of up to METAL_MAX_GRID mesh threadgroups and hands them the block's first workgroup in its payload, so a draw is one Metal draw of ceil(count / METAL_MAX_GRID) object
 threadgroups (nvn_geometry.inc mtk_encode). The task and object functions read the draw's {count, first} at buffer MESH_DRAW_SLOT, NVN's DrawMeshTasksIndirect record
   INPUT         the payload a mesh shader's task wrote (ISBERD mode 0x38). Its word 0 is the mesh workgroup's number among its task's launches, which the hardware puts there
@@ -16,14 +16,14 @@ threadgroups (nvn_geometry.inc mtk_encode). The task and object functions read t
                 or a mesh shader's attributes (0xf8): all blocks of 32 vertices (the components the SPH's OMAP enables, 0x80 bytes each, a word per vertex), followed by all blocks of 32
                 primitives (the per-primitive SPH's system values (OMAP 0x34 and 0x35 bits 0..3: primitive id, layer, viewport, ...) before its generic attributes, 0x80 bytes
                 each, a word per primitive). The primitive id is handed to Metal as the primitive's [[primitive_id]] (PRIMITIVE_BUILTINS), which the fragment stage reads as NVN's
-                gl_PrimitiveID. PRAGMATA's mesh shaders (5aab38bb5ba67ef7) write a primitive id (0x35 bit 0): without its room it lay over the primitive count byte, and every
+                gl_PrimitiveID. Another game's mesh shaders (5aab38bb5ba67ef7) write a primitive id (0x35 bit 0): without its room it lay over the primitive count byte, and every
                 workgroup drew nothing
   primitives    a mesh shader's primitive bytes: the count at +3 (0x88), index bytes from +4 (0x80, control +0x5f per primitive: 1 point, 2 line, 3 triangle)
 
 A payload past Metal's (abi.MESH_PAYLOAD_MAX, 16 KB) goes through a device buffer the host binds at abi.MESH_SPILL_SLOT in both stages (payload_spill): word 0 its slice count,
 then a slice of the payload's words (rounded to 4) for each of the draw's task workgroups. The task stores its payload in its threadgroup's slice behind a device-scope fence and
 hands its mesh threadgroups the slice's word offset in Metal's payload; the mesh shader's input is then a shared memory of its own (job stage_input_words, the translator's
-dm_stage_in), read from the slice behind a device-scope fence instead of sitting in the mesh shader's stage memory. Nintendo Switch Sports Resort's sea task shaders hand 21-28 KB
+dm_stage_in), read from the slice behind a device-scope fence instead of sitting in the mesh shader's stage memory. Another game's sea task shaders hand 21-28 KB
 to their mesh shaders. A task's stage memory has no input area either (a task reads no ISBERD 0x30..0x38): its outputs follow word 0
 """
 import re
@@ -95,13 +95,13 @@ def memory(i):
     # ee4ef51a4fddc28e, 128 vertices of 6 components and 64 primitives of 4, writes vertex v at (v / 32) * 768 + (v % 32) * 4 and primitive p at 3072 + (p / 32) * 512 + (p % 32) * 4)
     # A primitive block holds the per-primitive SPH's system values first, then its generic attributes (per_primitive)
     v_blocks, p_blocks = blocks_of(i['max_v']), blocks_of(i['max_p'])
-    # (r9 review) with no per-primitive component this is smaller than r6's blocks_of(max(max_v, max_p)) when max_p > max_v; PRAGMATA's three record meshes (6adf14e9 4fcffc73 c0e44513:
+    # (r9 review) with no per-primitive component this is smaller than r6's blocks_of(max(max_v, max_p)) when max_p > max_v; another game's three record meshes (6adf14e9 4fcffc73 c0e44513:
     # 128/64, 128/128, 128/128) have max_p <= max_v, so their records' base (AosToSoa, words 4..6) is unchanged
     prim = out + max(v_blocks * len(i['vertex']) + p_blocks * per_primitive(i), 1) * BLOCK * 4
     # The guest writes the index bytes of primitive min(count - 1, lane + 32k) in each of its primitive blocks, and a meshlet count of 0 wraps count - 1, so every lane of every primitive
     # block writes: the bytes are reserved for whole blocks of 32 primitives, a primitive's vertices each (a mesh with max_p 126 wrote past 4 + 3 * 126, into the next workgroup's memory)
     # [4..6]: the vertex records the non-skew attribute addresses (ISBEWR / ISBERD .O.ATTR.32, mode 0xb8) name, right after the SoA area: InstEmitAmpereMem.cs AosToSoa
-    # sends each to its SoA word (before, PRAGMATA 6adf14e9 / 4fcffc73 / c0e44513 wrote them over the primitive count and index bytes)
+    # sends each to its SoA word (before, another game 6adf14e9 / 4fcffc73 / c0e44513 wrote them over the primitive count and index bytes)
     n = max(len(i['vertex']), 1)
     return [WORKGROUP, INPUT, out, prim, prim - out, n, i['max_v'] * 4 * n], prim + (4 + i.get('verts', 3) * p_blocks * BLOCK + 3 & ~3)
 
@@ -135,7 +135,7 @@ def own_shared(code):
 
 # The kernel's head, through its stage memory array: SPIRV-Cross can declare a private variable's initializer ahead of the array
 # (GlobalToStorage.TryGenerateRawStorageOp's last entry, uint _N = 0u;), so plain declarations before the array are taken along (group 2) and stay at the top of the body.
-# PRAGMATA's 539 mesh shaders all failed here when the array had to follow the brace
+# Another game's 539 mesh shaders all failed here when the array had to follow the brace
 _KERNEL = re.compile(r'kernel\s+void\s+main0\s*\(((?:[^()]|\([^()]*\))*)\)\s*\{[ \t]*\n((?:(?![ \t]*threadgroup\b)[ \t]+[^\n{}]*;[ \t]*\n)*?)'
                      r'[ \t]*threadgroup\s+spvUnsafeArray<uint,\s*(\d+)>\s+(\w+);\n')
 # A payload-spilled mesh shader's input (the translator's dm_stage_in), the threadgroup array that follows the stage memory

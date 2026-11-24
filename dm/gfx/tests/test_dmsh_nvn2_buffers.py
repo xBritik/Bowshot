@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""NVN2 buffer addresses through the offline translator (dmsh_xlate, arch sm86), as PRAGMATA's compute shaders read them: a buffer entry the game pushed into push block 1
+"""NVN2 buffer addresses through the offline translator (dmsh_xlate, arch sm86), as another game's compute shaders read them: a buffer entry the game pushed into push block 1
 (c0 layout +0xaa, after push block 0 and before the uniform entries, mapped to c[24] + 0x100), and a bindless constant buffer read (cx[UR][offset]) through a pushed handle. Needs DMSH_TEST_XLATE (the
 translator) like the other translator tests."""
 import json, os, struct, subprocess, tempfile, unittest
@@ -48,7 +48,7 @@ class Nvn2Buffers(unittest.TestCase):
             return json.loads((work / 'k.res.json').read_text())
 
     def test_a_graphics_stage_bank_is_its_push_block(self):
-        # The pixel stage (index 4) reads its buffer entries from c[29]: what the game pushes into graphics push block 5 (PRAGMATA's material pass), at c[24] + 5 * 0x100
+        # The pixel stage (index 4) reads its buffer entries from c[29]: what the game pushes into graphics push block 5 (another game's material pass), at c[24] + 5 * 0x100
         res = self.translate_ps(inst(*ULDC64_C29_10) + inst(*LDG_R0_UR4) + inst(*EXIT), 29)
         self.assertIn((24, (5 * 0x100 + 0x10) // 4), [(s['cb_slot'], s['cb_offset']) for s in res['sbufs']])
 
@@ -75,7 +75,7 @@ class Nvn2Buffers(unittest.TestCase):
         self.assertIn((24, 0x100 // 4), [(s['cb_slot'], s['cb_offset']) for s in res['sbufs']])
 
     def test_a_texture_id_loaded_on_one_path_indexes_the_pools(self):
-        # The handle is (a word loaded from memory, or on the other path a word of c[3]) | constant sampler 0x104, as PRAGMATA's compute shader 02e1292114121308 reads a material's texture.
+        # The handle is (a word loaded from memory, or on the other path a word of c[3]) | constant sampler 0x104, as another game's compute shader 02e1292114121308 reads a material's texture.
         # The loaded word may name any texture, so the read indexes the pools by its ID; the uniform word alone was taken as the handle, a binding the host has no slot for
         code = [ULDC64_C0_10, LDG_UR4, ISETP_NE_P0_R5, MOV_R6_C3_10_NP0, MOV_R6_R5_P0, LOP3_R6_OR_SAMPLER, TEX_LZ_R6, SUATOM_R7, EXIT]
         res = self.translate(b''.join(inst(*i) for i in code), [1, 0, 0, 0x40, 0, 0, 0, 0x10])
@@ -83,7 +83,7 @@ class Nvn2Buffers(unittest.TestCase):
         self.assertTrue(any(t['array'] > 32 for t in res['textures']), res['textures'])   # the pool array
 
     def test_indexed_native_c0_texture_handles_use_the_driver_table(self):
-        # Fast Fusion's fog: the byte offset comes from a uniform, LDC reads c0[offset], and a fixed c0 sampler word is ORed in. With 1 UBO, 4 combined textures and 4 separate
+        # Another game's fog: the byte offset comes from a uniform, LDC reads c0[offset], and a fixed c0 sampler word is ORed in. With 1 UBO, 4 combined textures and 4 separate
         # textures, native separate textures start at 0x40 and the sampler at 0x60. Canonical c2 has the separate textures at 0x168 and the sampler at 0x568.
         ldc = (0x000fe20000000800, 0x0000000006067b82)
         sampler = (MOV_R6_C3_10[0], 0xa02 | 0x7000 | 7 << 16 | 0x60 << 38)
@@ -102,7 +102,7 @@ class Nvn2Buffers(unittest.TestCase):
 
 
     def test_a_handle_read_as_2d_and_as_a_2d_array_is_an_array(self):
-        # One handle, TEX 2D and TEX ARRAY_2D (PRAGMATA: 24 pixel shaders, 21ba8fea5a5eb03c among them, whose Metal source did not compile: the binding was declared an array
+        # One handle, TEX 2D and TEX ARRAY_2D (another game: 24 pixel shaders, 21ba8fea5a5eb03c among them, whose Metal source did not compile: the binding was declared an array
         # and the 2D read gave no layer). The binding is an array for both, in the declaration and in the descriptor, and the 2D read takes layer 0
         code = [MOV_R6_C3_10, LOP3_R6_OR_SAMPLER, TEX_LZ_R6, SUATOM_R7, TEX_LZ_R6_ARRAY, SUATOM_R7, EXIT]
         res = self.translate(b''.join(inst(*i) for i in code), [1, 0, 0, 0x40, 0, 0, 0, 0x10])

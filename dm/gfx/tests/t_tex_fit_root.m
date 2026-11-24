@@ -41,7 +41,7 @@ static id<MTLTexture> layered_root(NSUInteger layers) {
     }
     return root;
 }
-// Cubes and cube arrays in the slots of the other layered types: every face and layer the shader asks for, from the view's levels and layers (Splatoon Raiders: a cube in a cube array slot)
+// Cubes and cube arrays in the slots of the other layered types: every face and layer the shader asks for, from the view's levels and layers (another game: a cube in a cube array slot)
 static void cube_views(id<MTLLibrary> library) {
     id<MTLComputePipelineState> rd_ca = pipeline_of(library, @"rd_ca"), rd_c = pipeline_of(library, @"rd_c"), rd_2a = pipeline_of(library, @"rd_2a"), rd_2d = pipeline_of(library, @"rd");
     id<MTLTexture> root = layered_root(CUBE_LAYERS);

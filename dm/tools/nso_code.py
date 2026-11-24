@@ -2,7 +2,7 @@
 """Where an NSO's text segment holds code: function ranges from .eh_frame, and data blocks in the text that no function covers.
 patch_nso.py and insn_census.py import it. Usage on its own: nso_code.py <module.nso | decompressed image .bin> (lists the data blocks)
 
-A data block is a stretch of at least DATA_MIN bytes between FDE ranges in which more than a quarter of the words do not decode as instructions. Absolum's main
+A data block is a stretch of at least DATA_MIN bytes between FDE ranges in which more than a quarter of the words do not decode as instructions. Another game's main
 (.NET NativeAOT on SDK 18) starts its text with 1.7 MB of data that no code references (no adrp, no relocation): 62% of its words do not decode, and 6,858 of the
 rest read as instructions that use x18, which a linear sweep would rewrite. Code without unwind information (zlib, libunwind's register restore) stays code: it decodes."""
 import struct
@@ -89,7 +89,7 @@ def fde_ranges(img):
 def landing_pads(img):
     """{landing pad: [(start, end) of the calls it catches]} from every FDE's LSDA (.gcc_except_table, C++ exceptions): the unwinder enters a landing pad from one of those
     calls, with the callee-saved registers as the call left them. Empty for a module without exception tables. Only a CIE with a personality routine ('P') has such an
-    LSDA: one with 'L' alone points at the runtime's own data (Absolum main, .NET NativeAOT: 'zLR'), and a table whose records leave its function is not one either"""
+    LSDA: one with 'L' alone points at the runtime's own data (another game main, .NET NativeAOT: 'zLR'), and a table whose records leave its function is not one either"""
     ehs, _ = eh_frame_hdr(img)
     cies, out = {}, {}
 

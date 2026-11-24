@@ -22,9 +22,9 @@ class Header(unittest.TestCase):
 
     def test_the_same_functions(self):
         t = dict(table())
-        for n, same in (('glGenFramebuffersEXT', 'glGenFramebuffers'), ('glCheckFramebufferStatusEXT', 'glCheckFramebufferStatus'),   # Fate/hollow ataraxia REMASTERED
+        for n, same in (('glGenFramebuffersEXT', 'glGenFramebuffers'), ('glCheckFramebufferStatusEXT', 'glCheckFramebufferStatus'),   # Another game
                         ('glBindRenderbufferEXT', 'glBindRenderbuffer'), ('glBindFramebufferEXT', 'glBindFramebuffer'),
-                        ('glBindBufferARB', 'glBindBuffer'), ('glActiveTextureARB', 'glActiveTexture'), ('glVertexAttribPointerARB', 'glVertexAttribPointer'),   # DOOM 3
+                        ('glBindBufferARB', 'glBindBuffer'), ('glActiveTextureARB', 'glActiveTexture'), ('glVertexAttribPointerARB', 'glVertexAttribPointer'),   # Another game
                         ('glBindVertexArrayOES', 'glBindVertexArray'), ('glGenFramebuffersOES', 'glGenFramebuffers')):
             self.assertEqual(t.get(n), same, n)
 

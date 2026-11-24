@@ -2,7 +2,7 @@
 # Which loaded entry points does a module's code really call? For loaders that fetch functions by name and keep each pointer in a global (glad's GL loader over eglGetProcAddress,
 # NVN's C proc loader over nvnDeviceGetProcAddress): the loader is a run of "name → x0 or x1 (adrp + add), call the get-proc function, adrp + ldr of a GOT slot, str x0 through it".
 # Every GOT slot stored that way is named after its string; the code outside the loader then reaches a function by loading its slot (adrp + ldr of the same GOT address), so the
-# slots loaded elsewhere are the functions the game calls. Digimon Story Cyber Sleuth: Complete Edition: glad asks for 2,956 GL names, the code loads 79 of them; its NVN loader
+# slots loaded elsewhere are the functions the game calls. Another game: glad asks for 2,956 GL names, the code loads 79 of them; its NVN loader
 # fetches 512, the code loads 30 (docs/agents/02-survey.md).
 # Usage: loader_census.py <NSO or decompressed image> [--sites name,name...]   (an NSO is decompressed in memory; a .bin is taken as is, text from 0 to the end of the first segment it
 # cannot tell, so give an NSO when you can)
@@ -37,7 +37,7 @@ def got_values(img):
         t, v = struct.unpack_from('<qQ', img, dyn + k * 16)
         if t == 0: break
         tags.setdefault(t, v)
-    for k in range(tags.get(8, 0) // 24):   # DT_RELA / DT_RELASZ: RELATIVE, and ABS64 / GLOB_DAT of a symbol the module defines (Balatro's glad pointers are exported)
+    for k in range(tags.get(8, 0) // 24):   # DT_RELA / DT_RELASZ: RELATIVE, and ABS64 / GLOB_DAT of a symbol the module defines (another game's glad pointers are exported)
         off, info, add = struct.unpack_from('<QQq', img, tags[7] + k * 24)
         if info & 0xffffffff == 1027: out[off] = add
         elif info & 0xffffffff in (257, 1025) and 6 in tags:
@@ -57,7 +57,7 @@ def known_loads(words, got=None):
     """(index, address) of every 64-bit load whose base register holds a known address: adrp, adds to it, mov and csel of known ones, followed in a straight line (a return forgets
     them all; a call or a branch keeps only x19–x28, which a function's hoisted pointers stay in; any instruction that may write a register forgets that one); a load from a slot in
     got (address → the address it holds) gives its register that address. Digimon reaches a function through its GOT slot (adrp + ldr); LÖVE's glad keeps its pointers in globals
-    that the code reaches through GOT entries and keeps in registers (Balatro: adrp + ldr x22 of the GOT entry, ldr x8, [x22], blr x8)"""
+    that the code reaches through GOT entries and keeps in registers (another game: adrp + ldr x22 of the GOT entry, ldr x8, [x22], blr x8)"""
     got = got or {}
     val = {}   # register → the addresses it may hold (two after a csel of known ones: LÖVE picks glEnable or glDisable, glEnableVertexAttribArray or glDisableVertexAttribArray so)
     for i, w in enumerate(words):
@@ -128,7 +128,7 @@ def main():
         if not name: continue
         r = adrp(words[i + 1], (i + 1) * 4); l = ldr64(words[i + 2]); s = str_x0(words[i + 1]); s2 = str_x0(words[i + 2])
         if r and l and l[1] == r[0] and is_str_x0(words[i + 3], l[0]): at = r[1] + l[2]   # through the GOT: adrp + ldr of the slot's address, str x0 to it (Digimon)
-        elif r and s2 and s2[0] == r[0]: at = r[1] + s2[1]   # straight into the global: adrp + str x0, [page, #off] (LÖVE's glad: Balatro)
+        elif r and s2 and s2[0] == r[0]: at = r[1] + s2[1]   # straight into the global: adrp + str x0, [page, #off] (LÖVE's glad: another game)
         elif s and s[0] in page and s[0] not in (0, 1): at = page[s[0]] + s[1]   # str x0, [base, #off], base a page set earlier
         else: continue
         if name not in slot.setdefault(at, []): slot[at].append(name)   # a slot two names were stored into keeps both

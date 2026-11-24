@@ -2,7 +2,7 @@
 // and a draw that only samples an attachment nothing in its pass has written reads it directly. With the directory test_dmsh_fetch.py --fixture writes (folded readable-tile library, entry main0_f), a draw that samples the
 // attachment at its own pixel through a projective sample reads it from the tile (fb_tile_plan): a snapshot while its pipeline builds, then none after a barrier, the pass stays
 // open, and the GPU reads what an earlier draw of the pass wrote; not with a viewport smaller than the target. The same for a sample at the draw's pixel position times a uniform
-// 1 / the target's size, set by an inline update (Splatoon Raiders' ink stamps), on an RG8 attachment sampled through (red, green, zero, one): the tile read fills the missing
+// 1 / the target's size, set by an inline update (another game' ink stamps), on an RG8 attachment sampled through (red, green, zero, one): the tile read fills the missing
 // channels as a sample does.
 #include "../nvn/nvn_mtl.m"
 void *front_metal_layer(void) { return NULL; }
@@ -468,7 +468,7 @@ static void swizzle_case(void) {
     CHECK(!sw_tile(SW(rg, Red, Green, One, One)) && !sw_tile(SW(rg, Green, Red, Zero, One)) && !sw_tile(SW(rgba, Red, Green, Blue, One)), "not with other channels, swapped ones or alpha 1 of RGBA8");
     #undef SW
 }
-// Splatoon Raiders' ink stamps (GitHub #1063): the RG8 map cleared red, an earlier draw of the pass writes green into its left half, then a draw that samples the map at gl_FragCoord
+// Another game' ink stamps (GitHub #1063): the RG8 map cleared red, an earlier draw of the pass writes green into its left half, then a draw that samples the map at gl_FragCoord
 // times c[6].xy writes red where it read green, black where it read red, and green where a missing channel read other than 0, 0, 1. Memory holds a scale of 1/8; the inline update
 // of this submission sets 1/4, the map's size: the draw is proven only once that update is queued
 static void fpos_case(const char *dir) {
@@ -920,7 +920,7 @@ static void depth_snap_case(NvProg *pr) {
     mtl_tex_release(&output); mtl_tex_release(&depth);
     printf("depth copy: %s\n", before == failed ? "PASS" : "FAIL");
 }
-// A draw that samples the depth attachment after an earlier draw of its pass wrote depth, and writes none itself, ends the pass first (Red Dead Redemption's cloud fog); one that samples
+// A draw that samples the depth attachment after an earlier draw of its pass wrote depth, and writes none itself, ends the pass first (another game's cloud fog); one that samples
 // it first in its pass leaves the pass open, and a later draw that writes depth then ends it (g_fb_dread)
 static void depth_rebind(NvProg *pr) {
     uint8_t ops[1024]={0}; size_t off=0; p_set_rt targets[2]={{0},R.rt};
@@ -1220,7 +1220,7 @@ int main(int argc, char **argv) { @autoreleasepool {
     mip_chain_case(pr);
     mip_pixels_case(lib);
     base_level_case(lib, 0, 1, 0, 0); base_level_case(lib, 1, 2, 1, 0); base_level_case(lib, 0, 2, 2, 1); base_level_case(lib, 0, 2, 3, 2);
-    // A texture named by one handle in a uniform buffer (FINAL FANTASY XII THE ZODIAC AGE's limit-break echo): before fb_prepare took TEXU bindings, the draw read the attachment itself
+    // A texture named by one handle in a uniform buffer (another game's limit-break echo): before fb_prepare took TEXU bindings, the draw read the attachment itself
     fs->rf.b[0] = (nvn_rbind){.kind=NVN_RB_TEXU, .aid=0, .dtt=MTLTextureType2D}; slot_case(pr, pipeline, 2, 4);
     fs->rf.b[0] = (nvn_rbind){.kind=NVN_RB_TEX, .aid=0, .dtt=MTLTextureType2D};
     fs->fn = [lib newFunctionWithName:@"mask"];

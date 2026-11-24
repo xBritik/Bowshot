@@ -21,7 +21,7 @@
 
 enum { NPAD_NO1 = 0, NPAD_HANDHELD = 0x20 };
 enum { STYLE_FULLKEY = 1u << 0, STYLE_HANDHELD = 1u << 1, STYLE_JOYDUAL = 1u << 2, STYLE_JOYLEFT = 1u << 3, STYLE_JOYRIGHT = 1u << 4 };
-// The Joy-Con 2 forms of the Joy-Con styles (Switch 2 SDKs; inferred, not documented: Nintendo Switch 2 Welcome Tour's mouse exhibits support only 0x1000 and test a controller's style
+// The Joy-Con 2 forms of the Joy-Con styles (Switch 2 SDKs; inferred, not documented: another game's mouse exhibits support only 0x1000 and test a controller's style
 // set with 0x1004 for a pair, 0x2008 for a left and 0x4000 beside JoyRight for a right one). A Joy-Con 2 pad (dm_joy_attach with DM_JOY_2) reports them beside the plain ones, to a game
 // that supports them
 enum { STYLE_JOYDUAL2 = 1u << 12, STYLE_JOYLEFT2 = 1u << 13, STYLE_JOYRIGHT2 = 1u << 14 };
@@ -160,17 +160,17 @@ static void parse_keys(char *spec, key_step *st) {
         static const char *const sticks[4] = {"LLeft", "LUp", "LRight", "LDown"};
         static const int sx[4] = {-32767, 0, 32767, 0}, sy[4] = {0, 32767, 0, -32767};
         for (int d = 0; d < 4; d++) if (!strcasecmp(k, sticks[d])) { if (sx[d]) st->lx = sx[d]; if (sy[d]) st->ly = sy[d]; found = 1; }
-        // right stick the same way: RLeft RUp RRight RDown (camera; Super Mario Odyssey's first hint asks for it)
+        // right stick the same way: RLeft RUp RRight RDown (camera; another game's first hint asks for it)
         static const char *const rsticks[4] = {"RLeft", "RUp", "RRight", "RDown"};
         for (int d = 0; d < 4; d++) if (!strcasecmp(k, rsticks[d])) { if (sx[d]) st->rx = sx[d]; if (sy[d]) st->ry = sy[d]; found = 1; }
-        // a stick tilted part way: L<x>/<y> or R<x>/<y>, each from -1 to 1 (y up), e.g. "L-0.6/-0.4". OCTOPATH TRAVELER II's traveler selection opens a traveler's card only while
+        // a stick tilted part way: L<x>/<y> or R<x>/<y>, each from -1 to 1 (y up), e.g. "L-0.6/-0.4". Another game's traveler selection opens a traveler's card only while
         // its quill cursor rests on them; a fully tilted stick swept the cursor past every traveler (a tilt of 0.3 is inside its dead zone)
         float fx, fy; if ((k[0] == 'L' || k[0] == 'R') && strchr(k, '/') && sscanf(k + 1, "%f/%f", &fx, &fy) == 2 && fabsf(fx) <= 1 && fabsf(fy) <= 1) {
             int32_t vx = (int32_t)lrintf(fx * 32767), vy = (int32_t)lrintf(fy * 32767);
             if (k[0] == 'L') { st->lx = vx; st->ly = vy; } else { st->rx = vx; st->ry = vy; } found = 1; }
-        // a touch: T<x>x<y> with x, y normalized on the picture, origin top left ("f3000:T0.31x0.62", Super Mario Galaxy's file select in handheld mode)
+        // a touch: T<x>x<y> with x, y normalized on the picture, origin top left ("f3000:T0.31x0.62", another game's file select in handheld mode)
         float tx, ty; if ((k[0] == 'T' || k[0] == 't') && sscanf(k + 1, "%fx%f", &tx, &ty) == 2) { st->tap = 1; st->tx = tx; st->ty = ty; found = 1; }
-        if (!strcasecmp(k, "Shake")) { st->btn |= DM_BTN_SHAKE; found = 1; }   // the six-axis sensor shaken (Super Mario Odyssey's cap throw)
+        if (!strcasecmp(k, "Shake")) { st->btn |= DM_BTN_SHAKE; found = 1; }   // the six-axis sensor shaken (another game's cap throw)
         if (!found) LOG("[RED] DM_KEYS unknown key name: %s", k);
         k = plus ? plus + 1 : NULL; }
 }
@@ -273,7 +273,7 @@ static void *ctl_main(void *arg) {
                     dm_touch_script(NULL, 0); continue;
                 }
                 key_step st = {0, 0.15, 0}; char *h = strchr(line, '~'); if (h) { *h = 0; st.hold = atof(h + 1); }
-                if (line[0] == 'P' && line[1] >= '2' && line[1] <= '0' + DM_PLAYERS && line[2] == ' ') {   // P<n> <keys>: player n's controller, for games that need a second player (Orbitals)
+                if (line[0] == 'P' && line[1] >= '2' && line[1] <= '0' + DM_PLAYERS && line[2] == ' ') {   // P<n> <keys>: player n's controller, for games that need a second player (another game)
                     void dm_pad_script_player(int p); int p = line[1] - '1'; dm_pad_script_player(p);
                     parse_keys(line + 3, &st);
                     LOG("DM_CTL: player %d press %#llx (hold %.2f s)", p + 1, (unsigned long long)st.btn, st.hold);
@@ -372,7 +372,7 @@ static npad_ref npad_resolve(uint32_t id) {
     return r;
 }
 // The style of a whole controller (KIND_PAD: the keyboard, a Pro-like pad, a Joy-Con pair the game supports no Joy-Con style for): Handheld on the Handheld npad, full-key elsewhere.
-// The hid service connects a controller only in a style the game supports (SetSupportedNpadStyleSet), and games test the style before anything else: Nintendo Switch Sports Resort
+// The hid service connects a controller only in a style the game supports (SetSupportedNpadStyleSet), and games test the style before anything else: another game
 // supports Handheld | JoyDual (0x6) in its lobby (main+0xa9e940), and its player check (main+0x58d0f0) found no player 1 on a full-key No1, so it opened the controller applet
 // again every frame (main+0x3f9d264), 7,162 times in 3 minutes. On No1..No8 (docked, and players 2..8 in handheld mode), a full-key controller the game does not support is shown as a
 // JoyDual pair instead, the supported style that has all its buttons and both sticks. When the game takes only single Joy-Cons, use JoyRight first (it has the controller's own
@@ -433,7 +433,7 @@ static void styles_sync(void) {
     pthread_mutex_unlock(&g_style_lock);
 }
 // The console mode changed (dm_set_opmode): player 1 moves between Handheld and No1 (connected_id), as taking the Joy-Cons off the console's rails or putting them back does,
-// and Joy-Cons held as devices stop or start being npads of their own (joy_active). Hades II, sent to Handheld by the controller applet in handheld mode, kept reading that
+// and Joy-Cons held as devices stop or start being npads of their own (joy_active). Another game, sent to Handheld by the controller applet in handheld mode, kept reading that
 // npad, empty once docked, and took no input again (GitHub issue #2143)
 void dm_hid_opmode_changed(void) { styles_sync(); }
 // Joy-Cons as devices (dm_input.h): which a pad holds, then each one's buttons and stick. The style events tell the game that its npads changed
@@ -698,7 +698,7 @@ uint64_t dm_cheats_keys(void) {
     return b;
 }
 // GetNpadStates(out, n, id): newest first, n entries: the current state repeated with consecutive sampling numbers. The host keeps no history, but on hardware the
-// 16-entry history is always full, and games read all of it whatever count comes back: Super Mario Odyssey (main+0x93fc20) polls every controller slot each frame, which advances
+// 16-entry history is always full, and games read all of it whatever count comes back: another game (main+0x93fc20) polls every controller slot each frame, which advances
 // the shared sampling number by about 16 per frame, and with only entry 0 written neither stick did anything in play (the camera did not turn at its first hint) while buttons
 // and menus (the stick's direction bits) worked; with every entry written the camera turns
 static int states(NpadState *out, int n, uint32_t id, uint32_t style) {
@@ -750,7 +750,7 @@ HLE_FORCE("_ZN2nn3hid18SwapNpadAssignmentERKjS2_", "swap controller ids; ignored
 // The npad ids the SDK's own checks accept (No1..No8, Other, Handheld), as an index 0..9; -1 otherwise
 static int npad_id_slot(uint32_t id) { return id < 8 ? (int)id : id == 0x10 ? 8 : id == 0x20 ? 9 : -1; }
 // Joy-Con icon decoration colour (Switch 2 SDKs; a 12-byte NpadJoyIconDecorationColor). Unhooked, the SDK read the npad's internal state from hid shared memory the host does not fill,
-// found none and answered 0x58cca, which its wrapper aborts on (Nintendo Switch Sports Resort, sdk+0x6cab6c, once it draws). For an npad whose controller is no decorated Joy-Con the SDK
+// found none and answered 0x58cca, which its wrapper aborts on (another game, sdk+0x6cab6c, once it draws). For an npad whose controller is no decorated Joy-Con the SDK
 // answers 0x4b6ca without writing the colour (sdk+0x6be204), and its wrapper hands that to the game; no controller of the host is one. An id that is no npad aborts in the SDK (0x58aca)
 #define RES_NO_ICON_DECORATION 0x4b6cau
 #define RES_INVALID_NPAD_ID 0x58acau
@@ -767,11 +767,11 @@ HLE_FORCE("_ZN2nn3hid21StartLrAssignmentModeEv", "L/R assignment mode; ignored b
 HLE_FORCE("_ZN2nn3hid20StopLrAssignmentModeEv", "L/R assignment mode; ignored by the host", void, h_hid_LrStop, void) {}
 // Controller applet (system UI): report the connected players, with player 1's controller selected. ControllerSupportResultInfo = { int playerCount; uint32_t selectedId; };
 // ControllerSupportArg starts with { int8 playerCountMin, playerCountMax }: the count is capped at the maximum. Fewer players than the minimum: on a Switch the applet stays open
-// until enough controllers are there or the player closes it, and the SDK's ShowControllerSupportCore (Mario Kart 8 Deluxe 4.0.0 sdk+0x24eeb0) turns the applet's result into
+// until enough controllers are there or the player closes it, and the SDK's ShowControllerSupportCore (another game 4.0.0 sdk+0x24eeb0) turns the applet's result into
 // 0 success, 2 → 2202-3102, anything else → ResultControllerSupportCanceled (2202-3101). With a window the front end does the same (front_ctrl_support, ctrl_prompt.h): its prompt
 // stays up on the game's thread while controllers join (a first button press with DM_PAD_PRESS_TO_JOIN, a connection without it) until enough are in or the player closes it
-// (GitHub issue #1640: Mario Kart World's player screen closed when the second controller had not pressed yet). Without a window, or with scripted input (DM_KEYS, DM_CTL), nobody
-// is at the controllers: the host answers at once, as the player closing it. An OK with fewer players is an answer a Switch never gives: Mario Kart 8 Deluxe asks for two in 2P
+// (GitHub issue #1640: another game's player screen closed when the second controller had not pressed yet). Without a window, or with scripted input (DM_KEYS, DM_CTL), nobody
+// is at the controllers: the host answers at once, as the player closing it. An OK with fewer players is an answer a Switch never gives: another game asks for two in 2P
 // and opened the applet again every few frames on it (GitHub issue #550)
 // More players than the maximum: on a Switch the applet leaves no more controllers connected than the game takes. The host answered with the count capped and left every npad
 // connected, so a game that takes one player saw two and opened the applet again, 1,671 times in one run of Ocarina of Time, with no input (GitHub issue #2237). The players
@@ -828,7 +828,7 @@ HLE_FORCE("_ZN2nn3hid21ShowControllerSupportEPNS0_27ControllerSupportResultInfoE
 // Six-axis sensor (accelerometer + gyroscope) of the connected controller. SixAxisSensorState (0x60): acceleration in G, angular velocity in revolutions / s, angle in revolutions,
 // direction = the controller's three axes. At rest it lies flat: gravity (0, 0, -1), no rotation, the identity direction. While shaking (DM_BTN_SHAKE: the iPhone shaken, DmGamepad.m;
 // Space on the Mac; DM_KEYS Shake) it moves side to side, x acceleration ±SHAKE_G with a yaw of ±SHAKE_REV, in whole cycles that end where they began. Samples are 5 ms apart on the
-// guest clock, as the sensor's 200 Hz, and numbered by time, so a history read returns the samples at those times. Super Mario Odyssey reads all 16 entries of GetSixAxisSensorStates
+// guest clock, as the sensor's 200 Hz, and numbered by time, so a history read returns the samples at those times. Another game reads all 16 entries of GetSixAxisSensorStates
 // whatever count comes back (main+0x93fd84), takes the newest entry's acceleration for its swing detection (main+0x626244) and its angular velocity, angle and direction (main+0x5d72d4)
 typedef struct { int64_t delta_ns, sampling; float acc[3], gyro[3], angle[3], dir[9]; uint32_t attributes, _pad; } SixAxisState;
 _Static_assert(sizeof(SixAxisState) == 0x60, "SixAxisState");
@@ -1094,11 +1094,11 @@ static void six_sample(SixAxisState *s, int64_t samp, int shakes) {
     float c = (float)cos(2 * M_PI * yaw), sn = (float)sin(2 * M_PI * yaw);
     s->dir[0] = c; s->dir[1] = sn; s->dir[3] = -sn; s->dir[4] = c; s->dir[8] = 1;
 }
-// SixAxisSensorHandle, as the console's SDK makes it (nn::hid::utility::GetSixAxisSensorHandle, sdk+0x6d8490 in Nintendo Switch Sports Resort's SDK 22; its GetSixAxisSensorHandles,
+// SixAxisSensorHandle, as the console's SDK makes it (nn::hid::utility::GetSixAxisSensorHandle, sdk+0x6d8490 in another game's SDK 22; its GetSixAxisSensorHandles,
 // GetNpadImuHandles and GetSensorFusionHandles all call it): byte 0 the NpadStyleIndex (3 full key or GameCube, 4 handheld, 5 Joy-Con pair, 6 left Joy-Con, 7 right Joy-Con), byte 1
 // the npad id, byte 2 the device (0 the left and 1 the right sensor of two; SDK 22 gives a full-key or handheld controller's single sensor device 2). The host's own handles
 // (GetSixAxisSensorHandles below) use the same numbering, so a handle from either reads the same everywhere. They used to carry the style's bit number in byte 0, and the SDK's IMU
-// handles that the fusion passes to GetNpadImuSamples (0x5 / 0x10005 for a pair on No1) read as style bit 5, never connected: no samples, and Nintendo Switch Sports Resort's
+// handles that the fusion passes to GetNpadImuSamples (0x5 / 0x10005 for a pair on No1) read as style bit 5, never connected: no samples, and another game's
 // fusion never ran. six_style_bit: the style bit of a handle's style index, -1 for an index the host has no style for or a device past 2 (any style takes devices 0 to 2, as the
 // host's check always did: SDKs differ in which device they give a style, and six_source picks a pair's side from bit 0 of the device). The styles made of two Joy-Cons (handheld, dual) have two sensors in the host's handles, the others one. A handle reads as connected while its controller is connected
 // in that style; otherwise its entries are zero (not connected) and the count 0. Only player 1's controller shakes (DM_BTN_SHAKE comes from the keyboard, the iPhone and DM_KEYS,
@@ -1125,7 +1125,7 @@ static uint32_t six_style_index(uint32_t style) {
 typedef struct { motion_sample r[LIVE_RING]; unsigned n; uint64_t delay; } live_hist;   // delay: the playout delay its times carry (six_source)
 static pthread_once_t g_imu_once; static void imu_env_read(void);   // DM_IMU_DELAY and the rest (below, at the IMU state)
 // The stream behind a handle (NULL: the host's flat sensor). A Joy-Con npad reads its own Joy-Con, a real L + R pair the game takes as a pair (KIND_DUAL) each handle its own
-// half. A whole controller reads its player's merged stream, except Joy-Cons the game is shown as a pair (pad_style: a game such as Nintendo Switch Sports Resort supports JoyDual
+// half. A whole controller reads its player's merged stream, except Joy-Cons the game is shown as a pair (pad_style: a game such as another game supports JoyDual
 // but no single Joy-Con style), which read the Joy-Cons' own streams in the frame of a Joy-Con of a pair (upright), as the game takes a JoyDual sensor to be; the merged stream
 // holds a single Joy-Con in the frame of one held sideways, a quarter turn away. Both halves there (a pair in another player's slot of a one-player game, merged_players): each
 // handle its own half. A single Joy-Con from the start: both handles read it, not one of them a flat sensor, as Switch Sports Resort read device 0 (the left half's) 50 times as
@@ -1203,7 +1203,7 @@ HLE_FORCE("_ZN2nn3hid23GetSixAxisSensorHandlesEPNS0_19SixAxisSensorHandleEiRKjNS
     return k;
 }
 HLE_FORCE("_ZN2nn3hid18StartSixAxisSensorERKNS0_19SixAxisSensorHandleE", "six-axis sensor; always sampling on the host", void, h_hid_SixStart, const uint32_t *h) { (void)h; }
-// Merged mouse pointer (Nmouse, Switch 2 SDKs; Pokemon Pokopia, main+0x11251dc). The SDK opens the hid service itself in InitializeNmouse, which the host does not serve (abort 0xe15). No device
+// Merged mouse pointer (Nmouse, Switch 2 SDKs; another game, main+0x11251dc). The SDK opens the hid service itself in InitializeNmouse, which the host does not serve (abort 0xe15). No device
 // reports here: GetNmouseHandles finds none and the merged handle, which exists without a device on the console, has no states. The game skips its mouse code on those answers (main+0x112638c, +0x11262b4)
 static _Atomic uint32_t g_jcms_wanted;   // the game reads the mouse sensors (dm_joy_mouse_wanted, with InitializeJcms below)
 HLE_FORCE("_ZN2nn3hid14FinalizeNmouseEv", "merged mouse: nothing to release", void, h_hid_NmouseFini, void) { atomic_fetch_and(&g_jcms_wanted, ~2u); }
@@ -1212,7 +1212,7 @@ HLE_FORCE("_ZN2nn3hid21GetMergedNmouseHandleEPNS0_12NmouseHandleE", "merged mous
 HLE_FORCE("_ZN2nn3hid16GetNmouseTypeSetEPNS_4util10BitFlagSetILi32ENS0_10NmouseTypeEEENS0_12NmouseHandleE", "mouse types: none", int, h_hid_NmouseTypes, uint32_t *out, uint64_t h) { (void)h; *out = 0; return 1; }
 HLE_FORCE("_ZN2nn3hid15GetNmouseStatesEPiPNS0_11NmouseStateEiNS0_12NmouseHandleE", "mouse states: none", int, h_hid_NmouseStates, int *count, void *out, int n, uint64_t h) { (void)out; (void)n; (void)h; *count = 0; return 1; }
 
-// Joy-Con 2 mouse sensor (JCMS, Switch 2 SDKs; Donkey Kong Bananza). The SDK opens the hid service itself in InitializeJcms, which the host does not serve. A handle is the npad id in
+// Joy-Con 2 mouse sensor (JCMS, Switch 2 SDKs; another game). The SDK opens the hid service itself in InitializeJcms, which the host does not serve. A handle is the npad id in
 // byte 0 and the JcmsType in byte 1 (sdk hid::utility::MakeJcmsHandle); a JcmsState is 32 bytes, and GetJcmsStates returns 0 while its ring holds no samples, as here: no controller
 // of the host has the sensor
 // Whether the game reads the mouse sensors (bit 0: InitializeJcms, bit 1: InitializeNmouse, each until its Finalize): a front end turns a Joy-Con's sensor on only then (dm_joy_mouse_wanted)
@@ -1221,7 +1221,7 @@ HLE_FORCE("_ZN2nn3hid14InitializeJcmsEPvm", "Joy-Con mouse sensor: no hid servic
 HLE_FORCE("_ZN2nn3hid12FinalizeJcmsEv", "Joy-Con mouse sensor: nothing to release", void, h_hid_JcmsFini, void) { atomic_fetch_and(&g_jcms_wanted, ~1u); }
 HLE_FORCE("_ZN2nn3hid13GetJcmsHandleERKjRKNS0_8JcmsTypeE", "Joy-Con mouse sensor handle: npad id | type << 8, as the SDK makes it",
           uint32_t, h_hid_JcmsHandle, const uint32_t *id, const uint32_t *type) { return (*id & 0xff) | (*type & 0xff) << 8; }
-// The sensor's states, from a front end that reads Joy-Con mouse sensors (dm_joy_mouse): a ring of 16 per player and Joy-Con. A JcmsState as Nintendo Switch 2 Welcome Tour reads it
+// The sensor's states, from a front end that reads Joy-Con mouse sensors (dm_joy_mouse): a ring of 16 per player and Joy-Con. A JcmsState as another game reads it
 // (main+0x253540, bex::InputModule::GetLastJcmsStateRight at main+0x2279a0): 8 bytes it does not read, the sampling number at 8 (states newest first; a state with a sampling
 // number above 0 is a sample), the movement x and y at 0x10 and 0x14 (summed into its pointer), attributes at 0x18 (it keeps the low two bits: connected, on a surface). A JcmsType
 // is 0 for the left Joy-Con and 1 for the right (sdk hid::utility::GetJcmsIndex: npad * 2 + type)
@@ -1272,7 +1272,7 @@ HLE_FORCE("_ZN2nn3hid9StartJcmsERKNS0_10JcmsHandleE", "Joy-Con mouse sensor: no 
 HLE_FORCE("_ZN2nn3hid8StopJcmsERKNS0_10JcmsHandleE", "Joy-Con mouse sensor: no sensor on the host", void, h_hid_JcmsStop, const uint32_t *h) { (void)h; }
 HLE_FORCE("_ZN2nn3hid13GetJcmsStatesEPNS0_9JcmsStateEiRKNS0_10JcmsHandleE", "Joy-Con mouse sensor states, newest first (none until a front end reports the sensor)",
           int, h_hid_JcmsStates, void *out, int n, const uint32_t *h) { return h ? jcms_copy(out, n, *h) : 0; }
-// The newest state alone (Nintendo Switch 2 Welcome Tour reads it each frame; the SDK's own reads the hid service's ring, which the host does not map: a null read in
+// The newest state alone (another game reads it each frame; the SDK's own reads the hid service's ring, which the host does not map: a null read in
 // hid::detail::GetJcmsState): with no sensor, a cleared state (sampling number 0, no movement, attributes 0: not connected)
 HLE_FORCE("_ZN2nn3hid12GetJcmsStateEPNS0_9JcmsStateERKNS0_10JcmsHandleE", "Joy-Con mouse sensor state: the newest (cleared until a front end reports the sensor)",
           void, h_hid_JcmsState, void *out, const uint32_t *h) { if (out) { memset(out, 0, 32); if (h) jcms_copy(out, 1, *h); } }
@@ -1292,14 +1292,14 @@ HLE_FORCE("_ZN2nn3hid41EnableUnintendedHomeButtonInputProtectionERKjb", "Home bu
     if (on) atomic_fetch_or(&g_home_protect, b); else atomic_fetch_and(&g_home_protect, ~b);
     LOG("hid: EnableUnintendedHomeButtonInputProtection npad %#x %s", id ? *id : 0xffffffffu, on ? "on" : "off");
 }
-// The question (Nintendo Switch Sports Resort asks it at boot): the SDK's own asks the hid service, which the host does not serve, and aborted on its error (Result 0x58cca at
+// The question (another game asks it at boot): the SDK's own asks the hid service, which the host does not serve, and aborted on its error (Result 0x58cca at
 // sdk+0x6ca40c). The answer is what the game set, off by default
 HLE_FORCE("_ZN2nn3hid44IsUnintendedHomeButtonInputProtectionEnabledERKj", "Home button protection: what the game set (off by default)", bool, h_hid_HomeProtectOn,
           const uint32_t *id) { return id && (atomic_load(&g_home_protect) & id_bit(*id)); }
 // The system setting for the mouse pointer's speed (System Settings, Mouse): the default, 1
 HLE_FORCE("_ZN2nn3hid25GetMousePointerSpeedScaleEv", "mouse pointer speed setting: the default, 1.0", float, h_hid_MouseSpeed, void) { return 1.0f; }
 // Npad IMU (Switch 2 SDKs): the six-axis samples the SDK's own sensor fusion reads (Enable/UpdateSensorFusion → GetNpadImuSamples → nn::imu::FullSensorState). EnableNpadImu gives the
-// hid service the game's buffer as transfer memory, which the host does not serve: Nintendo Switch Sports Resort aborted in InitializeSensorFusion (Result 0xe15, sdk+0x6d6948). These four
+// hid service the game's buffer as transfer memory, which the host does not serve: another game aborted in InitializeSensorFusion (Result 0xe15, sdk+0x6d6948). These four
 // calls are the only users of the SDK's IMU state (sdk+0x1056c48), so the host keeps that state here: on with the game's buffer, which no service writes; GetNpadImuSamples writes the
 // samples straight into the caller's array instead (below)
 #define RES_NPAD_IMU_ENABLED 0x2908cau   // what the SDK's EnableNpadImu answers while it is already on (sdk+0x6ca600)
@@ -1478,7 +1478,7 @@ HLE_FORCE("_ZN2nn3hid39ResetIsSixAxisSensorDeviceNewlyAssignedERKNS0_19SixAxisSe
 // calibration being ready (sdk+0x6d7464) and IsSensorFusionCalibrated reads. A console's controllers come with a stored calibration (their factory one, or the last the fusion
 // stored); the host's controllers are ideal sensors whose bias is zero, so a device with nothing stored this run answers that: zeros, a zero bias. It used to fail (0xd8ca), and
 // the fusion had to learn the bias itself, which it never finished on the host: its Kalman filter's parameter test kept failing and resetting the bias estimate
-// (GyroPointingCore::Recover, sdk+0x712aa0, counted at core +0x3cc8: 10 to 25 times a minute), so Nintendo Switch Sports Resort's "place the Joy-Con on a flat surface"
+// (GyroPointingCore::Recover, sdk+0x712aa0, counted at core +0x3cc8: 10 to 25 times a minute), so another game's "place the Joy-Con on a flat surface"
 // calibration failed after 30 s every time and the game warned that controls may lag. It still does: the fusion's stable orientation diverges at rest every 8 to 20 s, and that reset
 // (sdk+0x6d7700) initializes it again without loading this (sdk+0x6d773c), and once the controller is still the flag is overwritten by the Kalman filter's own readiness
 // (sdk+0x6d7460), which never comes; why the filter does not converge on the host's samples is open (docs/reference/services.md)
@@ -1514,7 +1514,7 @@ HLE_FORCE("_ZN2nn3hid38StoreSixAxisSensorCalibrationParameterERKNS0_19SixAxisSen
     pthread_mutex_unlock(&g_six_cal_mu);
     return RES_OK;
 }
-// The Switch 2's pointer on top of those sensors (Nmouse; Fire Emblem Fortune's Weave initializes it at boot with the 1920x1080 screen it maps the pointer to, main+0x650a24). InitializeNmouse opens the
+// The Switch 2's pointer on top of those sensors (Nmouse; another game initializes it at boot with the 1920x1080 screen it maps the pointer to, main+0x650a24). InitializeNmouse opens the
 // hid service as InitializeJcms does (its Result aborts: sdk+0x6d5340). No controller of the host has the sensor, so there are no handles, and the calls on a handle have nothing to do
 HLE_FORCE("_ZN2nn3hid16InitializeNmouseEPvmii", "Joy-Con mouse pointer: no hid service; front ends may turn the sensors on", void, h_hid_NmouseInit, void *work, uint64_t size, int w, int h) { (void)work; (void)size; (void)w; (void)h; atomic_fetch_or(&g_jcms_wanted, 2u); }
 // A Joy-Con whose sensor reports (dm_joy_mouse) has a pointer handle on its npad: NMOUSE_TAG | npad id << 8 | side (the merged handle 0 stays the one without a device)
@@ -1525,7 +1525,7 @@ static int nmouse_of(uint64_t h, int *side) {
     return p >= 0 && g_jcms_n[p][*side] ? p : -1;
 }
 HLE_FORCE("_ZN2nn3hid16GetNmouseHandlesEPNS0_12NmouseHandleEij", "Joy-Con mouse pointer handles: one per Joy-Con of the npad whose sensor reports", int, h_hid_NmouseHandles, void *out, int n, uint32_t id) {
-    // The Joy-Con last used on a surface first, and it stays first while lifted (to press a button): Nintendo Switch 2 Welcome Tour moves its pointer by the first handle only
+    // The Joy-Con last used on a surface first, and it stays first while lifted (to press a button): another game moves its pointer by the first handle only
     uint64_t *o = out; int k = 0;
     for (int pass = 0; pass < 2; pass++)
         for (int side = 0; side < 2 && o && k < n; side++) {
@@ -1537,7 +1537,7 @@ HLE_FORCE("_ZN2nn3hid16GetNmouseHandlesEPNS0_12NmouseHandleEij", "Joy-Con mouse 
     return k; }
 HLE_FORCE("_ZN2nn3hid32SetNmouseButtonConfigJoyLeftJcmsERKNS0_29NmouseButtonConfigJoyLeftJcmsE", "Joy-Con mouse pointer: no sensor on the host", void, h_hid_NmouseCfgL, const void *c) { (void)c; }
 HLE_FORCE("_ZN2nn3hid33SetNmouseButtonConfigJoyRightJcmsERKNS0_30NmouseButtonConfigJoyRightJcmsE", "Joy-Con mouse pointer: no sensor on the host", void, h_hid_NmouseCfgR, const void *c) { (void)c; }
-// SDK 21's forms (Mario Kart World 1.8.0 at boot, by pull request #1116: InitializeNmouse with a pointer type aborted on the hid service). The pointer settings are kept or dropped, with no
+// SDK 21's forms (another game 1.8.0 at boot, by pull request #1116: InitializeNmouse with a pointer type aborted on the hid service). The pointer settings are kept or dropped, with no
 // device to apply them to. The calls on a handle return the SDK's bool (its Result is success: SDK 22.2.0 sdk+0x6d5510 and +0x6d5530): the merged handle 0 above is known, and with no device
 // its pointer takes the settings and reports nothing (no state, no controller); the standard mouse has no handle, as no USB mouse is connected
 HLE_FORCE("_ZN2nn3hid16InitializeNmouseEPvmiiNS0_17NmousePointerTypeE", "Joy-Con mouse pointer (with a pointer type): no hid service; no sensor on the host", void, h_hid_NmouseInitT,
@@ -1555,7 +1555,7 @@ HLE_FORCE("_ZN2nn3hid24SetNmousePointerPositionENS0_12NmouseHandleEii", "mouse p
     if (p < 0) return h == 0;
     pthread_mutex_lock(&g_jcms_mu); g_nm_pos[p][side][0] = (float)x; g_nm_pos[p][side][1] = (float)y; pthread_mutex_unlock(&g_jcms_mu);
     return true; }
-// An NmouseState as Nintendo Switch 2 Welcome Tour reads it (main+0x253b2c): 48 bytes, 8 bytes first as in a JcmsState, then the Switch's MouseState fields (sampling number,
+// An NmouseState as another game reads it (main+0x253b2c): 48 bytes, 8 bytes first as in a JcmsState, then the Switch's MouseState fields (sampling number,
 // position, movement, wheel), buttons at 0x28 (left 1, right 2: R / ZR on a right Joy-Con, L / ZL on a left one) and attributes at 0x2c (bit 1 connected, which the game
 // requires; bit 0 here: on a surface)
 typedef struct { int64_t unk0, sampling; int32_t x, y, dx, dy, wheel_x, wheel_y; uint32_t buttons, attributes; } NmouseState;
@@ -1602,7 +1602,7 @@ static uint32_t vib_valid(uint32_t h, int *motor) {
         if (r.kind != (type == 5 ? KIND_DUAL : type == 6 ? KIND_LEFT : KIND_RIGHT)) return 0;
         return 1u << r.pad;
     }
-    // A full-key handle on an npad that now holds Joy-Cons still reaches them: a game keeps the handles it got before the Joy-Cons connected (Super Mario Odyssey asks for the
+    // A full-key handle on an npad that now holds Joy-Cons still reaches them: a game keeps the handles it got before the Joy-Cons connected (another game asks for the
     // JoyDual handles when the pair connects, but keeps sending to its full-key ones). Its motor is the Joy-Con of that side; a single Joy-Con takes the handle of its side
     if (r.kind >= KIND_DUAL && type == 3 && id != NPAD_HANDHELD && player_of(id) >= 0) {
         if (r.kind == KIND_LEFT && dev) return 0;
@@ -1672,7 +1672,7 @@ HLE_FORCE("_ZN2nn3hid25InitializeVibrationDeviceERKNS0_21VibrationDeviceHandleE"
     const dm_vibration idle = {0, 160, 0, 320}; vib_send(h, &idle, 1);
 }
 HLE_FORCE("_ZN2nn3hid18SendVibrationValueERKNS0_21VibrationDeviceHandleERKNS0_14VibrationValueE", "vibration: update one channel", void, h_hid_SendVib, const uint32_t *h, const dm_vibration *v) { vib_send(h, v, 1); }
-// Values queued by the vibration graph (VibrationNode::Update) reach it from the sdk's internal FlushEnqueuedVibrationValues through the PLT, into the hid service proxy (sm abort). Metroid Dread
+// Values queued by the vibration graph (VibrationNode::Update) reach it from the sdk's internal FlushEnqueuedVibrationValues through the PLT, into the hid service proxy (sm abort). Another game
 // sets handles on its VibrationTargets even when the host reports 0 devices, so values get queued; return success and the flush clears its count as usual
 HLE_FORCE("_ZN2nn3hid6detail19SendVibrationValuesEPKNS0_21VibrationDeviceHandleEPKNS0_14VibrationValueEi", "vibration batch: update all channels atomically", Result, h_hid_SendVibs, const uint32_t *h, const dm_vibration *v, int n) { vib_send(h, v, n); return RES_OK; }
 // Mouse / keyboard: not connected
@@ -1686,13 +1686,13 @@ HLE_FORCE("_ZN2nn3hid18InitializeKeyboardEv", "keyboard; not provided by the hos
 HLE_FORCE("_ZN2nn3hid16GetKeyboardStateEPNS0_13KeyboardStateE", "keyboard state: not connected (KeyboardState 0x30 bytes zeroed)", void, h_hid_KbdState, void *s) {
     memset(s, 0, 0x30); ((int64_t *)s)[0] = atomic_fetch_add(&g_sampling, 1) + 1;
 }
-// The history form (Monster Hunter Rise): every requested entry, newest first, with consecutive sampling numbers, as GetNpadStates fills them
+// The history form (another game): every requested entry, newest first, with consecutive sampling numbers, as GetNpadStates fills them
 HLE_FORCE("_ZN2nn3hid17GetKeyboardStatesEPNS0_13KeyboardStateEi", "keyboard state history: not connected (each 0x30-byte entry zeroed)", int, h_hid_KbdStates, uint8_t *s, int n) {
     int64_t top = atomic_fetch_add(&g_sampling, 1) + 1;
     for (int i = 0; i < n; i++) { memset(s + 0x30 * i, 0, 0x30); *(int64_t *)(s + 0x30 * i) = top - i; }
     return n > 0 ? n : 0;
 }
-// The key code map of the system keyboard layout, which the SDK asks the settings service for (settings::detail::GetKeyCodeMap, an abort without it). DRAGON QUEST VII Reimagined (Unreal Engine
+// The key code map of the system keyboard layout, which the SDK asks the settings service for (settings::detail::GetKeyCodeMap, an abort without it). Another game (Unreal Engine
 // 4.27, main+0x1f0eb4) reads the keyboard state, then zeroes a 0x1000-byte map and fetches it before translating keys with kpr::GetKeyCode. With no keyboard the map stays as the game made it
 HLE_FORCE("_ZN2nn3kpr13GetKeyCodeMapEPNS0_10KeyCodeMapE", "keyboard layout key code map: none (no keyboard; the caller's map is left as it is)", void, h_kpr_Map, void *map) { (void)map; }
 
@@ -1747,12 +1747,12 @@ HLE_FORCE("_ZN2nn3hid28ShowControllerFirmwareUpdateERKNS0_27ControllerFirmwareUp
 
 // Touch screen: TouchScreenState<N> = { int64 sampling number; int32 count; int32 reserved; TouchState[N] }, filled from the front end's touch points (hle_touch.c touch_fill_n:
 // the Mac's mouse, the iPhone touches no gamepad control takes, DM_KEYS taps) in handheld mode, as on the Switch, whose screen is out of reach when docked: a game may read touches
-// without checking the mode, so in console mode the state has no touch points. Super Mario Galaxy's pointer is the touch screen in handheld mode. hle_touch.c numbers
+// without checking the mode, so in console mode the state has no touch points. Another game's pointer is the touch screen in handheld mode. hle_touch.c numbers
 // the states of both modes from its one count.
 // A read makes a sample only when 4 ms have passed since the newest one (or the mode changed) and otherwise copies the newest, as the Switch's touch resource does: it writes the
 // screen's LIFO every 4 ms (yuzu: GestureUpdatePeriod), so two reads within 4 ms see one sample and a Start / End edge sits in exactly one sampling number. The last 16 samples are kept
 // and GetTouchScreenStates returns the newest min(n, 16) of them, newest first, as Unity's reader expects (Pokemon Friends main+0xb00670 walks them from index n - 1 down and takes each
-// number above the last it took). Two games need this. Animal Crossing: New Horizons reads twice in one original frame (its input manager at main+0x1b65260 and its own keyboard's
+// number above the last it took). Two games need this. Another game reads twice in one original frame (its input manager at main+0x1b65260 and its own keyboard's
 // reader): a read that used up the edges let the second reader see only a held point, so the keyboard highlighted a key and entered nothing (issue #2567). Unity 2022.3 (Pokemon Friends
 // 1.1.5) polls on its own thread at 60 Hz whatever the frame rate, and a poll that takes no new state while a finger is down (main+0x60d6a0) ends every live touch as cancelled: with one
 // sample per presented frame, the second poll of a 30 fps frame cancelled every drag. Giving each read a new number instead made Unity take the same Start again on every state.
@@ -1786,7 +1786,7 @@ static int touch_read(void *s, int N, int want) {
     return cnt;
 }
 HLE_FORCE("_ZN2nn3hid21InitializeTouchScreenEv", "connect to the hid touch screen; the host takes touch points from the front end", void, h_hid_InitTouch, void) {}
-// SDK 18 overload with two ints (Super Mario Galaxy); the SDK's own one opens the hid service and aborts in sm::Initialize
+// SDK 18 overload with two ints (another game); the SDK's own one opens the hid service and aborts in sm::Initialize
 HLE_FORCE("_ZN2nn3hid21InitializeTouchScreenEii", "connect to the hid touch screen (SDK 18 two-argument version); the host takes touch points from the front end", void, h_hid_InitTouch2, int a, int b) { (void)a; (void)b; }
 #define TOUCH(N) \
     HLE_FORCE("_ZN2nn3hid19GetTouchScreenStateILm" #N "EEEvPNS0_16TouchScreenStateIXT_EEE", "touch screen current state (touch points only in handheld mode)", void, h_hid_Touch1_##N, void *s) { touch_read(s, N, 1); } \
@@ -1795,7 +1795,7 @@ TOUCH(1) TOUCH(2) TOUCH(3) TOUCH(4) TOUCH(5) TOUCH(6) TOUCH(7) TOUCH(8) TOUCH(9)
 // Gestures: recognized from the same touch points (hle_touch.c gesture_fill), so only in handheld mode too
 int gesture_fill(void *out, int n, uint64_t now_ns);
 HLE_FORCE("_ZN2nn3hid17InitializeGestureEv", "connect to the hid gesture recognizer; the host recognizes gestures from the touch points", void, h_hid_InitGesture, void) {}
-// Two-argument overload (PRAGMATA, SDK 20.5.15): the SDK's own one opens the hid service and aborts in sm::Initialize (Result 0xe15), as the touch screen's above did
+// Two-argument overload (another game, SDK 20.5.15): the SDK's own one opens the hid service and aborts in sm::Initialize (Result 0xe15), as the touch screen's above did
 HLE_FORCE("_ZN2nn3hid17InitializeGestureEii", "connect to the hid gesture recognizer (two-argument version); the host recognizes gestures from the touch points", void, h_hid_InitGesture2, int a, int b) { (void)a; (void)b; }
 HLE_FORCE("_ZN2nn3hid16GetGestureStatesEPNS0_12GestureStateEi", "gesture states, newest first (handheld mode: recognized from the touch points; console mode: none)", int, h_hid_Gestures, void *out, int n) {
     keys_sync();
@@ -1810,18 +1810,18 @@ HLE_FORCE("_ZN2nn3hid21IsSixAxisSensorAtRestERKNS0_19SixAxisSensorHandleE", "six
     if (motion_live(pl, &ms)) return fabsf(ms.gyro[0]) + fabsf(ms.gyro[1]) + fabsf(ms.gyro[2]) < 0.01f && !(pl == 0 && shaking(guest_ns()));
     return pl != 0 || !shaking(guest_ns());
 }
-// The console's own six-axis sensor (SevenSixAxisSensor, the body's orientation in handheld mode; The Legend of Zelda: Breath of the Wild): takes a work buffer and is switched through the hid service. The host provides none: switching succeeds, 0 states
+// The console's own six-axis sensor (SevenSixAxisSensor, the body's orientation in handheld mode; another game): takes a work buffer and is switched through the hid service. The host provides none: switching succeeds, 0 states
 HLE_FORCE("_ZN2nn3hid28InitializeSevenSixAxisSensorEPvm", "console six-axis sensor initialization; not provided by the host", Result, h_hid_SevenInit, void *buf, size_t n) { (void)buf; (void)n; return RES_OK; }
 HLE_FORCE("_ZN2nn3hid26FinalizeSevenSixAxisSensorEv", "console six-axis sensor", Result, h_hid_SevenFini, void) { return RES_OK; }
 HLE_FORCE("_ZN2nn3hid23StartSevenSixAxisSensorEv", "console six-axis sensor; not provided by the host", Result, h_hid_SevenStart, void) { return RES_OK; }
 HLE_FORCE("_ZN2nn3hid22StopSevenSixAxisSensorEv", "console six-axis sensor", Result, h_hid_SevenStop, void) { return RES_OK; }
 HLE_FORCE("_ZN2nn3hid32ResetSevenSixAxisSensorTimestampEv", "console six-axis sensor timestamp", void, h_hid_SevenReset, void) {}
 HLE_FORCE("_ZN2nn3hid27GetSevenSixAxisSensorStatesEPNS0_23SevenSixAxisSensorStateEi", "console six-axis sensor states: 0 entries", int, h_hid_SevenStates, void *out, int n) { (void)out; (void)n; return 0; }
-HLE_FORCE("_ZN2nn3hid26IsSevenSixAxisSensorAtRestEv", "console six-axis sensor at rest: yes (Super Mario Odyssey)", unsigned, h_hid_SevenRest, void) { return 1; }
-// The development debug pad (Super Mario Odyssey initializes and polls it): never connected, all zero
+HLE_FORCE("_ZN2nn3hid26IsSevenSixAxisSensorAtRestEv", "console six-axis sensor at rest: yes (another game)", unsigned, h_hid_SevenRest, void) { return 1; }
+// The development debug pad (another game initializes and polls it): never connected, all zero
 HLE_FORCE("_ZN2nn3hid18InitializeDebugPadEv", "debug pad; the host has none", void, h_hid_DbgPadInit, void) {}
 HLE_FORCE("_ZN2nn3hid16GetDebugPadStateEPNS0_13DebugPadStateE", "debug pad state: not connected (all 0)", void, h_hid_DbgPadState, void *st) { memset(st, 0, 32); }   // sampling number, attributes, buttons, two sticks
-// The history form (Hollow Knight: Silksong, Unity 6, main+0x1296c60 every frame; the SDK's own aborts with Result 0x2aca on its uninitialized debug pad resource): every requested entry, newest first
+// The history form (another game, Unity 6, main+0x1296c60 every frame; the SDK's own aborts with Result 0x2aca on its uninitialized debug pad resource): every requested entry, newest first
 HLE_FORCE("_ZN2nn3hid17GetDebugPadStatesEPNS0_13DebugPadStateEi", "debug pad state history: not connected (each 32-byte entry zeroed)", int, h_hid_DbgPadStates, uint8_t *s, int n) {
     int64_t top = atomic_fetch_add(&g_sampling, 1) + 1;
     for (int i = 0; i < n; i++) { memset(s + 32 * i, 0, 32); *(int64_t *)(s + 32 * i) = top - i; }
@@ -1843,7 +1843,7 @@ HLE_FORCE("_ZN2nn3hid22GetVibrationDeviceInfoEPNS0_19VibrationDeviceInfoERKNS0_2
     info[0] = valid ? 1 : 0; info[1] = valid ? 1 + m : 0;
     if (getenv("DM_RUMBLE_LOG")) { static _Atomic unsigned n; if (atomic_fetch_add(&n, 1) < 8) LOG("rumble: GetVibrationDeviceInfo %#x -> type %u, position %u", h ? *h : 0, info[0], info[1]); }
 }
-// The SDK's own call reaches the hid service (a null read in hid::detail::IsVibrationDeviceMounted; Super Mario Odyssey asks for each handle of a controller).
+// The SDK's own call reaches the hid service (a null read in hid::detail::IsVibrationDeviceMounted; another game asks for each handle of a controller).
 // Mounting follows the npad's reported controller independently of the rumble setting or a routed haptics output.
 HLE_FORCE("_ZN2nn3hid24IsVibrationDeviceMountedERKNS0_21VibrationDeviceHandleE", "vibration: device mounted when the handle names a valid npad channel", unsigned, h_hid_VibMounted, const uint32_t *h) {
     int m = 0, on = h && vib_valid(*h, &m) != 0;
@@ -1855,7 +1855,7 @@ HLE_FORCE("_ZN2nn3hid24IsVibrationDeviceMountedERKNS0_21VibrationDeviceHandleE",
 // crashed at sdk+0x3526bc in hid::detail::EndPermitVibrationSession while booting (issue #2513)
 HLE_FORCE("_ZN2nn3hid27BeginForcedVibrationSessionEv", "forced vibration session: the host has no system vibration setting for it to override", void, h_hid_VibForceBegin, void) {}
 HLE_FORCE("_ZN2nn3hid25EndForcedVibrationSessionEv", "forced vibration session ends: nothing to restore", void, h_hid_VibForceEnd, void) {}
-// The Switch 2's form of the same question (Kirby Air Riders asks soon after boot in a run with a window, main+0x10709b0; its SDK's call reads the same null service object)
+// The Switch 2's form of the same question (another game asks soon after boot in a run with a window, main+0x10709b0; its SDK's call reads the same null service object)
 HLE_FORCE("_ZN2nn3hid29IsOunceVibrationDeviceMountedERKNS0_21VibrationDeviceHandleE", "vibration (Switch 2): device mounted when the handle names a valid npad channel", unsigned, h_hid_VibMountedOunce, const uint32_t *h) {
     int m; return h && vib_valid(*h, &m);
 }
@@ -1865,7 +1865,7 @@ HLE_FORCE("_ZN2nn3hid23GetActualVibrationValueEPNS0_14VibrationValueERKNS0_21Vib
     *v = targets ? dm_haptics_actual(__builtin_ctz(targets), m) : (dm_vibration){0, 160, 0, 320};
 }
 
-// Poké Ball Plus (Palma, Pokémon Sword / Shield, SDK 7.3.2): the host has none. The SDK's own calls reach the hid service (SetPalmaBoostMode, the first, at start-up: a null read in
+// Poké Ball Plus (Palma, another game / Shield, SDK 7.3.2): the host has none. The SDK's own calls reach the hid service (SetPalmaBoostMode, the first, at start-up: a null read in
 // hid::detail::SetPalmaBoostMode, sdk+0x238eb0). No npad reports the Palma style, so the game never gets a connection handle; every call on a handle fails as for a handle that is not
 // connected (hid 202-3302, ResultPalmaInvalidHandle in yuzu's hid errors), and the operation complete event is never bound
 #define RES_PALMA_INVALID_HANDLE (202u | 3302u << 9)

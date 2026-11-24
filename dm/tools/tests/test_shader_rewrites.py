@@ -212,7 +212,7 @@ class TypedOutputs(unittest.TestCase):   # dmsh_entry.fs_uint: main0_u for every
         self.assertIsNone(fs_uint('kernel void main0() {}\n'))
         self.assertIsNone(fs_uint(self.source('').replace('fragment main0_out main0', 'fragment void main0')))
 
-    def test_each_colour_switched_by_its_constants(self):   # Trails in the Sky 2nd Chapter's G-buffer: float at colour 0, integer at 1 to 3, whatever each shader writes there
+    def test_each_colour_switched_by_its_constants(self):   # Another game's G-buffer: float at colour 0, integer at 1 to 3, whatever each shader writes there
         four = ''.join(f'    float4 m_{n} [[color({n})]];\n' for n in range(4)) + '    float gl_FragDepth [[depth(any)]];\n'
         body = ('    uint _342 = uint(_341);\n    out.m_0 = in.m_9 * 2.0;\n    out.m_1.x = as_type<float>(_342);\n    out.m_2.x = 0.0;\n'
                 '    out.m_3.x = (*spvDescriptorSet0.fp_c8)._m0[2].w;\n    out.gl_FragDepth = 0.5;')

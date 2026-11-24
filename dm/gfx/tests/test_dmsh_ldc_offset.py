@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Maxwell LDC's 16-bit immediate (InstEmitMemory.Ldc). Added to a register it is signed and the sum 32 bits, as nvdisasm prints it and
-Xenoblade Chronicles 2's pixel shaders use it (c6 at R - 8 to R - 128); alone (Ra = RZ) it is the address as it is, as Mortal Kombat 11 reads c[14][0x8448].
+another game's pixel shaders use it (c6 at R - 8 to R - 128); alone (Ra = RZ) it is the address as it is, as Mortal Kombat 11 reads c[14][0x8448].
 Sign-extended, that read's word index overflowed into the operand's slot field and became a 512 MB c15 binding the host refused. A fixed word past the 64 KiB bank
 reads 0 (ConstantFolding). Needs DMSH_TEST_XLATE (the translator) like the other translator tests."""
 import json, os, struct, subprocess, sys, tempfile, unittest
@@ -14,7 +14,7 @@ NOP = 0x50b0000000070f00
 EXIT = 0xe30000000007000f
 # Mortal Kombat 11's own encoding (0100F2200C984000): LDC.U16 R49, c[14][0x8448]
 LDC_U16 = 0xef9200e84487ff31
-# Xenoblade Chronicles 2's own encoding (pixel shader 09030ba6b1d1283e): LDC.64 R4, c[6][R59 - 0x40]
+# Another game's own encoding (pixel shader 09030ba6b1d1283e): LDC.64 R4, c[6][R59 - 0x40]
 LDC_64_NEG = 0xef95006ffc073b04
 
 

@@ -130,7 +130,7 @@ static int delayed_wake(unsigned delay, int kind, int exclusion) {
     if (exclusion == 5) worker.pause_req = 1;   // guest suspension
     if (exclusion == 6) { worker_host_work = 1; worker.host_work = &worker_host_work; }   // host GPU work
     thr_t *self = pthread_getspecific(g_keythr); uint64_t self_mask = self->mask;
-    if (exclusion == 7) self->mask = 5;   // the signaller can run on another guest core (Batman: Arkham Knight's job workers, mask 0x5)
+    if (exclusion == 7) self->mask = 5;   // the signaller can run on another guest core (another game's job workers, mask 0x5)
     g_lock();
     worker.handle = h_new(O_THREAD, &worker); worker.all = g_all; g_all = &worker;
     g_unlock();

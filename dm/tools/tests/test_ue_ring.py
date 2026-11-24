@@ -48,7 +48,7 @@ class Ring(unittest.TestCase):
         off, old, new, why = ue_ring.find(bytes(img), TEXT, RO, DATA)
         self.assertEqual((off, old, new), (load, ldr_w(8, 8, VAR), 0x52800088), why)   # mov w8, #4
 
-    def test_load_through_the_got(self):   # OCTOPATH TRAVELER II
+    def test_load_through_the_got(self):   # Another game
         img = image(); a = CTOR + 0x40; got = DATA + 0x800
         put(img, a, TBZ_W21_1, ADRP(8, a + 4, got), ldr_x(8, 8, got), LDR_W8_X8, STR_W8_X20_5C)
         import loader_census
@@ -58,7 +58,7 @@ class Ring(unittest.TestCase):
         finally: loader_census.got_values = keep
         self.assertEqual((off, new), (a + 12, 0x52800088), why)
 
-    def test_store_through_a_base_made_earlier(self):   # Pikmin 4: str xzr, [x8, #0x5c]! in the constructor, then str w10, [x8]
+    def test_store_through_a_base_made_earlier(self):   # Another game: str xzr, [x8, #0x5c]! in the constructor, then str w10, [x8]
         img = image(); a = CTOR + 0x40
         put(img, CTOR + 8, 0xf805cc1f | 8 << 5)
         put(img, a, TBZ_W21_1, ADRP(10, a + 4, VAR), ldr_w(10, 10, VAR), 0xb900010a)

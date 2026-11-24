@@ -127,7 +127,7 @@ int main(void){@autoreleasepool{
     CHECK("once its fence completes, the g_um page is no longer live",!gw_live(addr,addr+8)&&rc_value(addr,&x)&&x==0);
     g_done=was_done; g_gw_all=was_all; memset(g_gwx,0,sizeof g_gwx); if(g_um) memset(g_um,0,UM_N*sizeof *g_um);}
     pend_reset();
-    // Large scenes with thousands of small writable SSBOs (e.g. ~7,500 15 KB terrain chunks in Donkey Kong Bananza's 3D overview map) touch >16,384 unique 4 KB pages in one submission.
+    // Large scenes with thousands of small writable SSBOs (e.g. ~7,500 15 KB terrain chunks in another game's 3D overview map) touch >16,384 unique 4 KB pages in one submission.
     // g_sbwp grows dynamically while keeping load <= 50% and preserves g_sbw_list for gw_commit.
     {uint64_t arena=0x8140000000ull, other=0x8021f3e100ull, was_done=g_done, was_all=g_gw_all;
     g_gw_all=0; memset(g_gwx,0,sizeof g_gwx);

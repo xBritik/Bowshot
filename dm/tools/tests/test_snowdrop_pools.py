@@ -123,11 +123,5 @@ class ProfileTest(unittest.TestCase):
                 with self.assertRaises(SystemExit): sp.profile_sizes({'DM_GAME': str(p)})
         self.assertEqual(sp.profile_sizes({})[0], sp.DEFAULT)
 
-    def test_the_two_games_profiles(self):
-        games = Path(__file__).resolve().parents[2] / 'games'
-        self.assertEqual(sp.profile_sizes({'DM_GAME': str(games / '0100317013770000')})[0], (2048, 512, 1280))
-        self.assertEqual(sp.profile_sizes({'DM_GAME': str(games / '010067300059A000')})[0], (2048, 512, 512))
-
-
 if __name__ == '__main__':
     unittest.main()

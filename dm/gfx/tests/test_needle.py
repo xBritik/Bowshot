@@ -25,7 +25,7 @@ def shader(stage):
 
 
 def shader2(stage):
-    # An NVN2 record (Sonic Frontiers Definitive Edition): a 0x98-byte descriptor, a 0xd8-byte control section (version 0xc9, its own length at +0x30, the code's at +0x44, a compute
+    # An NVN2 record (another game): a 0x98-byte descriptor, a 0xd8-byte control section (version 0xc9, its own length at +0x30, the code's at +0x44, a compute
     # stage at +0x56) and the code right after it, a graphics stage starting with its SPH.
     ctl, code = bytearray(0xd8), bytearray(0x200)
     ctl[:8] = split.CTL_MAGIC + b'\xc9\0\0\0'

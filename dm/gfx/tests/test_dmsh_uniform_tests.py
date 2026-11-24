@@ -1,5 +1,5 @@
 """A game uniform word tested against constants (dmsh_rewrite.py uniform_tests): each test of a word tested more than once reads it with a volatile load (dm_uword), so the Metal
-front end folds no chain of tests into a switch, which Apple's GPU compiler took hours and tens of gigabytes over (Nintendo Switch Sports Resort's pixel shader 692008b305ce264f in
+front end folds no chain of tests into a switch, which Apple's GPU compiler took hours and tens of gigabytes over (another game's pixel shader 692008b305ce264f in
 the offline pipeline archive). The shader below is the translator's form of a GLSL switch on one word; with dmsh_build.py's and ios_metal.py's compile commands its plain form
 becomes a switch in the front end's IR and its rewritten form none."""
 from pathlib import Path

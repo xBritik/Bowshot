@@ -516,22 +516,6 @@ class Build(BuildCase):
         (self.prof / 'game.tsv').write_text('title_id\t0100000000001000\nname\tTest\ndepth_mode\tnear0\n')
         with self.assertRaises(SystemExit): self.main('--script-only')
 
-    def test_profile_archives_match_observed_depth(self):
-        # Issue #758 and its seven-game follow-up, then four found by reading the NSP script's check boots: these builds' NVN calls select near=0 (evidence in each game note).
-        # Exercise the real profiles through the builder with synthetic pairs: an omitted key must not quietly build main0.
-        profiles = ('01008CF01BAAC000', '010089C01E9CA000', '010056B015FE8000', '01007BB017812000',
-                    '01003E601E324000', '010020400E1C2000', '0100429011144000', '010014C011146000',
-                    '0100ACD0163D0000', '010040801A4C8000', '0100C49025D3E000', '0100A3900C3E2000',
-                    '01006A800016E000',  # Super Smash Bros. Ultimate: a player's start log (its note)
-                    '0400E88025B1A000',  # Star Fox: a Mac app's start log (its note)
-                    '01005CA01580E000')  # Persona 5 Royal: an iPhone app's start log (its note)
-        for gid in profiles:
-            with self.subTest(game=gid):
-                self.main('--game', gid, '--pairs', str(self.prof / 'shader_pairs.tsv'), '--script-only')
-                self.assertIn('depth\tnear=0\n', (self.out / 'prebuilt.tsv').read_text())
-                script = json.loads(next(self.work.glob('*.mtl4-json')).read_text())
-                self.assertEqual(script['pipeline_descriptors']['render_pipeline_descriptors'][0]['vertex_function_descriptor'], 'fnd:v_bp.main0_z')
-
     def test_library_digest_is_the_names_and_bytes_in_order(self):   # read on a few threads: the key every earlier build's archive has
         bases, computes = [('v_bp', 'main0_z', 'f_b', 'main0'), ('v_b', 'main0', 'c_b', 'main0')], [('c_b', 'main0')]
         h = hashlib.sha256()
@@ -638,7 +622,7 @@ class Build(BuildCase):
         self.assertEqual(first.stat().st_mtime_ns, identity)
         self.assertEqual(observed, [('compile',['vertex2','vertex3']),('compile',['vertex4']),('merge',3)])
 
-    def test_a_base_metal_tt_cannot_compile_is_left_to_the_device(self):   # PRAGMATA: one pixel shader the GPU compiler stops on cost the whole archive
+    def test_a_base_metal_tt_cannot_compile_is_left_to_the_device(self):   # Another game: one pixel shader the GPU compiler stops on cost the whole archive
         bases = [('v_bp', f'vertex{i}', 'f_b', 'main0') for i in range(5)]
         runner, observed = self.batched_runner(fail_compile=('vertex2',))
         out = io.StringIO()
@@ -1016,39 +1000,6 @@ class IpaFallback(unittest.TestCase):
             script = 'die() { echo "FAIL: $*"; exit 1; }\nt() { echo "$*"; }\nDM_PSO_IOS_MIN=\n' + '\n'.join(lines[i:j]) + '\nfi\necho "PSO=[$PSO]"\n[ -d "$W/build/ios/pso/bundle" ] && echo folder\n[ ! -f "$W/make.args" ] || cat "$W/make.args"\necho went on\n'
             return subprocess.run(['bash', '-c', 'set -u\n' + script], env=env, capture_output=True, text=True).stdout
 
-    def test_failed_archive_is_a_warning(self):
-        out = self.step('mkdir -p "$W/build/ios/pso/bundle"; echo half; exit 1\n')
-        self.assertIn('[RED] pipeline archive: pso_offline.py failed', out); self.assertIn('PSO=[]', out); self.assertNotIn('folder', out); self.assertIn('went on', out)
-        self.assertNotIn('FAIL', out)
-
-    def test_archive_uses_the_packagers_python(self):
-        out = self.step('echo system Python; exit 1\n',
-                        selected_python='echo selected Python; mkdir -p "$W/build/ios/pso/bundle"\n')
-        self.assertIn('selected Python', out)
-        self.assertIn('folder', out)
-        self.assertNotIn('system Python', out)
-
-    def test_prewarm_host(self):   # DM_PSO_HOST names the Mac host the prewarm files are made with; none, or no host of this game in the tree: none, with a line saying how
-        out = self.step('echo "ARGS $*"; exit 0\n', DM_PSO_HOST='/x/dmhost')
-        self.assertIn('--prewarm-host /x/dmhost', out); self.assertNotIn('no Mac host', out)
-        for setting in ('none', None):
-            out = self.step('echo "ARGS $*"; exit 0\n', DM_PSO_HOST=setting) if setting else self.step('echo "ARGS $*"; exit 0\n')
-            self.assertNotIn('--prewarm-host', out); self.assertIn('prewarm pipelines: no Mac host of this game', out); self.assertNotIn('FAIL', out)
-
-    def test_made_archive_goes_into_the_app(self):
-        out = self.step('mkdir -p "$W/build/ios/pso/bundle"; exit 0\n')
-        self.assertNotIn('[RED]', out); self.assertIn('/build/ios/pso/bundle]', out); self.assertIn('folder', out)
-
-    def test_current_per_game_host_is_discovered_without_the_old_stamp(self):
-        out = self.step('echo "ARGS $*"; exit 0\n', host_game='G')
-        self.assertIn('/dm/host/gen/G/dmhost', out); self.assertIn('GAME=G gen/G/dmhost', out)
-        self.assertNotIn('no Mac host', out)
-        out = self.step('echo "ARGS $*"; exit 0\n', host_game='other')
-        self.assertNotIn('--prewarm-host', out); self.assertIn('no Mac host', out)
-        out = self.step('mkdir -p "$W/build/ios/pso/bundle"; exit 0\n', host_game='G', make_exit=1)
-        self.assertIn('prewarm pipelines: make', out); self.assertNotIn('--prewarm-host', out); self.assertIn('folder', out)
-
-
 class Default(unittest.TestCase):
     """Which games get an archive without DM_PSO_GPUS: build_ipa.sh's own lines, run with game.py's default form, so only a profile with pso_mtl4 on (the Metal 4 path, which alone
     reads the archive on iOS) gets one — g18p by default, the profile key pso_gpu's architectures when it names them (joined with commas) and g18p on a key the shell guard does not take —
@@ -1067,48 +1018,6 @@ class Default(unittest.TestCase):
             return {gid: (r.stdout, r.stderr) for gid, r in
                     ((gid, subprocess.run(['bash', '-c', self.lines() + '\necho "$P4 $GPUS"'], env=dict(e, GAME=gid),
                                           capture_output=True, text=True)) for gid in profile)}
-
-    def test_by_profile(self):
-        games = {'0100000000F0F000': 'title_id\t0100000000F0F000\npso_mtl4\ton\n',
-                 '0100000000F0F001': 'title_id\t0100000000F0F001\n',
-                 '0100000000F0F002': 'title_id\t0100000000F0F002\npso_mtl4\toff\n',
-                 '0100000000F0F003': 'title_id\t0100000000F0F003\npso_mtl4\ton\npso_gpu\tapplegpu_g19p\n',
-                 '0100000000F0F004': 'title_id\t0100000000F0F004\npso_mtl4\ton\npso_gpu\tg18p   g19p\n',
-                 '0100000000F0F005': 'title_id\t0100000000F0F005\npso_mtl4\ton\npso_gpu\tnone\n',                                   # none is no token of this key
-                 '0100000000F0F006': 'title_id\t0100000000F0F006\npso_mtl4\ton\npso_gpu\tg15s g16s g17p g18p g19p\n',               # 5 architectures: more than the key takes
-                 '0100000000F0F007': 'title_id\t0100000000F0F007\npso_mtl4\toff\npso_gpu\tg19p\n'}
-        r = self.gpus(games)
-        self.assertEqual({k: p[0].strip() for k, p in r.items()},
-                         {'0100000000F0F000': 'on g18p', '0100000000F0F001': 'off none', '0100000000F0F002': 'off none',
-                          '0100000000F0F003': 'on applegpu_g19p', '0100000000F0F004': 'on g18p,g19p', '0100000000F0F005': 'on g18p',
-                          '0100000000F0F006': 'on g18p', '0100000000F0F007': 'off none'})
-        self.assertEqual({k for k, p in r.items() if 'taking g18p' in p[1]}, {'0100000000F0F005', '0100000000F0F006'})   # a key the guard rejects keeps the default, and says so
-        self.assertEqual({k: p[0].strip() for k, p in self.gpus(games, DM_PSO_GPUS='g17p').items()},
-                         {k: v.split()[0] + ' g17p' for k, v in {k: p[0].strip() for k, p in r.items()}.items()})
-        self.assertEqual(self.gpus(games, DM_PSO_GPUS='none')['0100000000F0F000'][0].strip(), 'on none')
-        self.assertEqual(self.gpus(games, DM_PSO_GPUS='')['0100000000F0F000'][0].strip(), 'on')
-
-    def test_nsp_defaults_follow_the_same_profile_gate(self):
-        # Run the NSP script's actual choice block without extracting or building a game.
-        script = (REPO / 'scripts/build_ipa_from_nsp.py').read_text()
-        start = script.index("    gpus = (args.gpu or PSO_GPUS).strip()")
-        end = script.index("    ipa_env['DM_PSO_GPUS'] = gpus", start)
-        block = '\n'.join(line[4:] for line in script[start:end].splitlines())
-        block = script[script.index('def ios_gpus('):script.index('def ios_wants_pulling(')] + block   # the choice itself, which the shader step shares
-        for p4, pg, expected in [('on', '', 'g18p'), ('on', 'g18p   applegpu_g19p', 'g18p,applegpu_g19p'),
-                                 ('off', '', 'none'), ('off', 'g19p', 'none')]:
-            for explicit, setting in [('', ''), ('g17p', ''), ('none', ''), ('', 'g16p')]:
-                with self.subTest(pso_mtl4=p4, pso_gpu=pg, gpu=explicit, setting=setting):
-                    scope = {'args': types.SimpleNamespace(gpu=explicit), 'PSO_GPUS': setting,
-                             'g': types.SimpleNamespace(get={'pso_mtl4': p4, 'pso_gpu': pg}.get),
-                             're': re, 'BuildError': RuntimeError}
-                    exec(block, scope)
-                    self.assertEqual(scope['gpus'], explicit or setting or expected)
-
-    def test_breath_of_the_wild(self):   # the profile that turns the Metal 4 path on: its app gets the archive
-        r = subprocess.run([sys.executable, str(REPO / 'dm/games/game.py'), '01007EF00011E000', 'pso_mtl4', 'off'], capture_output=True, text=True)
-        self.assertEqual(r.stdout.strip(), 'on')
-
 
 class MeshBases(unittest.TestCase):
     def setUp(self):

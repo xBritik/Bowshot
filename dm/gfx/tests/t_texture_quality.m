@@ -1,4 +1,4 @@
-// The texture memory saver (DM_NVN_TEX_MIP_SKIP, from the PRAGMATA investigation; L7): a texture made without its finest levels keeps the original
+// The texture memory saver (DM_NVN_TEX_MIP_SKIP, from the another game investigation; L7): a texture made without its finest levels keeps the original
 // content of the levels it has, and guest levels map to host levels
 #define nvn_game_fps nvn_game_fps_mtl_default
 #include "../nvn/nvn_mtl.m"

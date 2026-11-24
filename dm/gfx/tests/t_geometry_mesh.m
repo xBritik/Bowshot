@@ -3,7 +3,7 @@
 // counter, a scissor between the fourth and the fifth. Each triangle covers one pixel column of a 128x4 depth target; the kernel
 // keeps it when bit 0 of vertex t's x is set. The depth of every column and every draw's counter must be the same whether the draws
 // are dispatched one by one (DM_NVN_GEO_MESH_RUN=0) or in runs, and in runs the scissor must cut only the draws after it.
-// Then again with samples-passed counting on (a counter reset before the draws, a report after them; Donkey Kong Bananza draws its depth prepass so): the draws still join runs,
+// Then again with samples-passed counting on (a counter reset before the draws, a report after them; another game draws its depth prepass so): the draws still join runs,
 // and the report holds every sample the draws passed (the draws cover separate columns, so the count is the same in any order).
 // Then with a fragment shader that reads a uniform buffer and discards when its x is set, bound for draw 2 alone: draws with the same fragment bindings share a run, a change
 // of them draws the waiting run first (geo_mesh_ft_change), so draw 2's columns stay clear and the others keep their depth: four runs (0-1, 2, 3, and 4-5 after the scissor).

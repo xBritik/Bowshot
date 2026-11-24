@@ -134,7 +134,7 @@ static void deferred_acquire_sync(void) {
     h_nvnSyncFinalize(&s);
 }
 // Present snapshots (mtl_snap_on, fixed for the process: run as "t_link_ticks snap"): the acquire takes the display link's wait as without them, the ring slot wait only on top.
-// It used to wait for a free slot alone, and the link frees slots by dropping frames, so a game ran ahead of its present interval (Donkey Kong Bananza at the 30 fps cap: 43-65 fps).
+// It used to wait for a free slot alone, and the link frees slots by dropping frames, so a game ran ahead of its present interval (another game at the 30 fps cap: 43-65 fps).
 // While the link is stalled the slot time paces instead (no link wait)
 static int snap_case(void) {
     setenv("DM_RT", "0", 1); setenv("DM_PRESENT_SNAP", "2", 1); setenv("DM_FPS_TARGET", "0", 1);

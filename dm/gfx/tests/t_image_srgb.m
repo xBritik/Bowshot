@@ -1,5 +1,5 @@
 // An sRGB texture in an image slot is loaded and stored raw, as NVN's image loads and stores do (no sRGB conversion), while its sampled descriptor still decodes.
-// Star Fox writes its upscaler's sRGB-encoded output into an RGBA8_SRGB texture through an image: through the texture's own format Metal encoded it once more.
+// Another game writes its upscaler's sRGB-encoded output into an RGBA8_SRGB texture through an image: through the texture's own format Metal encoded it once more.
 #include "../nvn/nvn_mtl.m"
 void *front_metal_layer(void) { return NULL; }
 module_t *module_of(const void *p) { (void)p; return NULL; }

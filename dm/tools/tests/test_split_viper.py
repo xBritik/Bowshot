@@ -1,4 +1,4 @@
-"""Star Fox's data.zip reaches the split: a zip behind a VZIP preamble whose stored members are chains of 64 KB LZ4 chunks, each against the previous one, holding the engine's
+"""another game's data.zip reaches the split: a zip behind a VZIP preamble whose stored members are chains of 64 KB LZ4 chunks, each against the previous one, holding the engine's
 shader binaries (a GLSLC-magic header, the code area, then the NVN2 control section). Synthetic bytes only."""
 import contextlib
 import io

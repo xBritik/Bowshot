@@ -2,13 +2,13 @@
 // cube array depth counts layer-faces, packaged byte 0 = block height (low nibble) and block depth (high nibble), linear storage (LINEAR or LINEAR_RENDER_TARGET alone)
 // counts pixel rows, also for BC. pkg is the first 12 layout bits + 1 (0 = automatic), as nvn_texdesc stores it. The MINIMAL_LAYOUT shapes (flag 0x200) are the driver's from PR #11's t_tex,
 // the array and packaged ones from TotK 1.2.1's driver (sdk b9046c31, GitHub issue #183): automatic blocks only when they add no padding to the layer, else 1 GOB. The sparse (flag 0x20) shapes are block heights read off a game's guest bytes instead: a sparse texture at least one 64 KB tile wide and high
-// takes its tile's block height (384x384 DXT5, 1350x270 BGRA8), a smaller one keeps the automatic one (192x160 DXT5 and 384x384 DXT1, Yoshi's Crafted World)
+// takes its tile's block height (384x384 DXT5, 1350x270 BGRA8), a smaller one keeps the automatic one (192x160 DXT5 and 384x384 DXT1, another game)
 #include <stdio.h>
 #include "../nvn/nvn_tex.h"
 
 typedef struct { const char *what; int target, format, flags; unsigned w, h, depth, levels, stride; int pkg; uint64_t size, layer, off1; unsigned align, th, td; } shape_t;
 static const shape_t driver[] = {
-    // Original Bayonetta Origins SDK arithmetic oracle: H3/D0/W4, no SPARSE flag.
+    // Original another game Origins SDK arithmetic oracle: H3/D0/W4, no SPARSE flag.
     {"packaged ASTC6x6 W4 paper", 1,0x7d,4,2052,1026,1,1,0,0x404,0x120000,0x120000,0,512,3,0},
     {"packaged ASTC6x6 W0 negative control", 1,0x7d,4,2052,1026,1,1,0,4,0x102000,0x102000,0,512,3,0},
     {"packaged ASTC6x6 W4 mip tail", 1,0x7d,4,2052,1026,1,8,0,0x404,0x19dc00,0x19dc00,0x120000,512,3,0},

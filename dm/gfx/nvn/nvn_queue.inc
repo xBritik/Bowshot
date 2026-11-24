@@ -168,7 +168,7 @@ static void *nq_worker(void *unused) {
                     nq_event_write *queued=predecessor>mtl_completed_fence() ? nq_event_write_of(n->event) : NULL;
                     if(queued && queued->exact && nq_predicate(queued->value,n->mode,n->value)) break;
                     if(predecessor>mtl_completed_fence() || !nq_predicate(atomic_load_explicit((_Atomic uint32_t *)n->event,memory_order_acquire),n->mode,n->value)) {
-                        // A queue held more than 5 s by one event wait: what it waits for, since the game's own GPU watchdog acts on the fences behind it (PRAGMATA aborts after 15 s)
+                        // A queue held more than 5 s by one event wait: what it waits for, since the game's own GPU watchdog acts on the fences behind it (another game aborts after 15 s)
                         uint64_t t=now_ns(); if(!n->wait_since) n->wait_since=t;
                         else if(t-n->wait_since>5000000000ull && !n->wait_said) { static _Atomic int said; n->wait_said=1; if(atomic_fetch_add(&said,1)<8)
                             LOG("[RED] queue %llu: an event wait has held it %.1f s: word %p is %#x, waiting for %s %#x; a GPU write of it is %s",(unsigned long long)q->serial,(t-n->wait_since)/1e9,(void *)n->event,

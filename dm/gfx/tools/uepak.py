@@ -3,14 +3,14 @@
 # (DM_OODLE_JOB, dm/host/hle_oodle.c). Octopath Traveler 0 keeps everything in one pak, Octopath_Traveler0/Content/Paks/pakchunk0-Switch.pak (1.5 GB, 159,757 files): its index is AES-256 encrypted,
 # its files are stored or Oodle-compressed in blocks. Its two shader code archives are stored, but every shader inside is Oodle-compressed (Mermaid, block header 8C 0A), which no decoder in this
 # repository can undo, so the game's own OodleLZ_Decompress decodes them in the Mac host (the NSP script's decode_ue_shaders, for any game with Unreal paks).
-# Unreal Engine 4.27 (DRAGON QUEST VII Reimagined) keeps its packages in IoStore containers (.utoc / .ucas) and the rest in pakchunk0-Switch.pak (3,972 files, index not encrypted), among them
+# Unreal Engine 4.27 (another game) keeps its packages in IoStore containers (.utoc / .ucas) and the rest in pakchunk0-Switch.pak (3,972 files, index not encrypted), among them
 #   two stored shader code archives (ShaderArchive-Global-SF_GLSL_SWITCH, 1,764 shaders, and ShaderArchive-DOLL_Chunk0-SF_GLSL_SWITCH, 63,185): every shader in them is an LZ4 block, the
 #   engine's default shader compression since 4.26, decoded here (lz4_shaders) without the host.
-# Unreal Engine 5.6 (FINAL FANTASY RESONANCE) has no shader code archive in its pak (FFRS-Switch.pak holds configs only): the cooker converted both libraries into its IoStore container
+# Unreal Engine 5.6 (another game) has no shader code archive in its pak (FFRS-Switch.pak holds configs only): the cooker converted both libraries into its IoStore container
 #   (FFRS-Switch.utoc / .ucas, Oodle in 64 KB blocks, not encrypted) as one ShaderCodeLibrary chunk each (the tables) and one ShaderCode chunk per group of shaders, every group Oodle-compressed
 #   on its own (Toc, io_archive). Both layers need the game's decoder, which runs in the Mac host's tool mode (OodleHost); the libraries come out as version 2 archives with every shader decoded.
 # The AES key is in main (Unreal embeds it): the 32-byte window of main's read-only or data segment that decrypts the index start to its mount point ("../../../"; Octopath Traveler 0: one window of
-#   116,287 tried), or, where clang split the key into two 16-byte literals, the pair main's code loads and stores together (code_keys; DRAGON QUEST III HD-2D Remake). It is only kept in
+#   116,287 tried), or, where clang split the key into two 16-byte literals, the pair main's code loads and stores together (code_keys; another game). It is only kept in
 #   memory, never printed or written.
 # Pak footer (version 11, the last 0xdd bytes): encryption key GUID (16), encrypted index flag (u8), magic 0x5A6F12E1, version (u32), index offset (u64), index size (u64), index SHA-1 (20),
 #   5 compression method names (32 bytes each).
@@ -30,11 +30,11 @@
 #   (i64, from the file start before version 5, from the entry after), the encrypted flag (u8) and the compression block size (u32). The FPakEntry is repeated in front of the data.
 #   The compression flags are no names: 1 zlib, 2 gzip, 4 custom; DRAGON QUEST XI S's engine uses 3, which is LZ5 2.0 (main exports LZ5_*; every block starts with its level, 0x2d = 45), and only the
 #   game's own decoder reads it (hle_oodle.c, through a decode function given to Pak.read).
-# Unreal Engine 4.27 with bShareMaterialShaderCode off (OCTOPATH TRAVELER II: Majesty/Content/Paks/Majesty-Switch.pak, version 11, 3.3 GB / 376,601 files, index not encrypted, Zlib blocks)
+# Unreal Engine 4.27 with bShareMaterialShaderCode off (another game: Majesty/Content/Paks/Majesty-Switch.pak, version 11, 3.3 GB / 376,601 files, index not encrypted, Zlib blocks)
 #   has no shader code archive at all: each material keeps its shaders in its own cooked package (.uexp) and the engine's global shaders are in Engine/GlobalShaderCache-SF_GLSL_SWITCH.bin,
 #   every shader an LSLG record stored without compression, as in a legacy pak (inline_shaders; shader_split.py ue_legacy_jobs reads them). Zlib and LZ4 blocks are decoded here (Pak.read).
-#   Unreal Engine 5.4 for the Switch 2 (Yoshi and the Mysterious Book: PJ045-Sage.utoc / .ucas, TOC version 6) does the same with export chunks of Unreal Engine 5's numbering, each shader an Oodle stream holding an NVN2 record with no LSLG (shader_map_entries, sage_record).
-#   With IoStore on as well (Mario & Luigi: Brothership: Vermillion-Switch.utoc / .ucas, Oodle in 256 KB blocks, TOC version 3) the cooked packages are the container's export bundles (Toc.export_bundles,
+#   Unreal Engine 5.4 for the Switch 2 (another game: PJ045-Sage.utoc / .ucas, TOC version 6) does the same with export chunks of Unreal Engine 5's numbering, each shader an Oodle stream holding an NVN2 record with no LSLG (shader_map_entries, sage_record).
+#   With IoStore on as well (another game: Vermillion-Switch.utoc / .ucas, Oodle in 256 KB blocks, TOC version 3) the cooked packages are the container's export bundles (Toc.export_bundles,
 #   named by Toc.names); the pak beside it keeps everything else, the global shader cache too.
 # Shader code archive (version 2): shader map hashes (20 bytes each), shader hashes (20 each), shader map entries {u32 first index, u32 shader count, u32 first preload, u32 preload count}, shader
 #   entries {u64 offset, u32 size, u32 raw size, u8 frequency} (17 bytes, packed), preload entries (16 each), shader indices (u32): each array is a u32 count and its elements; the code follows,
@@ -157,7 +157,7 @@ SHORT_V8_MAGIC_BACK = 0xac   # four compression method slots, with a one-byte me
 
 def magic_back(f):
     """(how far from the end the footer's magic is, the pak version): a legacy footer is the last 0x2d bytes (magic 0x2c from the end); version 11's magic is 0xc8 from the end in
-    Octopath Traveler 0 (UE5) and 0xcc in Unreal Engine 4.27 (DRAGON QUEST VII Reimagined: five whole 32-byte compression method names after the SHA-1); version 9 adds one flag, at 0xcd"""
+    Octopath Traveler 0 (UE5) and 0xcc in Unreal Engine 4.27 (another game: five whole 32-byte compression method names after the SHA-1); version 9 adds one flag, at 0xcd"""
     size = f.seek(0, 2)
     for back, foot in ((0x2c, 0x2d), (0xc8, 0xc8 + 21), (0xcc, 0xcc + 21), (0xcd, 0xcd + 21), (SHORT_V8_MAGIC_BACK, SHORT_V8_MAGIC_BACK + 21)):
         if size < foot: continue   # shorter than this footer
@@ -263,7 +263,7 @@ def frozen_pak_index(data, methods, what):
 def code_keys(img, lo):
     """32-byte keys that main's code stores from two 16-byte literals: stp qA, qB, [x0] after ldr qA / qB, each from an adrp page plus its offset, within 8 instructions before it.
     UE_REGISTER_ENCRYPTION_KEY's callback copies a 32-byte array into its argument, and clang may split the array into two 16-byte constants that do not lie side by side
-    (DRAGON QUEST III HD-2D Remake: main+0xa3fd24 is adrp, adrp, ldr q0, ldr q1, stp q0, q1, [x0], ret), so no window of main holds the key"""
+    (another game: main+0xa3fd24 is adrp, adrp, ldr q0, ldr q1, stp q0, q1, [x0], ret), so no window of main holds the key"""
     w = struct.unpack_from(f'<{lo // 4}I', img)
     out = []
     for i, x in enumerate(w):
@@ -382,7 +382,7 @@ class Pak:
         if meth > len(self.methods) or meth and not self.methods[meth - 1]: raise ValueError(f'{self.path}: {path} names compression method {meth}, which the footer does not')
         return dict(off=off, raw=raw, size=size, method=self.methods[meth - 1] if meth else '', encrypted=enc, block_size=bsz, blocks=blocks)
     def read(self, path, decode=None):
-        """A file's bytes, block by block (each block holds block_size raw bytes, the last one the rest). Zlib, LZ4 and Zstd blocks are decoded here (OCTOPATH TRAVELER II: Zlib, BRAVELY DEFAULT II: Zstd); any other
+        """A file's bytes, block by block (each block holds block_size raw bytes, the last one the rest). Zlib, LZ4 and Zstd blocks are decoded here (another game: Zlib, BRAVELY DEFAULT II: Zstd); any other
         method needs decode(block bytes, raw length) → bytes: the game's own decoder in the Mac host (shader_split.py oodle); Octopath Traveler 0's archives go through the Oodle job instead"""
         e = self.entry(path)
         if not e['method']: return self.read_at(cast(int, e['off']) + self.stored_header, e['size'], e['encrypted'])
@@ -493,7 +493,7 @@ def lz4_raw(b, k, where):
     return k
 
 def lz4_shaders(b, a):
-    """Every shader of an archive decoded as an LZ4 block (Unreal Engine 4.26 and later compress shaders with LZ4 unless the project picks another format: DRAGON QUEST VII Reimagined's
+    """Every shader of an archive decoded as an LZ4 block (Unreal Engine 4.26 and later compress shaders with LZ4 unless the project picks another format: another game's
     64,949), or None when one of the compressed ones is no LZ4 block that decodes to its raw size as an LSLG record (Octopath Traveler 0's Oodle: the game's own decoder is needed)"""
     import lz4.block
     out = []
@@ -589,7 +589,7 @@ class Toc:
         return b''.join(out)[s:s + ln]
 
 def io_library_name(toc, i, names):
-    """A shader library chunk's archive name: Unreal makes its chunk ID from CityHash64 of "<library>-<format>" lowercased, in UTF-16 (FINAL FANTASY RESONANCE: global-sf_glsl_switch-sp_glsl_switch
+    """A shader library chunk's archive name: Unreal makes its chunk ID from CityHash64 of "<library>-<format>" lowercased, in UTF-16 (another game: global-sf_glsl_switch-sp_glsl_switch
     → be76feab0415c156, the hash's bytes in memory order), names = the candidate "ShaderArchive-<library>-<format>" names (the RomFS manifests list them); a chunk none matches is named by its ID"""
     h = toc.ids[i][:8]
     for n in names:
@@ -613,11 +613,11 @@ def _widen_io_hashes(hashes):
 
 def io_archive(toc, i, decode, chunk=None):
     """An IoStore shader library (FIoStoreShaderCodeArchive) as a version 2 shader code archive with every shader decoded, the form the shader tools read.
-    The library chunk: u32 version (1), shader map hashes, shader hashes (20-byte SHA-1 in FINAL FANTASY RESONANCE, 8-byte xxHash64 in Godzilla), the shader groups' chunk IDs (12 each),
+    The library chunk: u32 version (1), shader map hashes, shader hashes (20-byte SHA-1 in another game, 8-byte xxHash64 in Godzilla), the shader groups' chunk IDs (12 each),
     shader map entries {u32 first index, u32 shader count},
     shader entries (u64: frequency in bits 0-3, group in 4-33, offset in the group's decoded bytes from bit 34), group entries {u32 first index, u32 shader count, u32 raw size, u32 stored size},
     shader indices (u32): each a u32 count and its elements. Each group is one ShaderCode chunk holding its shaders end to end, Oodle-compressed as a whole when its stored size is below its raw
-    size (FINAL FANTASY RESONANCE: 5,919 groups of 74,244 shaders); a shader runs to the next shader's offset in its group, or to the group's end. chunk(chunk ID) → (container, index) looks a
+    size (another game: 5,919 groups of 74,244 shaders); a shader runs to the next shader's offset in its group, or to the group's end. chunk(chunk ID) → (container, index) looks a
     group up in every container under the RomFS: a patch container's library lists the groups it did not change from the base container's"""
     r = R(toc.read(i, decode), what=f'{toc.path}: shader library chunk {i}')
     if r.take('<I') != 1: raise ValueError(f'{toc.path}: shader library chunk {i} is not version 1')
@@ -685,7 +685,7 @@ def paks(romfs):
 
 def inline_in_containers(path):
     """Whether the containers in a pak's folder hold its cooked packages with their shaders inline: export bundles, the only part shader_split.py ue_legacy_jobs reads and only from this folder, and
-    no shader libraries, which every Unreal Engine 5 container with shared shader code has beside its export bundles (FINAL FANTASY RESONANCE)"""
+    no shader libraries, which every Unreal Engine 5 container with shared shader code has beside its export bundles (another game)"""
     folder = os.path.dirname(os.path.abspath(path))
     tocs = [t for t in io_tocs(folder) if os.path.dirname(t.path) == folder]
     return any(t.export_bundles() for t in tocs) and not any(t.of_type(IO_SHADER_LIBRARY) for t in tocs)
@@ -737,7 +737,7 @@ def unreal_paks(romfs, inline=None, mains=()):
 
 def job(romfs, main_nso, work, decode=None):
     """The shader code archives of every pak under the RomFS into <work>/archives, and one Oodle job (<work>/oodle.job) of every compressed shader in them; <work>/job.json lists them.
-    The shader libraries of IoStore containers (Unreal Engine 5.6, FINAL FANTASY RESONANCE: no archive in the pak) go there already decoded: their container blocks and shader groups are
+    The shader libraries of IoStore containers (Unreal Engine 5.6, another game: no archive in the pak) go there already decoded: their container blocks and shader groups are
     Oodle-compressed, two layers, so they need decode (OodleHost: the game's decoder over a pipe) rather than the job"""
     os.makedirs(os.path.join(work, 'archives'), exist_ok=True)
     keys = Keys([main_nso]); listing, recs = [], []
@@ -832,7 +832,7 @@ def raw_record(s):
     return found
 
 def sage_record(s):
-    """A decoded Switch 2 shader (Unreal Engine 5.4's SP_GLSL_SAGE, Yoshi and the Mysterious Book): a 0x3e-byte header with no magic, u32 name length, the name ("Global/<type>/0:/Engine/Private/<file>.usf|<entry>"),
+    """A decoded Switch 2 shader (Unreal Engine 5.4's SP_GLSL_SAGE, another game): a 0x3e-byte header with no magic, u32 name length, the name ("Global/<type>/0:/Engine/Private/<file>.usf|<entry>"),
     u32 code length, the code area (Ampere), u32 control length, the control section (an NVN2 one, version 0xc9) and a tail of 12 bytes. → (name, control section, code area), or None if the layout differs"""
     k = s.find(CTL_NVN2)
     if k < 12 or k + 0x48 > len(s): return None
@@ -845,7 +845,7 @@ OODLE_BLOCK = re.compile(b'\x8c[\x06\x0a\x0b\x0c]')   # the first bytes of a str
 def shader_map_entries(d, proved=None):
     """The entries of the FShaderMapResourceCode tables in a cooked package or global shader cache whose shaders Oodle compressed: a count, that many 20-byte hashes, the count again, then
     that many {i32 length, code, i32 raw size, u8 frequency}. A table is found by a first entry's stream and held by its two counts and by the walk over all its entries, as a stream's two first bytes
-    turn up inside other data. That is no proof: an entry of a package's export list reads as a one-entry table (OCTOPATH TRAVELER II: name number 1, flags 8, then the 8 bytes of the size 0xb8c and
+    turn up inside other data. That is no proof: an entry of a package's export list reads as a one-entry table (another game: name number 1, flags 8, then the 8 bytes of the size 0xb8c and
     the offset 30650). So proved(first row), when given, has the last word, as a decode has for the other streams of a blind scan, and a table it refuses hides nothing that lies inside it.
     → [(offset of the code, length, raw size, frequency)] of the tables that hold"""
     out, end = [], 0

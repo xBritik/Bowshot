@@ -1,6 +1,6 @@
 """A size query takes its texture's type from the shader's other instructions on that texture (dmsh_xlate Accessor.TextureTypesOf), using synthetic shaders only.
 
-The handle of a bindless TXQ and of a TEX OR the same texture word in c[2] with different sampler words, so they are two bindings of one texture slot, as in Princess Peach: Showtime!.
+The handle of a bindless TXQ and of a TEX OR the same texture word in c[2] with different sampler words, so they are two bindings of one texture slot, as in another game.
 Needs the translator:
   DMSH_TEST_XLATE=$PWD/dm/gfx/tools/dmsh_xlate_bin/dmsh_xlate python3 -m unittest discover -s dm/tools/tests -p test_txq_type.py -v
 No game inputs are used.

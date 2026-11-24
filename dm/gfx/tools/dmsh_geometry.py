@@ -136,7 +136,7 @@ def output_words(src):
             offset = {'point_size': 4, 'render_target_array_index': 13, 'viewport_array_index': 14}[v[3]]
             stores.append((offset, f'out.{v[2]}'))
             continue
-        # spirv-cross writes the array size after the attribute (float gl_ClipDistance [[clip_distance]] [8]; Luigi's Mansion 3's vertex shaders)
+        # spirv-cross writes the array size after the attribute (float gl_ClipDistance [[clip_distance]] [8]; another game's vertex shaders)
         v = re.fullmatch(r'float (\w+)(?:\[(\d+)\])? \[\[clip_distance\]\](?: \[(\d+)\])?;', line)
         if v and (v[2] or v[3]) and int(v[2] or v[3]) <= 8:
             stores += [(5 + c, f'out.{v[1]}[{c}]') for c in range(int(v[2] or v[3]))]
@@ -176,7 +176,7 @@ def flatten_sets(path):
 
 def topology_pointer(src):
     """Topology remap uses uint words; avoid allocating a texture view per draw. The table may also be passed to a helper function SPIRV-Cross made of a block the shader reaches from several places
-    (Kirby Air Riders: 26 of its 76 geometry shaders), so a parameter of that name is one more place to rewrite, and its reads have no descriptor set in front."""
+    (another game: 26 of its 76 geometry shaders), so a parameter of that name is one more place to rewrite, and its reads have no descriptor set in front."""
     src, n = re.subn(r'texture_buffer<float> trb_data', 'device const uint* trb_data', src)
     if not n or 'trb_data [[id(' not in src:
         raise ValueError('missing geometry topology buffer')

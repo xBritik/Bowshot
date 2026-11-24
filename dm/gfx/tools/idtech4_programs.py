@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# id Tech 4's BFG Edition renderer (DOOM 3 on the Switch) makes its GLSL at run time: idRenderProgManager converts a render program of its .resources containers
+# id Tech 4's BFG Edition renderer (another game on the Switch) makes its GLSL at run time: idRenderProgManager converts a render program of its .resources containers
 # (renderprogs/<name>.vertex / .pixel, HLSL-like source) to GLSL 1.50 and compiles it the first time the renderer or a material uses it, so a capture run that only plays the
-# game gets the programs it happened to draw with (DOOM 3: 62 of 82 stages by the first level). This finds the renderer's own finders in main and lists every render program,
+# game gets the programs it happened to draw with (another game: 62 of 82 stages by the first level). This finds the renderer's own finders in main and lists every render program,
 # so the Mac host's capture run can have the game convert each one (hle_gl.m, DM_GL_RENDERPROGS): the GLSL is then the game's own text, which the host finds by its hash.
 # Found from the renderer's code, not from addresses (any build of the engine):
 #   · the shader loader: the one function whose code takes the address of its GLSL cache path "renderprogs\glsl\%s" (adrp + add);

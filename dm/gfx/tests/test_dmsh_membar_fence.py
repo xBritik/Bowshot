@@ -2,7 +2,7 @@
 """MEMBAR as a fence and BAR.SYNC as a barrier, as SPIRV-Cross writes them with the chain's options (dmsh_chain.CROSS_MSL, MSL 3.2): OpMemoryBarrier (MEMBAR.CTA, Workgroup scope;
 MEMBAR.GL / .SYS and Ampere's MEMBAR, Device scope) is an atomic_thread_fence of that scope with no execution barrier, and an OpControlBarrier (BAR.SYNC) right after one stays a
 threadgroup_barrier. Below MSL 3.2 SPIRV-Cross wrote both MEMBARs as one threadgroup_barrier and left that BAR.SYNC out, and the text rule that made the line a fence (membar_fence) left
-the group with no barrier at all (GitHub issue #2786: Fire Emblem: Three Houses hung an A17 Pro's GPU). The modules are written here word by word, so only spirv-cross is needed; with
+the group with no barrier at all (GitHub issue #2786: another game hung an A17 Pro's GPU). The modules are written here word by word, so only spirv-cross is needed; with
 DMSH_TEST_METAL=1 the MSL also compiles with the Mac's and the iPhone's compile, and with DMSH_TEST_XLATE a Maxwell MEMBAR.CTA; BAR.SYNC goes through the translator too."""
 from pathlib import Path
 import json
@@ -65,7 +65,7 @@ class MembarFence(unittest.TestCase):
         self.assertEqual(barriers(msl), [FENCE % 'threadgroup', BAR, FENCE % 'device', BAR])
 
     def test_membar_alone_waits_for_no_one(self):
-        # PRAGMATA's GPU culling queue 12a52b683eec95c1: MEMBAR.SC.GPU; ERRBAR in a persistent loop and no BAR.SYNC. Lanes that are not converged must not wait for each other there
+        # Another game's GPU culling queue 12a52b683eec95c1: MEMBAR.SC.GPU; ERRBAR in a persistent loop and no BAR.SYNC. Lanes that are not converged must not wait for each other there
         msl = cross(module([('membar', DEVICE), ('membar', DEVICE)]))
         self.assertNotIn('threadgroup_barrier', msl)
         self.assertEqual(barriers(msl), [FENCE % 'device'] * 2)

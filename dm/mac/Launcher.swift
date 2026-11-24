@@ -197,6 +197,9 @@ struct LauncherView: View {
                 fit(extraHeight)
             }
             HStack {
+                if let v = Bundle.main.object(forInfoDictionaryKey: "BowshotVersion") as? String, !v.isEmpty {   // Bowshot: the builder this app was made with
+                    Text("Built with Bowshot \(v)").font(.footnote).foregroundStyle(.secondary)
+                }
                 Spacer()
                 if checking {
                     ProgressView().controlSize(.small)

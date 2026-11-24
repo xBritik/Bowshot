@@ -2,14 +2,14 @@
 """Collect the NRO modules a game registers (nn::ro): every SHA-256 its NRR files list (RomFS .nrr/*.nrr), found as loose files or inside the RomFS's archives.
 Usage: nro_collect.py <RomFS> <out dir> [<nrr name>] [--missing-ok]
 Writes <out dir>/<name>.nro for each registered NRO found and <out dir>/nro.tsv (name, SHA-256, size, NRR, where it was found); exits 1 when a registered hash is not found.
-With --missing-ok such a hash goes to <out dir>/missing.tsv (SHA-256, NRR) instead: a game may decode its NRO at run time, so that no file holds it (Mario Tennis Fever), and the NSP script then captures it from a boot.
+With --missing-ok such a hash goes to <out dir>/missing.tsv (SHA-256, NRR) instead: a game may decode its NRO at run time, so that no file holds it (another game), and the NSP script then captures it from a boot.
 An online SDK (ONLINE_SDKS: Epic Online Services, by its export EOS_Platform_Create) is listed with the name 'refused' and not written: the host refuses to load it.
-<nrr name> picks one NRR (default: every NRR; Super Smash Bros. Ultimate 13.0.5 ships 14, one per release, cross2_130004.nrr the newest, with the 98 current hashes).
+<nrr name> picks one NRR (default: every NRR; another game 13.0.5 ships 14, one per release, cross2_130004.nrr the newest, with the 98 current hashes).
 The game passes nn::ro::LoadModule the NRO's bytes; the host finds the rewritten copy by that SHA-256 (hle_ro.c), so the names here are only labels: nro<index> in hash order.
-Where: a loose file whose bytes at +0x10 are NRO0 (Hades and Hades II ship their EOS SDK so); the .nro files among the current files of an archive with an index (Super Smash Bros. Ultimate's data.arc,
+Where: a loose file whose bytes at +0x10 are NRO0 (another game and another game ship their EOS SDK so); the .nro files among the current files of an archive with an index (another game's data.arc,
 read by dm/gfx/tools/smash_arc.py: 98 NROs, while the NRRs of every older release also register 666 superseded copies the archive still holds, which are left out); else a scan of the
 other RomFS files for stored NROs and zstd frames that inflate to one (on data.arc: all 764 registered hashes in 7 minutes); and NERD's Hagi .nrolz files, an NRO compressed with
-LZ4 (the uncompressed size as a big-endian u32, then one LZ4 block), which Hagi unpacks and loads (Super Mario 3D All-Stars' Super Mario Sunshine: its statically recompiled game)."""
+LZ4 (the uncompressed size as a big-endian u32, then one LZ4 block), which Hagi unpacks and loads (another game' Super Mario Sunshine: its statically recompiled game)."""
 import hashlib, struct, sys
 from multiprocessing import Pool
 from romfs import os, open, mmap
@@ -32,7 +32,7 @@ def nrr_hashes(romfs, only=None):
             if not f.endswith('.nrr') or (only and f != only): continue
             d = open(os.path.join(dp, f), 'rb').read()
             if d[:4] != b'NRR0': continue
-            off, cnt = struct.unpack_from('<II', d, 0x4c0 if d[5] == 1 else 0x340)   # version 1, the Switch 2's (Mario Tennis Fever), has a header 0x180 bytes longer
+            off, cnt = struct.unpack_from('<II', d, 0x4c0 if d[5] == 1 else 0x340)   # version 1, the Switch 2's (another game), has a header 0x180 bytes longer
             for i in range(cnt): out.setdefault(d[off + 32 * i:off + 32 * i + 32], f)
     return out
 
@@ -77,7 +77,7 @@ def scan(job):
     return out
 
 
-# Online SDKs the host never loads, by what the module exports, whatever the game: Epic Online Services (Hades and Hades II load rom:/nro/EOSSDK-Switch-Shipping.nro; Hades' main
+# Online SDKs the host never loads, by what the module exports, whatever the game: Epic Online Services (another game and another game load rom:/nro/EOSSDK-Switch-Shipping.nro; another game' main
 # imports only EOS Auth, Connect and PlayerDataStorage, Epic-account cross-save the host cannot serve). Running it would at best fail its login, at worst wait on time-outs or contact
 # Epic's servers with a console identity the host makes up; refused, the game plays offline with local saves, as before the host loaded NROs
 ONLINE_SDKS = {'EOS_Platform_Create': 'Epic Online Services SDK'}
@@ -118,7 +118,7 @@ def main():
                 body = open(p, 'rb').read(); h = hashlib.sha256(body).digest()
                 if h in want: found[h] = (os.path.relpath(p, romfs), 'loose', body)
             elif head[:8] == smash_arc.MAGIC:
-                # an archive with an index (Super Smash Bros. Ultimate's data.arc): the .nro files among its current files. Its superseded copies, which every older release's NRR still
+                # an archive with an index (another game's data.arc): the .nro files among its current files. Its superseded copies, which every older release's NRR still
                 # registers (764 hashes in 14 NRRs, 98 current), are never loaded and are left out
                 indexed += 1; nro = smash_arc.hash40('nro')
                 with open(p, 'rb') as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as m:

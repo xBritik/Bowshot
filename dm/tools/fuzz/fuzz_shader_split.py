@@ -112,7 +112,7 @@ def arh1():
 
 def rgxd():
     """A RAGE effect: 'rgxd', a parameter name, then one record per shader {u32 length, GLSLC's magic, u32 code length, u32 control length}, the code area, the control section; the second
-    control section carries 12 bytes past its own length, as 919 of Red Dead Redemption's do"""
+    control section carries 12 bytes past its own length, as 919 of another game's do"""
     d = bytearray(b'rgxd' + bytes(4) + b'\x07gWorld\0')
     for (ctl, code), extra in ((VS, b''), (PS, bytes(12))):
         c = ctl + extra; d += struct.pack('<I', 0x10 + len(code) + len(c)) + GLSLC + struct.pack('<II', len(code), len(c)) + code + c

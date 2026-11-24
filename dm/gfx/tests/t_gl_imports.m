@@ -328,7 +328,7 @@ static void test_packed_uploads(void) {
     puts("GL packed uploads (RGB10_A2, R11F_G11F_B10F): OK");
 }
 
-// What DOOM 3's renderer (id Tech 4's BFG Edition) needs of the layer: its ARB names and extension check, named uniform blocks bound by range, two-sided stencil, frame copies into
+// What another game's renderer (id Tech 4's BFG Edition) needs of the layer: its ARB names and extension check, named uniform blocks bound by range, two-sided stencil, frame copies into
 // a texture, streamed compressed images, byte-swapped 16-bit images, programs with a vertex shader alone, sync queries and wireframe
 static void test_doom3(void) {
     // An ARB name of a core function gets the core entry; ARB_fragment_program's own names have theirs; an ARB name of nothing stays missing
@@ -497,7 +497,7 @@ static uint32_t draw_texel(tex_t *t, id<MTLSamplerState> s) {
     return px[5];
 }
 
-// GL sampler objects (Mega Man Legacy Collection sets its filters and wraps on one per unit, none on its textures), and uniform locations, of which none is 0
+// GL sampler objects (another game sets its filters and wraps on one per unit, none on its textures), and uniform locations, of which none is 0
 static void test_sampler_objects(int gpu) {
     const uint32_t red = 0xff0000ffu, green = 0xff00ff00u;
     uint32_t l0[16], l1[4]; for (int i = 0; i < 16; i++) l0[i] = red; for (int i = 0; i < 4; i++) l1[i] = green;
@@ -537,7 +537,7 @@ static void test_sampler_objects(int gpu) {
     S.prog = was; p->linked = 0; p->nu = 0; p->u = NULL; h_glDeleteProgram(pr);
 }
 
-// Extension names by gl_aliases.h (Fate/hollow ataraxia REMASTERED asks for its framebuffer functions by their EXT names, issue #2818), never by a stripped suffix; binds that
+// Extension names by gl_aliases.h (another game asks for its framebuffer functions by their EXT names, issue #2818), never by a stripped suffix; binds that
 // make a name glGen* never gave; EGL's current context, display and surfaces, per thread
 typedef struct { void *before, *after; EGLBoolean bound; EGLint error, next_error; } egl_attempt;
 static void *other_thread(void *arg) {
@@ -575,7 +575,7 @@ static void test_extension_names_and_egl(void) {
     h_eglMakeCurrent(d, (EGLSurface)3, (EGLSurface)3, (EGLContext)2); h_eglReleaseThread(); assert(!h_eglGetCurrentContext());
 }
 
-// The other calls Fate/hollow ataraxia REMASTERED makes that the layer lacked (issue #2818): glValidateProgram after each link, glLineWidth, glClearTexImage on its new textures
+// The other calls another game makes that the layer lacked (issue #2818): glValidateProgram after each link, glLineWidth, glClearTexImage on its new textures
 static void test_program_validation(void) {
     static shsamp samplers[] = {{"flat", 0, T_SAMP2D}, {"cube", 1, T_SAMPCUBE}};
     static shinfo vsi = {.ub_slot = -1}, fsi = {.frag = 1, .ub_slot = -1, .nt = 2, .t = samplers};
@@ -1499,7 +1499,7 @@ int main(int argc, char **argv) {
     assert((h_eglGetProcAddress(missing) != NULL) == stubs);
     assert(resolve_import(NULL, missing) == (uint64_t)&unimpl_stubs[0]);
     assert(!strcmp(wrap_kind, "STUB"));
-    printf("GL imports: %u shared entries, shader handle/source, shader and program lifetimes, the error flag, a depth texture's data, vertex formats and bindings, the uniform buffer target, compressed 2D arrays, DOOM 3's calls (ARB names, extensions, named blocks, two-sided stencil, frame copies, compressed and byte-swapped images, vertex-only programs), sampler objects and uniform locations, extension names and EGL's current binding, Fate's program validation, line width and texture clears, fixed-function capability diagnostics, wrappers and missing names (DM_GL_STUBS=%d): OK\n", count, stubs);
+    printf("GL imports: %u shared entries, shader handle/source, shader and program lifetimes, the error flag, a depth texture's data, vertex formats and bindings, the uniform buffer target, compressed 2D arrays, another game's calls (ARB names, extensions, named blocks, two-sided stencil, frame copies, compressed and byte-swapped images, vertex-only programs), sampler objects and uniform locations, extension names and EGL's current binding, Fate's program validation, line width and texture clears, fixed-function capability diagnostics, wrappers and missing names (DM_GL_STUBS=%d): OK\n", count, stubs);
     printf("GL rendering (stride 0, texture LOD bias, sampler objects): %s\n", cpu ? "not run (--cpu)" : "OK");
     return 0;
 }

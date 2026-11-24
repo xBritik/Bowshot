@@ -254,7 +254,7 @@ int main(void) {
     multi_open = 0;
     free(work2);
     free(work);
-    // The output device notification: a second acquire is refused until a release, which destroys the event as the SDK's does (Nintendo Switch Sports Resort, main+0x3af119c)
+    // The output device notification: a second acquire is refused until a release, which destroys the event as the SDK's does (another game, main+0x3af119c)
     h_ad_NotifyRelease21(notify_event);   // never acquired: nothing to destroy
     assert(notify_destroys == 0);
     assert(h_ad_Notify21(notify_event) == RES_OK);

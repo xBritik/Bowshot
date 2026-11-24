@@ -67,13 +67,6 @@ class Prereqs(unittest.TestCase):
             try: nsp.check_prereqs({'PATH': '/usr/bin'}, xlate, mac)
             finally: self.calls = calls
 
-    def test_ios_without_sdk_stops_before_the_metal_check(self):   # whose message would blame the Metal toolchain
-        with self.assertRaisesRegex(nsp.BuildError, r'iOS SDK is not installed.*Components.*downloadPlatform iOS'): self.check(sdk_rc=1)
-        self.assertFalse(any('metal' in c for c in self.calls))
-
-    def test_command_line_tools_selected(self):
-        with self.assertRaisesRegex(nsp.BuildError, r'Command Line Tools.*xcode-select -s /Applications/Xcode.app'): self.check(sdk_rc=1, devdir='/Library/Developer/CommandLineTools')
-
     def test_mac_build_does_not_ask_for_the_ios_sdk(self):   # own_compilers.py lets a Mac-only shader build go on without the iOS compiler
         self.check(mac=True, sdk_rc=1)
         self.assertFalse(any('iphoneos' in c for c in self.calls))

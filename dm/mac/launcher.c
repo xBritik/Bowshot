@@ -167,7 +167,7 @@ static void microphone_at_launch(void) {
     if (value) CFRelease(value);
 }
 
-// A game of several programs (Super Mario 3D All-Stars): pack_app.py's table of them, with this app's paths filled in (it may move), for oe::ExecuteProgram (DM_PROGRAMS, hle_oe.c)
+// A game of several programs (another game): pack_app.py's table of them, with this app's paths filled in (it may move), for oe::ExecuteProgram (DM_PROGRAMS, hle_oe.c)
 static void programs_table(const char *contents, const char *res, const char *sup) {
     char in[PATH_MAX], out[PATH_MAX]; snprintf(in, sizeof in, "%s/dm/programs.tsv", res); snprintf(out, sizeof out, "%s/programs.tsv", sup);
     FILE *f = fopen(in, "r"); if (!f) return;

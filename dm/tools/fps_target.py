@@ -5,8 +5,8 @@ The field is an int32 frame rate in an object a global points to. Its readers lo
 they step the game (ldr sN, [xB, #F]; scvtf sC, sN; fdiv sD, s60, sC, the 60.0 made by movz wK, #0x4270, lsl #16 and fmov). The game sets it with an immediate 30 or 60 (str wK, [xB, #F]).
 The object's address is loaded from the global each time: ldr xB, [xA], xA made by adrp + add (the global) or adrp + ldr (its GOT slot, the module's relative relocations applied).
 A field with at least MIN_READERS such readers and a store of 30 is the target; exactly one must be, or nothing is written (two give a [RED] line).
-Found on Fire Emblem Fortune's Weave v131072 (Intelligent Systems' engine, its gxc graphics object; 59 readers, 30 set where gameplay starts and 60 for the title and menus, and its present
-asks for interval 60 / target). Checked on 100 mains on the drives (2026-11-03): it finds 55 of those 59 readers, and not one reader in any other main, Paper Mario: The Origami King
+Found on another game v131072 (Intelligent Systems' engine, its gxc graphics object; 59 readers, 30 set where gameplay starts and 60 for the title and menus, and its present
+asks for interval 60 / target). Checked on 100 mains on the drives (2026-11-03): it finds 55 of those 59 readers, and not one reader in any other main, another game
 and The Thousand-Year Door (Intelligent Systems' older engine) among them.
 Usage on its own: fps_target.py <module>... (what it finds in each)"""
 import struct, sys, os

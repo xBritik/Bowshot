@@ -9,7 +9,7 @@ import bisect, collections, itertools, re
 import dmsh_abi as abi, dmsh_side
 
 # spirv-cross writes the translator's FMin / FMax / FClamp as fast::min / max / clamp, whose result for a NaN operand is the GPU's choice; Maxwell's FMNMX returns the other operand
-# and its saturation gives 0, as Metal's precise:: functions (IEEE fmin / fmax) do on every GPU. The M4 Pro's fast ones happen to agree, an A20 Pro's do not: Super Mario Galaxy 2's
+# and its saturation gives 0, as Metal's precise:: functions (IEEE fmin / fmax) do on every GPU. The M4 Pro's fast ones happen to agree, an A20 Pro's do not: another game's
 # GX lighting takes max(0, NaN) from light directions left at zero, and the half of Mario its fill light faces came out white on the iPhone (GitHub issue 72; vk_shaders.py PRECISE)
 def precise(msl): return re.sub(r'\bfast::(min|max|clamp)\(', r'precise::\1(', msl)
 
@@ -18,7 +18,7 @@ PER_VERTEX_IN = re.compile(r'\n    float4 dm_pv(\d+)_([012]) \[\[user\(locn(\d+)
 VERTEX_INDEX = ('first', 'second', 'third')
 METAL4 = 'vertex_value<'   # in a source that needs MSL 4.0 (ios_metal.compile)
 def per_vertex(msl):
-    """A user attribute as each vertex of the triangle holds it, which Ampere's LDTRAM reads in a pixel shader (fragment shader barycentrics: Resident Evil 4's shaders weigh
+    """A user attribute as each vertex of the triangle holds it, which Ampere's LDTRAM reads in a pixel shader (fragment shader barycentrics: another game's shaders weigh
     the three values with the barycentric coordinates themselves). SPIRV-Cross has no MSL form of SPIR-V's PerVertexKHR, so the translator declares each vertex read as a flat
     input of its own, dm_pv<L>_<v> at user(locn<64 + 3L + v>) (InstEmitAmpereMem ALdTram). Here the reads of attribute L become one vertex_value<float4> at user(locn<L>), which the
     vertex shader's output there feeds, and each read that vertex's get(vertex_index::...): the vertices the [[barycentric_coord]] weights refer to, as on NVIDIA.
@@ -55,7 +55,7 @@ def bit0_mask(msl):
     two users in the AIR, a sign extension and a branch, and Apple's GPU compiler for the M3 and later (applegpu_g15 and up, macOS 26 and 27) can pick a bit-test jump it has
     no encoding for: `LLVM ERROR: Failed to encode.` under llvm::MCObjectStreamer::emitInstruction, which ends the compiler service while a pipeline with the shader is built
     (XPC_ERROR_CONNECTION_INTERRUPTED). It needs x in a uniform the compiler's per-draw constant program has loaded and no room left there for the test itself, so one
-    shader in thousands with the idiom meets it: PRAGMATA's pixel shader c4ac3ca598cea32e (`AND` of a constant buffer word with 1, its predicate kept and branched on).
+    shader in thousands with the idiom meets it: another game's pixel shader c4ac3ca598cea32e (`AND` of a constant buffer word with 1, its predicate kept and branched on).
     With the mask as `-(x & 1)`, the same value, the compare is left with its branch alone. Only a declaration `int a = ... & 1;` with a declaration `bool b = a != 0;`
     counts, neither assigned again (SPIRV-Cross temporaries); b is in scope where the mask is taken, so a is. Other shaders come back as the same object"""
     if ' ? (-1) : 0;' not in msl: return msl
@@ -80,7 +80,7 @@ TG_FENCE_FN = re.compile(r'\bvoid dmsh_tg_fence\(\)\s*\{')   # tg_fence looks fo
 def tg_fence(src):
     """Warp-synchronous shared memory. Ampere code relies on lockstep warps and leaves the barrier out of small scans (Unreal's GPU radix sort downsweep d032ce5090303e01
     at 0x2eb0: STS / LDS [x-4] / STS / LDS [x-8]); for one thread the load and the earlier store do not alias, so Metal moves the load above the store and reads another
-    lane's old value (Orbitals: Niagara's sorted index list wrong every frame, PR #1775). The translator calls dmsh_tg_fence() before each shared memory load that some path
+    lane's old value (another game: Niagara's sorted index list wrong every frame, PR #1775). The translator calls dmsh_tg_fence() before each shared memory load that some path
     reaches from a shared memory store with no barrier between (SharedMemoryFence.cs). Its body there is a memory barrier at workgroup scope, which SPIRV-Cross prints as a
     threadgroup-scope fence on every memory (MSL 3.2); here it becomes a simdgroup-scope fence on threadgroup memory, which is the order a warp needs and, not being
     an execution barrier, safe in divergent code. A kernel whose arrays spill to device memory gets the device scope too (tg_spill, after this). The text rule before it put a
@@ -152,7 +152,7 @@ def mul_extended(msl):
 # on a scalar as a conditional expression and forwards the load into it, cond ? read : 0, which reads only when the condition holds: Metal's compiler makes a branch, a load inside it
 # and a phi of every bounded read (seen in its LLVM IR at -O1 and -O2), where select(0, read, cond) is one load and a select. select_guards writes every bounded read as that select,
 # the translator's own meaning.
-# The branches are also what an M1's compiler gets wrong (GitHub PR #2127, macOS 26 on an M1 Pro, when reads at fixed offsets were bounded so too): OCTOPATH TRAVELER's tree material
+# The branches are also what an M1's compiler gets wrong (GitHub PR #2127, macOS 26 on an M1 Pro, when reads at fixed offsets were bounded so too): another game's tree material
 # (pixel shader 040208cd98c2ac2f) wrote a wrong volumetric lightmap word to G-buffer target 5 whenever a tree dither-faded, with every guard true; the lighting made NaN of it and
 # depth of field spread that into blue, green and white blocks. Which compiler step fails is not known (the same source was right at -O0, without the guards and with select; not
 # seen on newer Macs or an iPhone).
@@ -221,7 +221,7 @@ def select_guards(msl):
 # A game uniform word tested against integer constants, as the translator writes a GLSL switch (Ryujinx's structurizer: one test of the word per case, flags for the fall-throughs,
 # the cases nested in each other): bool _5 = as_type<int>((*spvDescriptorSet0.fp_c5)._m0[16].w) != 102. The Metal front end's SimplifyCFG (at -O1 too) folds a chain of blocks
 # that each hold only such a test of one value into a switch, whose cases jump into the nested blocks past their joins. Apple's GPU compiler then takes a pixel shader with dozens of
-# such switches for hours and tens of gigabytes (applegpu-nt, metal-tt 32023.922): Nintendo Switch Sports Resort's material pixel shader 692008b305ce264f (42 switches) ran past
+# such switches for hours and tens of gigabytes (applegpu-nt, metal-tt 32023.922): another game's material pixel shader 692008b305ce264f (42 switches) ran past
 # 10 minutes and 13 GB alone where it had taken 7 s, and the Mac app's pipeline archive spent 15 hours on four pipelines. The reads were plain since the host pads a short binding
 # (select_guards): before that, each read's bounds test sat in the test's block and nothing was folded. Each tested read becomes a volatile load of its word
 # (dm_uword), which the front end can neither merge with the next test's nor move out of its block, so no chain is folded; a uniform load per test is less than the bounds test
@@ -609,16 +609,16 @@ def hmma_msl(msl):
         msl = msl[:a] + text + msl[b:]
     return msl
 
-# A store only the very first invocation of a dispatch makes (a compute shader's preamble: `if (-local.x == workgroup.x << log2(local size)) buffer[k] = value`). Hoian_Proc in Splatoon Raiders resets its append counter
+# A store only the very first invocation of a dispatch makes (a compute shader's preamble: `if (-local.x == workgroup.x << log2(local size)) buffer[k] = value`). Hoian_Proc in another game resets its append counter
 # that way, with the other invocations adding to the counter at their end, hundreds of instructions later. On the Switch the first workgroup starts ahead of them. Apple's GPUs start workgroups in no order: a workgroup that had appended before
 # the reset lost its plants to the next one's, a different few each frame, and they flickered. So the store leaves the shader and the host makes it, in order, before the dispatch (the reflection's first_store, nvn_mtl.m). Only this exact
 # condition counts: it holds for one invocation of a dispatch with a flat local size. The stores may come one guarded block at a time, and a value may be a local set under the same guard, as in
-# Mario Kart World's scenery lists (2ce9071c2f22d74f, 5fea9b7ddb30e8a8: `int a = -local; if (first) a = 1; int b = a; if (first) x[0] = 0; if (first) x[2] = b; ...`): the race took a different
+# Another game's scenery lists (2ce9071c2f22d74f, 5fea9b7ddb30e8a8: `int a = -local; if (first) a = 1; int b = a; if (first) x[0] = 0; if (first) x[2] = b; ...`): the race took a different
 # block of trees out of the list at each rebuild. A guarded store left over that is not understood leaves the whole shader as it is. Returns the shader and [(storage binding's MSL name, word, value)]
 FIRST_STORE = re.compile(r'float (\w+) = as_type<float>\(gl_WorkGroupID\.x\);\s*float (\w+) = as_type<float>\(gl_LocalInvocationID\.x\);\s*int (\w+) = as_type<int>\(\1\) << (\d+);\s*'
                          r'int (\w+) = ~as_type<int>\(\2\);\s*int (\w+) = \5 \+ 1;\s*bool (\w+) = \6 != \3;\s*')
 
-# A local size with rows: the same test on y and x, and workgroup z zero (Mario Kart World's 0823b08c2027a38d, local size 8x8)
+# A local size with rows: the same test on y and x, and workgroup z zero (another game's 0823b08c2027a38d, local size 8x8)
 FIRST_STORE_2D = re.compile(r'float (\w+) = as_type<float>\(gl_WorkGroupID\.y\);\s*float (\w+) = as_type<float>\(gl_LocalInvocationID\.y\);\s*float (\w+) = as_type<float>\(gl_LocalInvocationID\.x\);\s*'
                             r'float (\w+) = as_type<float>\(gl_WorkGroupID\.x\);\s*float (\w+) = as_type<float>\(gl_WorkGroupID\.z\);\s*'
                             r'int (\w+) = as_type<int>\(\1\) << (\d+);\s*int (\w+) = ~as_type<int>\(\2\);\s*int (\w+) = \8 \+ 1;\s*bool (\w+) = \9 != \6;\s*'
@@ -715,7 +715,7 @@ def max_threads(msl, local):
     return re.sub(r'^(kernel void main0\()', '[[max_total_threads_per_threadgroup(%d)]]\n\\1' % n, msl, count=1, flags=re.M)
 
 # Compute shared memory past Metal's limit: Apple's GPUs give a kernel 32 KB of threadgroup memory (maxThreadgroupMemoryLength), and Metal refuses a pipeline that declares more, while Ampere
-# gives up to 100 KB. Mario Kart World's DrivePassShaderDefault has 168 compute shaders of 48 KB (spvUnsafeArray<uint, 12288>), seven of them run on the way to the first race; refused, their
+# gives up to 100 KB. Another game's DrivePassShaderDefault has 168 compute shaders of 48 KB (spvUnsafeArray<uint, 12288>), seven of them run on the way to the first race; refused, their
 # dispatches were skipped. Such a kernel takes its threadgroup arrays from a device buffer the host binds (abi.TG_SLOT): one slice of the arrays' total per workgroup, at the workgroup's index in
 # the whole grid, so no two workgroups of a dispatch share one (the host sizes the buffer from the grid: nvn_mtl.m dispatch). A slice index modulo 512 shared them: Apple's GPUs start workgroups in
 # no order, and an M6 ran groups 512 apart at the same time from 1,024 groups up (shaders.md, Compute shared memory past 32 KB). Its threadgroup barriers order device memory too, and threadgroup
@@ -859,7 +859,7 @@ template<typename V, typename T, typename... A> static inline __attribute__((alw
 
 # The corrections also depend on the function constant abi.BORDER_FC: the host sets it (true: off) for a pipeline whose draw or dispatch binds no sampler with a twin, the usual case,
 # and the twin samples are compiled out with the registers they kept live. A uniform branch still costs them: Ocarina of Time's 1080p material passes spilled 300-400 bytes a thread,
-# 1.5 ms of a 26.7 ms frame on a MacBook Air M4, and its kernels, NDSR's network among them, 0.25 ms more (PR #1929); Splatoon Raiders' c0ae76e0ca76b574 spilled 592 bytes a thread
+# 1.5 ms of a 26.7 ms frame on a MacBook Air M4, and its kernels, NDSR's network among them, 0.25 ms more (PR #1929); another game' c0ae76e0ca76b574 spilled 592 bytes a thread
 # and none without them (PR #1203). A pipeline the host does not specialize leaves the constant undefined: every sample corrects as its bit says
 BORDER_LIVE_FC = (f'constant bool dm_border_off [[function_constant({abi.BORDER_FC})]];\n'
                   'constant bool dm_border_live = !is_function_constant_defined(dm_border_off) || !dm_border_off;\n#define DM_BORDER_LIVE dm_border_live\n')
@@ -896,7 +896,7 @@ def border_emu(msl):
 # gl_FragCoord.z against a depth the shader read. NVIDIA stores a fragment's depth as the z its pixel shader reads, so a shader can test a fragment against a depth image of its own surface and
 # find them equal. Apple's GPU stores a value below the [[position]].z its fragment shader reads at some pixels: by up to one ulp of z plus a fraction of the depth's step across a pixel
 # (dm/gfx/tests/t_zsnap.m: 0.2% of a perspective triangle's pixels, 2% of flat ones, none above, the largest gap one ulp plus 2^-23 of fwidth(z)); writing [[position]].z as the depth would
-# keep them equal, but takes the depth test after the shader, and the depth a prepass stores would then fail an EQUAL pass on the same geometry (Metroid Dread's G-buffer).
+# keep them equal, but takes the depth test after the shader, and the depth a prepass stores would then fail an EQUAL pass on the same geometry (another game's G-buffer).
 # Ocarina of Time's mist discards a fragment whose gl_FragCoord.z is above the depth its depth-only pass stored, and lost its own surface at scattered pixels: dark dots flickering in the mist.
 # So where gl_FragCoord.z and a value read from a texture meet in one comparison of main0, through any arithmetic on either side (the mist's z > d; z * k > d * k), the z read takes that value
 # when it lies in the window the stored depth of the fragment's own surface can take, [z - ulp(z) - 2^-20 fwidth(z), z): the comparison then sees the equality NVIDIA's does, whatever its

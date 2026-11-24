@@ -124,7 +124,7 @@ HLE_FORCE("_ZN2nn7account37LoadNetworkServiceAccountIdTokenCacheEPmPcmRKNS0_10Us
     (void)buf; (void)sz; (void)h; if (n) *n = 0; return RES_FAIL;
 }
 HLE_FORCE("_ZN2nn7account40ShowLicenseRequirementsForNetworkServiceERKNS0_10UserHandleE", "online membership notice applet, out of scope; cut", Result, h_acc_ShowLic, const UserHandle *h) { (void)h; return RES_FAIL; }
-// The Nintendo Account's cached profile (birthday, country): no Nintendo Account is linked on the host, so loading fails and the game skips its getters (Big Brain Academy: Brain vs. Brain, main+0xab8bc)
+// The Nintendo Account's cached profile (birthday, country): no Nintendo Account is linked on the host, so loading fails and the game skips its getters (another game, main+0xab8bc)
 HLE_FORCE("_ZN2nn7account29LoadCachedNintendoAccountInfoEPNS0_25CachedNintendoAccountInfoERKNS0_10UserHandleEPvm", "cached Nintendo Account info: none linked, fails", Result, h_acc_LoadNaInfo,
           void *info, const UserHandle *h, void *buf, uint64_t sz) { (void)info; (void)h; (void)buf; (void)sz; return RES_FAIL; }
 
@@ -163,7 +163,7 @@ HLE_FORCE("_ZN2nn7account12GetUserCountEPi", "number of registered local users",
 HLE_FORCE("_ZN2nn7account18ListQualifiedUsersEPiPNS0_3UidEi", "local users qualified for offline play", Result, h_acc_ListQual, int *n, Uid *out, int max) { return h_acc_ListAll(n, out, max); }
 HLE_FORCE("_ZN2nn7account16GetUserExistenceEPbRKNS0_3UidE", "whether the UID is registered", Result, h_acc_Exists, uint8_t *out, const Uid *uid) { *out = dm_account_user(uid) >= 0; return RES_OK; }
 HLE_FORCE("_ZN2nn7account15ShowUserCreatorEv", "native user creation, persisted before returning", Result, h_acc_ShowCreator, void) { DM_APPLET("user creator"); Uid uid; return show_selector(&uid, NULL, 1); }
-// Every user on a console has a profile image, a 256x256 JPEG, and games decode it without checking the Result: Burnout Paradise Remastered handed the empty buffer of a failed load to
+// Every user on a console has a profile image, a 256x256 JPEG, and games decode it without checking the Result: another game handed the empty buffer of a failed load to
 // nn::image::JpegDecoder, which asserted (GitHub issue #1118). The local user's is a plain 256x256 baseline JPEG (670 bytes); the size is the image's, the copy what the buffer holds
 static const char k_profile_jpeg[] =
     "\xff\xd8\xff\xe0\x00\x10\x4a\x46\x49\x46\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xff\xdb\x00\x43\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\x09\x09\x08\x0a\x0c"
@@ -188,7 +188,7 @@ HLE_FORCE("_ZN2nn7account16LoadProfileImageEPmPvmRKNS0_3UidE", "user profile ima
     if (buf) memcpy(buf, k_profile_jpeg, sz < len ? sz : len);
     if (n) *n = len; return RES_OK;
 }
-// The save-data thumbnail is what the system's data management screen shows next to a save (The Great Ace Attorney Chronicles, SDK 10); the host has no such screen and keeps none
+// The save-data thumbnail is what the system's data management screen shows next to a save (another game, SDK 10); the host has no such screen and keeps none
 HLE_FORCE("_ZN2nn7account27StoreSaveDataThumbnailImageERKNS0_3UidEPKvm", "save-data thumbnail for the system's data management screen; the host keeps none", Result, h_acc_StoreThumb, const Uid *uid, const void *img, uint64_t n) {
     (void)uid; (void)img; (void)n; return RES_OK;
 }

@@ -516,7 +516,7 @@ static void au_request_start(aout *a) {
 // (Siri, an alarm, a call) or the media services reset; the output's buffers were then never released, and a game whose audio thread waits for them (Wwise's poll-only output, FMOD) stayed silent for good.
 // After 200 ms without a callback the silent sink takes over (the game's audio keeps its real-time pace) and the AudioUnit is retried after 1, 2, 4, 8 s. A late wake-up of the watchdog itself (the whole process was stopped) only restarts the count.
 // The time is read under g_aos_lock: the startup helper stamps wd_t under it too, and a watchdog time read before the lock was older than the stamp of an AudioUnit the return from the background had just
-// started (DRAGON QUEST VII Reimagined on an iPhone: "has not called back for 18446744073662 ms", a restart of a running AudioUnit)
+// started (another game on an iPhone: "has not called back for 18446744073662 ms", a restart of a running AudioUnit)
 enum { WD_TICK_MS = 50, WD_STALL_MS = 200, WD_ROUTE_SETTLE_MS = 250, WD_ROUTE_MAX_MS = 500 };
 // Core Audio may pause callbacks while moving a running unit. Keep the PCM queued while it does.
 // If the new route stays silent, try once promptly, then fall back to the usual retry schedule.
@@ -613,7 +613,7 @@ HLE_FORCE("_ZN2nn5audio13ListAudioOutsEPNS0_12AudioOutInfoEi", "audio output dev
 }
 // The front of the guest AudioOut as the SDK's OpenAudioOut fills it from the service's answer: sample rate, channel count, sample format, state (+0 / +4 / +8 / +0xc, the same in SDK 8, 12, 18 and 20;
 // its GetAudioOutSampleRate / ChannelCount / SampleFormat are single loads from there); CloseAudioOut sets the state to stopped and leaves the rest. Code outside the SDK reads these fields too:
-// middleware that checks the first word before it stops and closes its output skipped the close while the host left it zero, freed the PCM buffers and the host's consumer read freed memory (Luigi's Mansion 3, PR #109)
+// middleware that checks the first word before it stops and closes its output skipped the close while the host left it zero, freed the PCM buffers and the host's consumer read freed memory (another game, PR #109)
 static void au_info(void *g, int ch, int state) { uint32_t *f = g; f[0] = RATE; f[1] = (uint32_t)ch; f[2] = FMT_PCM16; f[3] = (uint32_t)state; }
 static void route_sync(int route, int moved);
 static Result au_open_at(void *g, void *ev, const char *name, const uint8_t *param, void *lr, int source) {
@@ -657,7 +657,7 @@ static Result au_open_at(void *g, void *ev, const char *name, const uint8_t *par
 HLE_FORCE("_ZN2nn5audio12OpenAudioOutEPNS0_8AudioOutEPNS_2os11SystemEventEPKcRKNS0_17AudioOutParameterE", "connect to the audout service; host AudioUnit / silent sink",
           Result, h_au_Open, void *g, void *ev, const char *name, const uint8_t *param) { return au_open_at(g, ev, name, param, dm_bigstack_caller(__builtin_return_address(0)), AU_GUEST_AUDIO_OUT); }
 // The two default-device overloads (Engage, SDK 12): as OpenAudioOut with the default device name; the overload without an event binds no release event (the game polls GetReleasedAudioOutBuffer)
-// SDK 22 dropped the release event from the parameter-carrying overload (Well Dweller calls this one; unbound it reached the SDK's audout session, which fails with 0xe15 and the game aborts)
+// SDK 22 dropped the release event from the parameter-carrying overload (another game calls this one; unbound it reached the SDK's audout session, which fails with 0xe15 and the game aborts)
 HLE_FORCE("_ZN2nn5audio12OpenAudioOutEPNS0_8AudioOutEPKcRKNS0_17AudioOutParameterE", "connect to the audout service, no release event (SDK 22 overload)",
           Result, h_au_Open4, void *g, const char *name, const uint8_t *param) { return au_open_at(g, NULL, name, param, dm_bigstack_caller(__builtin_return_address(0)), AU_GUEST_AUDIO_OUT); }
 HLE_FORCE("_ZN2nn5audio19OpenDefaultAudioOutEPNS0_8AudioOutEPNS_2os11SystemEventERKNS0_17AudioOutParameterE", "connect to the audout service (default device); same as OpenAudioOut",
@@ -732,7 +732,7 @@ static void au_close(void *g, void *lr) {
 }
 HLE_FORCE("_ZN2nn5audio13CloseAudioOutEPNS0_8AudioOutE", "close the audio output", void, h_au_Close, void *g) { au_close(g, dm_bigstack_caller(__builtin_return_address(0))); }
 HLE_FORCE("_ZN2nn5audio16GetAudioOutStateEPKNS0_8AudioOutE", "playback state", int, h_au_State, const void *g) { return atomic_load_explicit(&ao(g)->state, memory_order_acquire); }
-// Pokémon Legends: Z-A (SDK 19): Wwise's sink wakeup thread (main+0x30faae8) asks after every release event and marks the sink starved at 0; the SDK's own version read the audout session the host never made
+// Another game (SDK 19): Wwise's sink wakeup thread (main+0x30faae8) asks after every release event and marks the sink starved at 0; the SDK's own version read the audout session the host never made
 HLE_FORCE("_ZN2nn5audio22GetAudioOutBufferCountEPKNS0_8AudioOutE", "buffers appended and not yet played to the end (the one playing included)", unsigned, h_au_BufCount, const void *g) {
     return queued_pcm_blocks(ao(g));
 }
@@ -740,7 +740,7 @@ HLE_FORCE("_ZN2nn5audio21GetAudioOutSampleRateEPKNS0_8AudioOutE", "sample rate",
 HLE_FORCE("_ZN2nn5audio23GetAudioOutChannelCountEPKNS0_8AudioOutE", "channel count", int, h_au_Ch, const void *g) { return ao(g)->ch; }
 HLE_FORCE("_ZN2nn5audio15GetAudioOutNameEPKNS0_8AudioOutE", "device name; the host has only the default device", const char *, h_au_Name, const void *g) { (void)g; return "DeviceOut"; }
 HLE_FORCE("_ZN2nn5audio23GetAudioOutSampleFormatEPKNS0_8AudioOutE", "sample format; PCM16 only", int, h_au_Fmt, const void *g) { (void)ao(g); return FMT_PCM16; }
-// STEINS;GATE RE:BOOT (SDK 20) sets its movie sound's output volume right after opening it; the SDK's versions call the audout session the host never made (a null read at sdk+0x1f2314)
+// Another game (SDK 20) sets its movie sound's output volume right after opening it; the SDK's versions call the audout session the host never made (a null read at sdk+0x1f2314)
 HLE_FORCE("_ZN2nn5audio17SetAudioOutVolumeEPNS0_8AudioOutEf", "output volume; a gain on the samples the host plays", void, h_au_SetVol, void *g, float v) {
     if (!(v >= 0.f)) v = 0.f; uint32_t b; memcpy(&b, &v, 4); atomic_store_explicit(&ao(g)->vol, b, memory_order_relaxed);
 }
@@ -775,7 +775,7 @@ HLE_FORCE("_ZN2nn5audio25GetReleasedAudioOutBufferEPNS0_8AudioOutE", "get a play
     return b;
 }
 
-// Audio input (a microphone): the host has none. SDL3's Switch audio driver lists the input devices when its audio starts (Absolum); the SDK's versions reach the audin service.
+// Audio input (a microphone): the host has none. SDL3's Switch audio driver lists the input devices when its audio starts (another game); the SDK's versions reach the audin service.
 // No device is listed and an open fails, so the calls that need an open AudioIn are never reached; they still answer without touching the guest object, in case a game ignores the open's result.
 // The buffer descriptor functions (SetAudioInBufferInfo, GetAudioInBufferDataPointer / Size) only fill and read the game's own struct and run in the sdk
 HLE_FORCE("_ZN2nn5audio12ListAudioInsEPNS0_11AudioInInfoEi", "audio input device list; the host has no microphone: 0 entries", int, h_ai_List, void *info, int n) { (void)info; (void)n; return 0; }
@@ -786,7 +786,7 @@ static Result ai_open(const char *name, void *lr) {
 }
 HLE_FORCE("_ZN2nn5audio11OpenAudioInEPNS0_7AudioInEPNS_2os11SystemEventEPKcRKNS0_16AudioInParameterE", "connect to the audin service; no microphone on the host: fails",
           Result, h_ai_Open, void *g, void *ev, const char *name, const void *param) { (void)g; (void)ev; (void)param; return ai_open(name, dm_bigstack_caller(__builtin_return_address(0))); }
-HLE_FORCE("_ZN2nn5audio11OpenAudioInEPNS0_7AudioInEPKcRKNS0_16AudioInParameterE", "connect to the audin service (no buffer event: Patrick's Parabox imports this one); no microphone on the host: fails",
+HLE_FORCE("_ZN2nn5audio11OpenAudioInEPNS0_7AudioInEPKcRKNS0_16AudioInParameterE", "connect to the audin service (no buffer event: another game imports this one); no microphone on the host: fails",
           Result, h_ai_OpenNoEv, void *g, const char *name, const void *param) { (void)g; (void)param; return ai_open(name, dm_bigstack_caller(__builtin_return_address(0))); }
 HLE_FORCE("_ZN2nn5audio18OpenDefaultAudioInEPNS0_7AudioInEPNS_2os11SystemEventERKNS0_16AudioInParameterE", "connect to the audin service (default device); no microphone on the host: fails",
           Result, h_ai_OpenDef, void *g, void *ev, const void *param) { (void)g; (void)ev; (void)param; return ai_open(NULL, dm_bigstack_caller(__builtin_return_address(0))); }
@@ -799,7 +799,7 @@ HLE_FORCE("_ZN2nn5audio20GetAudioInSampleRateEPKNS0_7AudioInE", "recording sampl
 HLE_FORCE("_ZN2nn5audio22GetAudioInChannelCountEPKNS0_7AudioInE", "recording channel count", int, h_ai_Ch, const void *g) { (void)g; return 2; }
 HLE_FORCE("_ZN2nn5audio22GetAudioInSampleFormatEPKNS0_7AudioInE", "recording sample format", int, h_ai_Fmt, const void *g) { (void)g; return FMT_PCM16; }
 
-// ---------- SDK 21's OutputStream (Xenoblade Chronicles 2's Switch 2 Edition, SDK 21.4.4) ----------
+// ---------- SDK 21's OutputStream (another game's Switch 2 Edition, SDK 21.4.4) ----------
 // nn::audio::OpenOutputStream on a virtual output device (GetDefaultVirtualOutputDevice) takes a StreamFormat {sample format, channels, sample rate} and a capacity in frames; the game
 // writes one period at a time with WriteOutputStream once GetOutputStreamFreeFrameCount covers it, and its audio thread waits on the stream's event with a short timeout between writes
 // (main+0xad0860, main+0xad14c0, main+0xad15c0). Its frames are 32-bit float, interleaved (L, R, L, R), though main+0xad1684 zeroes an unfilled tail as if each channel had its own run of a
@@ -823,8 +823,8 @@ HLE_FORCE("_ZN2nn5audio29GetDefaultVirtualOutputDeviceEPNS0_15AudioDeviceNameE",
 // Resort's sdk+0x224cd4; the input and injection twins at sdk+0x1f6314 and sdk+0x1f4db4 do the same): the name asked about, the profile's +0x218 at +0x100 and its +0x108 at +0x108.
 // The profile's +0x218 is the shortest stream as a duration in ns: OutputStreamImpl::Open refuses a capacity under ceil(it x rate / 1e9) frames with 0x899 (sdk+0x225a94..0x225ad0,
 // InputStreamImpl::Open the same at sdk+0x1f6928). Nothing in the sdk reads the +0x108 word; its meaning is open, 0 here. Both of the game's callers (main+0x5eda90, main+0x7a0414)
-// and Donkey Kong Bananza's (main+0x57cadc, main+0x187cee4) only test the Result before opening a stream. Unhooked, the SDK connected to auddmg:u and aborted with 0xa99 (sdk+0x224d1c)
-#define OS_MIN_NS 10000000LL   // the host's AudioOut takes any block size and os_open sets no minimum: one 10 ms period, what Xenoblade Chronicles 2 and Star Fox write per block
+// and another game's (main+0x57cadc, main+0x187cee4) only test the Result before opening a stream. Unhooked, the SDK connected to auddmg:u and aborted with 0xa99 (sdk+0x224d1c)
+#define OS_MIN_NS 10000000LL   // the host's AudioOut takes any block size and os_open sets no minimum: one 10 ms period, what another game and another game write per block
 typedef struct { char name[VDEV_NAME]; int64_t min_ns; uint32_t word_108, pad; } vdev_props;
 HLE_FORCE("_ZN2nn5audio32GetVirtualOutputDevicePropertiesEPNS0_23VirtualDevicePropertiesERKNS0_15AudioDeviceNameE", "connect to auddmg:u; the host's one output device",
           Result, h_os_Props, vdev_props *p, const char *name) {
@@ -851,7 +851,7 @@ HLE_FORCE("_ZN2nn5audio16OpenOutputStreamEPNS0_16OutputStreamTypeEPNS_2os11Syste
     (void)buf; (void)size; (void)dev; (void)threshold; (void)flags;
     return os_open(g, ev, fmt, frames, dm_bigstack_caller(__builtin_return_address(0)));
 }
-// The overload without flags (Nintendo Switch Sports Resort, main+0x5edb34): the SDK's (sdk+0x224740) is the one above with no flags (sdk+0x225d10)
+// The overload without flags (another game, main+0x5edb34): the SDK's (sdk+0x224740) is the one above with no flags (sdk+0x225d10)
 HLE_FORCE("_ZN2nn5audio16OpenOutputStreamEPNS0_16OutputStreamTypeEPNS_2os11SystemEventEPvmRKNS0_15AudioDeviceNameERKNS0_12StreamFormatEii",
           "connect to auddmg:u (no flags); an AudioOut of the host's", Result, h_os_OpenNoFlags, void *g, void *ev, void *buf, size_t size, const char *dev, const int32_t *fmt, int frames, int threshold) {
     (void)buf; (void)size; (void)dev; (void)threshold;
@@ -865,7 +865,7 @@ HLE_FORCE("_ZN2nn5audio16OpenOutputStreamEPNS0_16OutputStreamTypeEPvmRKNS0_15Aud
 HLE_FORCE("_ZN2nn5audio17StartOutputStreamEPNS0_16OutputStreamTypeE", "start the stream's output", Result, h_os_Start, void *g) {
     ostream *o = os_of(g); o->state = OS_STARTED; return au_start_at(o->key, dm_bigstack_caller(__builtin_return_address(0)));
 }
-// Star Fox (Wwise 2024.1, main+0xbce9294) starts its main and passthrough streams together
+// Another game (Wwise 2024.1, main+0xbce9294) starts its main and passthrough streams together
 HLE_FORCE("_ZN2nn5audio18StartOutputStreamsEPKPNS0_16OutputStreamTypeEi", "start several streams' outputs", Result, h_os_StartN, void *const *gs, int n) {
     void *lr = dm_bigstack_caller(__builtin_return_address(0));
     for (int i = 0; i < n; i++) {
@@ -928,8 +928,8 @@ HLE_FORCE("_ZN2nn5audio31GetOutputStreamFilledFrameCountEPKNS0_16OutputStreamTyp
     pthread_mutex_lock(&o->m); os_reclaim(o); int n = o->queued; pthread_mutex_unlock(&o->m);
     return n;
 }
-// The statistics, returned by value through x8, 24 bytes: Star Fox keeps them at sp with its stack canary right behind them at sp+0x18 (main+0xbce9b90), so a larger result ends in
-// __stack_chk_fail on its audio thread. The game reads only +0x10 and treats a count above 0 as a glitch (Star Fox main+0xbce9ba0): the host reports none
+// The statistics, returned by value through x8, 24 bytes: another game keeps them at sp with its stack canary right behind them at sp+0x18 (main+0xbce9b90), so a larger result ends in
+// __stack_chk_fail on its audio thread. The game reads only +0x10 and treats a count above 0 as a glitch (another game main+0xbce9ba0): the host reports none
 typedef struct { int64_t a, b, c; } os_stats;
 HLE_FORCE("_ZN2nn5audio25GetOutputStreamStatisticsEPNS0_16OutputStreamTypeEb", "stream statistics: none kept", os_stats, h_os_Stats, void *g, bool reset) {
     (void)g; (void)reset; os_stats s = {0}; return s;

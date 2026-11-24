@@ -8,9 +8,9 @@
 #     inside a decompressed segment: u32 subprogram count, then 12-byte entries {offset, length, segment}. Before 2019.3 each platform has one segment (offsets[i] is a number) and the entries are
 #     8 bytes {offset, length}. A subprogram = version, program type, stats, keywords, program code bytes, ...
 #     From Unity 2021.2 (subprogram version 202012090) the local keyword list is gone; Unity 2022 also keeps each program's parameters in the blob as entries of their own (the parsed form's
-#     m_ParameterBlobIndices), and the code entries are the m_BlobIndex of m_PlayerSubPrograms (Ace Attorney Investigations Collection, Unity 2022.3.17f1)
-#   · TextAsset (class 49): name and bytes (text_assets), for games that keep whole GLSLC outputs of their own in one (FINAL FANTASY CRYSTAL CHRONICLES Remastered Edition, Unity 2018.4)
-#   The pre-2019.3 layouts were found by armyja on Cuphead (Unity 2017.4.9f1, serialized format 17), GitHub pull request #2
+#     m_ParameterBlobIndices), and the code entries are the m_BlobIndex of m_PlayerSubPrograms (another game, Unity 2022.3.17f1)
+#   · TextAsset (class 49): name and bytes (text_assets), for games that keep whole GLSLC outputs of their own in one (another game, Unity 2018.4)
+#   The pre-2019.3 layouts were found by armyja on another game (Unity 2017.4.9f1, serialized format 17), GitHub pull request #2
 # Only depends on lz4 (the same package shader_split uses for NSOs)
 import lzma, struct
 
@@ -110,8 +110,8 @@ def _read(r, n):
 class NoTree(ValueError):
     """the serialized file has no type tree and no tree of the same class and hash to borrow"""
 
-# Type trees written out for players whose serialized files carry none and that ship no bundle to borrow one from (Brain Memory Training Academy, Unity 2022.3.5f1: only Data/*.assets;
-# Patrick's Parabox, Unity 2020.3.30f1: only the built-in shaders in Data/Resources).
+# Type trees written out for players whose serialized files carry none and that ship no bundle to borrow one from (another game, Unity 2022.3.5f1: only Data/*.assets;
+# Another game, Unity 2020.3.30f1: only the built-in shaders in Data/Resources).
 # {(class ID, type hash): (root type, layout)}. The layout is one struct per line, "Name: type field; type field; …", in serialization order. A type is a primitive, a struct of the layout,
 # string, vector<element name:type>, map<data:pair(key type,value type)>; a trailing ~ = the container's Array is not aligned after it, ! = the field itself is aligned after it (the 0x4000 flags).
 # The structs up to SerializedProgramParameters are the same in both layouts below
@@ -138,7 +138,7 @@ UAVParameter: int m_NameIndex; int m_Index; int m_OriginalIndex
 SamplerParameter: unsigned int sampler; int bindPoint
 SerializedProgramParameters: vector<data:VectorParameter> m_VectorParams; vector<data:MatrixParameter> m_MatrixParams; vector<data:TextureParameter> m_TextureParams; vector<data:BufferBinding> m_BufferParams; vector<data:ConstantBuffer> m_ConstantBuffers; vector<data:BufferBinding> m_ConstantBufferBindings; vector<data:UAVParameter> m_UAVParams; vector<data:SamplerParameter> m_Samplers
 '''
-# The Unity 2022.3 Shader matches, node for node with those flags, the type tree in Ace Attorney Investigations Collection's bundles (Unity 2022.3.17f1), whose hash is the same
+# The Unity 2022.3 Shader matches, node for node with those flags, the type tree in another game's bundles (Unity 2022.3.17f1), whose hash is the same
 SHADER_2022_3 = _SHADER_COMMON + '''SerializedSubProgram: unsigned int m_BlobIndex; ParserBindChannels m_Channels; vector<data:UInt16> m_KeywordIndices; SInt8 m_ShaderHardwareTier; SInt8! m_GpuProgramType; SerializedProgramParameters m_Parameters; SInt64 m_ShaderRequirements
 SerializedPlayerSubProgram: unsigned int m_BlobIndex; vector<data:UInt16> m_KeywordIndices; SInt64 m_ShaderRequirements; SInt8! m_GpuProgramType
 SerializedProgram: vector<data:SerializedSubProgram> m_SubPrograms; vector<data:vector<data:SerializedPlayerSubProgram>> m_PlayerSubPrograms; vector<data:vector<data:unsigned int>> m_ParameterBlobIndices; SerializedProgramParameters m_CommonParameters; vector<data:UInt16> m_SerializedKeywordStateMask
@@ -151,15 +151,15 @@ PPtr<Shader>: int m_FileID; SInt64 m_PathID
 PPtr<Texture>: int m_FileID; SInt64 m_PathID
 Shader: string m_Name; SerializedShader m_ParsedForm; vector<data:unsigned int> platforms; vector<data:vector<data:unsigned int>> offsets; vector<data:vector<data:unsigned int>> compressedLengths; vector<data:vector<data:unsigned int>> decompressedLengths; vector<data:UInt8> compressedBlob; vector<data:unsigned int> stageCounts; vector<data:PPtr<Shader>> m_Dependencies; map<data:pair(string,PPtr<Texture>)>~ m_NonModifiableTextures; bool! m_ShaderIsBaked
 '''
-# Unity 6000.0.28f1 (Donkey Kong Country Returns HD) strips every tree and ships no bundles. Its Shader hash is the one BALL x PIT's 6000.0.62f1 bundles carry:
+# Unity 6000.0.28f1 (another game) strips every tree and ships no bundles. Its Shader hash is the one another game's 6000.0.62f1 bundles carry:
 # the 2022.3 layout without the pass's editor hashes / platforms, with a final asset GUID. Checked against that bundle's nodes, order and alignment flags,
 # and all 214 stripped Shader objects read to their exact ends. Keep the older layout intact: its pass headers still contain those two arrays.
 SHADER_6000_0 = SHADER_2022_3.replace('vector<data:Hash128> m_EditorDataHash; vector<data:UInt8> m_Platforms; ', '').replace(
     'bool! m_ShaderIsBaked\n', 'bool! m_ShaderIsBaked; GUID m_AssetGUID\n') + 'GUID: unsigned int data[0]; unsigned int data[1]; unsigned int data[2]; unsigned int data[3]\n'
-# Unity 6000.3 (Castlevania: Belmont's Curse's Digital Sound & Art Gallery, 01005F4027E94000, 6000.3.6f1): 6000.0's layout with m_AssetLocalIdentifierInFile after the GUID (Shader version 4, from 6000.3.0f1 on).
+# Unity 6000.3 (another game's Digital Sound & Art Gallery, 01005F4027E94000, 6000.3.6f1): 6000.0's layout with m_AssetLocalIdentifierInFile after the GUID (Shader version 4, from 6000.3.0f1 on).
 # All 2,306 nodes and alignment flags match AssetRipper's 6000.3.0f1, 6000.3.11f1 and 6000.3.20f1 release trees; all 97 of the Gallery's stripped Shader objects read to their exact ends
 SHADER_6000_3 = SHADER_6000_0.replace('GUID m_AssetGUID\n', 'GUID m_AssetGUID; SInt64 m_AssetLocalIdentifierInFile\n')
-# The Unity 2020.3 Shader (Patrick's Parabox, Unity 2020.3.30f1: only Data/*.assets, its shaders the built-in ones in Data/Resources) matches the type tree in Fire Emblem Engage's bundles
+# The Unity 2020.3 Shader (another game, Unity 2020.3.30f1: only Data/*.assets, its shaders the built-in ones in Data/Resources) matches the type tree in another game's bundles
 # (Unity 2020.3.18f1), whose hash is the same: global and local keyword indices per subprogram, every subprogram in m_SubPrograms, no parameter blobs, keyword names or stage counts
 SHADER_2020_3 = _SHADER_COMMON + '''SerializedSubProgram: unsigned int m_BlobIndex; ParserBindChannels m_Channels; vector<data:UInt16> m_GlobalKeywordIndices; vector<data:UInt16> m_LocalKeywordIndices; SInt8 m_ShaderHardwareTier; SInt8! m_GpuProgramType; SerializedProgramParameters m_Parameters; int m_ShaderRequirements
 SerializedProgram: vector<data:SerializedSubProgram> m_SubPrograms; SerializedProgramParameters m_CommonParameters
@@ -185,7 +185,7 @@ PPtr<Shader>: int m_FileID; SInt64 m_PathID
 PPtr<Texture>: int m_FileID; SInt64 m_PathID
 Shader: string m_Name; SerializedShader m_ParsedForm; vector<data:unsigned int> platforms; vector<data:vector<data:unsigned int>> offsets; vector<data:vector<data:unsigned int>> compressedLengths; vector<data:vector<data:unsigned int>> decompressedLengths; vector<data:UInt8> compressedBlob; vector<data:PPtr<Shader>> m_Dependencies; map<data:pair(string,PPtr<Texture>)>~ m_NonModifiableTextures; bool! m_ShaderIsBaked
 '''
-# The Unity 2018.3 Shader (Raging Loop, Unity 2018.3.10f1: no bundles, its 48 shaders in Data/*.assets and Data/Resources), from Unity 2018.3.10f1's type tree as AssetRipper's TypeTreeDumps
+# The Unity 2018.3 Shader (another game, Unity 2018.3.10f1: no bundles, its 48 shaders in Data/*.assets and Data/Resources), from Unity 2018.3.10f1's type tree as AssetRipper's TypeTreeDumps
 # records it (StructsDump/release/2018.3.10f1.dump), checked node for node with the flags: older than the common structs above (no conservative raster state, no buffer array sizes, no partial
 # constant buffers), the parameters in each subprogram, one segment per platform (offsets, compressedLengths and decompressedLengths are plain numbers per platform), no local keywords
 SHADER_2018_3 = '''SerializedTextureProperty: string m_DefaultName; int m_TexDim
@@ -217,7 +217,7 @@ PPtr<Shader>: int m_FileID; SInt64 m_PathID
 PPtr<Texture>: int m_FileID; SInt64 m_PathID
 Shader: string m_Name; SerializedShader m_ParsedForm; vector<data:unsigned int> platforms; vector<data:unsigned int> offsets; vector<data:unsigned int> compressedLengths; vector<data:unsigned int> decompressedLengths; vector<data:UInt8> compressedBlob; vector<data:PPtr<Shader>> m_Dependencies; map<data:pair(string,PPtr<Texture>)>~ m_NonModifiableTextures; bool! m_ShaderIsBaked
 '''
-# Unity 2017.4.28f1 (Return of the Obra Dinn): the same layout except for these two absent fields, checked against
+# Unity 2017.4.28f1 (another game): the same layout except for these two absent fields, checked against
 # AssetRipper's TypeTreeDumps StructsDump/release/2017.4.28f1.dump. The built-in resources strip their trees and no bundle
 # supplies this hash. The instancing flag itself takes the alignment formerly carried by the following flag.
 SHADER_2017_4 = SHADER_2018_3.replace('bool m_HasInstancingVariant; bool! m_HasProceduralInstancingVariant',
@@ -225,13 +225,13 @@ SHADER_2017_4 = SHADER_2018_3.replace('bool m_HasInstancingVariant; bool! m_HasP
     '; map<data:pair(string,PPtr<Texture>)>~ m_NonModifiableTextures', '')
 # The Unity 2019.4 Shader (Dodgeball Academia, Unity 2019.4.21f1: every serialized file is stripped and no bundle carries a tree), from Unity 2019.4.21f1's type tree as AssetRipper's
 # TypeTreeDumps records it (StructsDump/release/2019.4.21f1.dump): the 2018.3 layout with global and local keyword indices per subprogram, a ray tracing program in each pass, and 2019.3's
-# segments (offsets, compressedLengths and decompressedLengths hold one list per platform). Checked node for node with the flags (1,481 nodes), and equal to the tree Subnautica's 2019.4.36f1
+# segments (offsets, compressedLengths and decompressedLengths hold one list per platform). Checked node for node with the flags (1,481 nodes), and equal to the tree another game's 2019.4.36f1
 # bundles carry under the same hash; all 62 of Dodgeball Academia's Shader objects read to their exact ends.
 SHADER_2019_4 = SHADER_2018_3.replace('vector<data:UInt16> m_KeywordIndices', 'vector<data:UInt16> m_GlobalKeywordIndices; vector<data:UInt16> m_LocalKeywordIndices').replace(
     'SerializedProgram progDomain; bool', 'SerializedProgram progDomain; SerializedProgram progRayTracing; bool').replace(
     'vector<data:unsigned int> offsets; vector<data:unsigned int> compressedLengths; vector<data:unsigned int> decompressedLengths',
     'vector<data:vector<data:unsigned int>> offsets; vector<data:vector<data:unsigned int>> compressedLengths; vector<data:vector<data:unsigned int>> decompressedLengths')
-# The Unity 2022.3 ComputeShader (Monster Train 2, Unity 2022.3.54f1: 12 in Data/sharedassets2.assets, which carries no type trees, and no bundle has one), from Unity 2022.3.54f1's type tree
+# The Unity 2022.3 ComputeShader (another game, Unity 2022.3.54f1: 12 in Data/sharedassets2.assets, which carries no type trees, and no bundle has one), from Unity 2022.3.54f1's type tree
 # as AssetRipper's TypeTreeDumps records it (StructsDump/release/2022.3.54f1.dump). Each kernel variant's code is a program code of one stage, compute (the layout of a Shader's subprogram code)
 COMPUTE_2022_3 = '''ComputeShaderResource: string name; string generatedName; int bindPoint; int samplerBindPoint; int texDimension
 ComputeShaderBuiltinSampler: unsigned int sampler; int bindPoint
@@ -266,7 +266,7 @@ ComputeShader: string m_Name; vector<data:ComputeShaderVariant> variants
 '''
 # Unity 2017.4.28f1's release tree (AssetRipper TypeTreeDumps, StructsDump/release/2017.4.28f1.dump, class 72):
 # resources hold a ComputeBufferCounter instead of the later sampler / dimension fields; kernels already hold code directly.
-# Return of the Obra Dinn's stripped built-ins use this hash; its internalskinning object (12 kernels) reads to its exact end.
+# Another game's stripped built-ins use this hash; its internalskinning object (12 kernels) reads to its exact end.
 COMPUTE_2017_4 = COMPUTE_2019_4.replace('int samplerBindPoint; int texDimension', 'ComputeBufferCounter counter') + \
     'ComputeBufferCounter: int bindpoint; int offset\n'
 # Unity 6000.3 (Hello Kitty Party Land, 6000.3.11f1: its stripped built-ins, GPU skinning among them, in Data/Resources/unity default resources, and Data/globalgamemanagers.assets carry no type trees):
@@ -475,6 +475,6 @@ def subprogram(b):
         for _ in range(r.u('i')):
             ln = r.u('i'); out.append(b[r.p:r.p + ln].decode('utf-8', 'replace')); r.p += ln; r.align()
         return out
-    kw = strs(); lkw = strs() if 201806140 <= ver < 202012090 else []   # subprogram version 202012090 (Unity 2021.2 on) has no local keyword list (Ace Attorney Investigations Collection, Unity 2022.3)
+    kw = strs(); lkw = strs() if 201806140 <= ver < 202012090 else []   # subprogram version 202012090 (Unity 2021.2 on) has no local keyword list (another game, Unity 2022.3)
     ln = r.u('i'); code = b[r.p:r.p + ln]; r.p += ln; r.align()
     return ver, ptype, kw, lkw, code, r.p

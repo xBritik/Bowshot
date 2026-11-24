@@ -1,6 +1,6 @@
 // A pipeline drawn in a multisampled pass carries the pass's sample count, through the production pass setup, pipeline lookup and Metal 4 base specialization.
 // newRenderPipelineDescriptorForSpecialization returns its fixed state at the defaults (1 sample, alpha to coverage off, no input primitive class, amplification count 1): specialized from it as it came, the pipeline
-// reads as 1-sample, and Metal's API validation (MTL_DEBUG_LAYER=1, which the Makefile check sets) stops at its bind in a 4x pass. PRAGMATA's 4x depth-only passes did.
+// reads as 1-sample, and Metal's API validation (MTL_DEBUG_LAYER=1, which the Makefile check sets) stops at its bind in a 4x pass. Another game's 4x depth-only passes did.
 #include "../nvn/nvn_mtl.m"
 void *front_metal_layer(void) { return NULL; }
 module_t *module_of(const void *p) { (void)p; return NULL; }
@@ -92,7 +92,7 @@ int main(void) { @autoreleasepool {
         "fragment float4 f() { return float4(1,0,0,.5); }\n" options:nil error:&error];
     CHECK(lib != nil, "synthetic shaders compile"); if (!lib) { fprintf(stderr, "%s\n", error.localizedDescription.UTF8String); return 1; }
     NvProg *p = program(lib);
-    pass(p, 4, 0, 0, "a 4x depth-only pass opens (PRAGMATA's case)");
+    pass(p, 4, 0, 0, "a 4x depth-only pass opens (another game's case)");
     pass(p, 4, 1, 0, "a 4x colour + depth pass opens");
     pass(p, 4, 1, 1, "a 4x colour + depth pass with alpha to coverage opens");
     pass(p, 1, 1, 0, "a 1x pass opens");

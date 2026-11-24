@@ -162,7 +162,7 @@ int main(void) { @autoreleasepool {
     }
     // The border corrections' constant in a pulling library's main0_z, its second function, at the near = 0 depth mode: metal-tt specializes only a library's first function
     // ("cannot find private metadata at offset '8'"), so pso_offline.py specializes it from a library of its own (needs_cut), and the base serves pre_desc through the whole library
-    // (Nintendo Switch Sports Resort: 2,401 bases of 124 such libraries had left the archive refused)
+    // (another game: 2,401 bases of 124 such libraries had left the archive refused)
     NSString *vb = [NSString stringWithFormat:@"#include <metal_stdlib>\nusing namespace metal;\nconstant bool dm_border_off [[function_constant(%d)]];\n"
         "constant bool dm_border_live = !is_function_constant_defined(dm_border_off) || !dm_border_off;\nstruct V { float4 p [[position]]; };\n"
         "vertex V main0(uint id [[vertex_id]]) { V o; o.p = float4(float(id & 1), float(id >> 1), dm_border_live ? 0.25 : 0, 1); return o; }\n"

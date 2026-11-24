@@ -8,7 +8,7 @@ static struct { uint32_t magic; void *layer; } g_native = {0x4e49574e, 0};
 
 HLE_FORCE("_ZN2nn2vi10InitializeEv", "display service init; the host has no vi service", void, h_vi_Init, void) {}
 // The Switch 2 SDKs' variant with low frame rate compensation for a variable refresh rate display: nn::vi::Initialize's work through vi2::InitializeWithVrrLfcEnabled, whose
-// VRR hooks ask the graphics system's user session, which the host never opens (Resident Evil 4 v131072, SDK 21.4.3: main+0xb180288 → sdk+0x5d8cf0, a null read in SdkMutexType::Lock).
+// VRR hooks ask the graphics system's user session, which the host never opens (another game v131072, SDK 21.4.3: main+0xb180288 → sdk+0x5d8cf0, a null read in SdkMutexType::Lock).
 // The host has no vi service and no VRR display (QueryDisplayVrrSupported below): the same as nn::vi::Initialize
 HLE_FORCE("_ZN2nn2vi27InitializeWithVrrLfcEnabledEv", "display service init with VRR low frame rate compensation; the host has no vi service and no VRR", void, h_vi_InitVrrLfc, void) {}
 HLE_FORCE("_ZN2nn2vi18OpenDefaultDisplayEPPNS0_7DisplayE", "open default display; the host returns a static object", Result, h_vi_OpenDisp, void **out) {
@@ -23,7 +23,7 @@ HLE_FORCE("_ZN2nn2vi11OpenDisplayEPPNS0_7DisplayEPKc", "open the named Default d
 HLE_FORCE("_ZN2nn2vi11CreateLayerEPPNS0_5LayerEPNS0_7DisplayE", "create layer; the host returns a static object", Result, h_vi_CreateLayer, void **out, void *disp) {
     (void)disp; *out = &g_layer; return RES_OK;
 }
-// The overload with the layer's size (SDL3's Switch video driver, Absolum: 1920x1080 docked); the SDK's version calls through the vi service object the host never made (SIGSEGV at +0xe4).
+// The overload with the layer's size (SDL3's Switch video driver, another game: 1920x1080 docked); the SDK's version calls through the vi service object the host never made (SIGSEGV at +0xe4).
 // An NVN or Vulkan window's textures decide what is presented; an EGL window surface takes the layer's size (dm/gfx/gl/hle_gl.m: Digimon Story Cyber Sleuth sizes its layer
 // itself and draws into the surface at that size)
 // The present shows the picture in the layer's shape (nvn_mtl.m present_shape)
@@ -35,7 +35,7 @@ HLE_FORCE("_ZN2nn2vi11CreateLayerEPPNS0_5LayerEPNS0_7DisplayEii", "create layer 
     if (w > 0 && h > 0 && w < 0x10000 && h < 0x10000) { g_layer_wh = (uint32_t)w | (uint32_t)h << 16; mtl_present_layer((uint32_t)w, (uint32_t)h); }
     return RES_OK;
 }
-// SDK 22's overload with a LayerCreationSettings, which its constructor LayerCreationSettings(int w, int h) fills as {w, h, 2} (sdk+0x4526a0 in EA SPORTS FC 27; the SDK's own
+// SDK 22's overload with a LayerCreationSettings, which its constructor LayerCreationSettings(int w, int h) fills as {w, h, 2} (sdk+0x4526a0 in another game; the SDK's own
 // constructor runs). The SDK's CreateLayer goes to am::GetSelfController(), which the host never made (SIGSEGV at the load from it, sdk+0x44ea94)
 HLE_FORCE("_ZN2nn2vi11CreateLayerEPPNS0_5LayerEPNS0_7DisplayEPKNS0_21LayerCreationSettingsE", "create layer from creation settings (SDK 22); the host returns a static object",
           Result, h_vi_CreateLayerSettings, void **out, void *disp, const int32_t *settings) {
@@ -45,7 +45,7 @@ HLE_FORCE("_ZN2nn2vi15GetNativeWindowEPPvPNS0_5LayerE", "native window handle, p
     (void)layer; *out = &g_native; return RES_OK;
 }
 // Link's Awakening also crops its layer and tears the display down on exit; the SDK's versions dereference the vi service objects the host never made (SetLayerCrop: SIGSEGV at +0x64).
-// The crop is kept for the present: the Vulkan present (hle_vk.m), where Super Mario Galaxy keeps a 1920x1080 swapchain in handheld mode, draws into its top-left 1280x720 and
+// The crop is kept for the present: the Vulkan present (hle_vk.m), where another game keeps a 1920x1080 swapchain in handheld mode, draws into its top-left 1280x720 and
 // crops the layer to that every frame; and the NVN present when the game sets no window crop of its own (nvnWindowSetCrop; present_crop in hle_nvn.c), where Link's Awakening
 // draws 1280x720 into its 1920x1080 window textures in handheld mode and crops the layer to that. It only picks texels: the present stretches them to the layer's shape, as the
 // Switch's compositor does (nvn_mtl.m present_shape). Logged only when it changes
@@ -57,7 +57,7 @@ HLE_FORCE("_ZN2nn2vi12SetLayerCropEPNS0_5LayerEiiii", "layer crop; the host reco
     if (atomic_exchange(&g_crop, v) != v) LOG("vi::SetLayerCrop %d,%d %dx%d", x, y, w, h);
     return RES_OK;
 }
-// Super Mario Odyssey sets its layer's scaling mode; the SDK's version uses the vi service objects the host never made
+// Another game sets its layer's scaling mode; the SDK's version uses the vi service objects the host never made
 HLE_FORCE("_ZN2nn2vi19SetLayerScalingModeEPNS0_5LayerENS0_11ScalingModeE", "layer scaling mode; the host present does its own scaling", Result, h_vi_SetScaling, void *layer, int mode) {
     (void)layer; LOG("vi::SetLayerScalingMode %d (ignored)", mode); return RES_OK;
 }
@@ -68,14 +68,14 @@ HLE_FORCE("_ZN2nn2vi20GetLatestFrameNumberEPmPKNS0_5LayerE", "the layer's latest
     (void)layer; *out = dm_nvn_frame_count(); return RES_OK;
 }
 // The layer's frame history: the last 8 frames presented, newest first, each with whether it reached the screen. Unreal Engine 5's Switch RHI tracks its flips by it: its
-// "Viewport Thread" (Minecraft Dungeons II main+0x142afb0) waits for each vsync, asks how many entries there are (a null buffer: the SDK answers 8, the history's size), reads them and
+// "Viewport Thread" (another game main+0x142afb0) waits for each vsync, asks how many entries there are (a null buffer: the SDK answers 8, the history's size), reads them and
 // takes the first one shown as the latest flip, which completes the frame-end fences that wait for the swap chain (r.GTSyncType 2). With no history no flip ever came, and the first
 // FlushRenderingCommands, which waits for every fence (FFrameEndSync, main+0x15015f0), waited for ever right after the opening movie: the game thread polled its fence each ms, nothing
 // was presented again. FrameInfo is 40 bytes, as the SDK's ListFrameHistory (sdk 20.5.15, sdk+0x4510a0) fills it from the compositor's records: status (2 shown with a present
 // time, 1 queued and not shown yet), frame number (the numbering of GetLatestFrameNumber), the queue tick and the present tick twice; sorted by frame number, newest first.
 // A frame is shown once the present queue has handed it on (nvn_mtl.m g_pq_done); its present time is the drawable's presented time when Metal reports one, else (headless, before
 // the handler runs, or a drawable the Mac never put on screen) the time it was first seen handed on. A Switch's compositor shows every frame it is handed, in order, so a frame the
-// Mac dropped (presentedTime 0) still counts as shown: listed as queued, the newest ones stayed so for ever when the game presented nothing more until their flip came (Orbitals,
+// Mac dropped (presentedTime 0) still counts as shown: listed as queued, the newest ones stayed so for ever when the game presented nothing more until their flip came (another game,
 // main+0x1540460: right after both players ready up the load stopped presenting, and its FFrameEndSync waited for the flip of a frame Metal had dropped, until Unreal aborted: "GameThread timed out waiting for …")
 #define VFH 8
 typedef struct { uint64_t frame, ticket, queued_ns, seen_ns; } vfh_ent;
@@ -106,7 +106,7 @@ HLE_FORCE("_ZN2nn2vi16ListFrameHistoryEPNS0_9FrameInfoEiPKNS0_5LayerE", "the lay
     static int once; if (k && !once++) LOG("vi::ListFrameHistory: %d of the last %d presents returned (up to frame %llu, the present queue at %llu)", k, VFH, (unsigned long long)latest, (unsigned long long)d);
     return k;
 }
-// Rhythm Heaven Groove (SDK 21) asks for the built-in panel's identity at start (main+0xa9a4); the SDK's version calls through the vi service object the host never made (SIGSEGV at +0x20).
+// Another game (SDK 21) asks for the built-in panel's identity at start (main+0xa9a4); the SDK's version calls through the vi service object the host never made (SIGSEGV at +0x20).
 //   The game reads a u32 kind and, when it is 2 or more, 0x14 more bytes that it hands on; any other answer makes it hand on zeros. The host has no panel: an all-zero identifier, kind 0
 HLE_FORCE("_ZN2nn2vi32GetDefaultDisplayPanelIdentifierEPNS0_15PanelIdentifierE", "built-in panel identity; the host has no panel: all zero", Result, h_vi_PanelId, void *out) {
     memset(out, 0, 0x18); return RES_OK;
@@ -122,9 +122,9 @@ static uint32_t buf_max_res(int *w, int *h) {
     for (uint32_t i = 1; i < 4; i++) if (*w >= k_buf_max_res[i][0] && *h >= k_buf_max_res[i][1]) r = i;
     return r;
 }
-// The Great Ace Attorney Chronicles (SDK 10) lists up to 10 displays before opening the default one (main+0x808f08) and does not read the list. DisplayInfo is 0x60 bytes:
+// Another game (SDK 10) lists up to 10 displays before opening the default one (main+0x808f08) and does not read the list. DisplayInfo is 0x60 bytes:
 //   name[0x40], bool has a layer limit at +0x40, then u64 layer count limit, largest layer width and height. One display, "Default", as Horizon lists for an application.
-// Star Fox sizes its docked window from the largest layer and clamps it to QueryDisplayBufferMaxResolution. Both replies use the same tier for Switch 2.
+// Another game sizes its docked window from the largest layer and clamps it to QueryDisplayBufferMaxResolution. Both replies use the same tier for Switch 2.
 HLE_FORCE("_ZN2nn2vi12ListDisplaysEPNS0_11DisplayInfoEi", "list the Default display and its largest layer", int, h_vi_ListDisp, void *out, int n) {
     if (n <= 0 || !out) return 0;
     int w, h;
@@ -139,7 +139,7 @@ HLE_FORCE("_ZN2nn2vi12CloseDisplayEPNS0_7DisplayE", "close display; host static 
 HLE_FORCE("_ZN2nn2vi8FinalizeEv", "display service shutdown; the host has no vi service", void, h_vi_Fini, void) {}
 
 // ---------- Switch 2 SDKs: HDR, VRR and extended swap intervals ----------
-// The SDK's versions check the display against its own default display object and forward the layer to vi2, whose layer object the host never made (Donkey Kong Bananza: a call
+// The SDK's versions check the display against its own default display object and forward the layer to vi2, whose layer object the host never made (another game: a call
 // through null from SetLayerNextHdrContentGamutMetadata, main+0x2036f4). The host's output is SDR at a fixed refresh rate: no HDR output, no VRR, and the layer metadata has
 // nothing to apply to. HdrOutputFormat 0 is SDR; paper white is the BT.2408 reference, 203 nits, read only when HDR is on
 HLE_FORCE("_ZN2nn2vi21QueryDisplayHdrStatusEPbPNS0_15HdrOutputFormatEPtPKNS0_7DisplayE", "display HDR status: SDR output (the host presents SDR)", Result, h_vi_HdrStatus,
@@ -152,7 +152,7 @@ HLE_FORCE("_ZN2nn2vi24QueryDisplayVrrSupportedEPbPKNS0_7DisplayE", "display VRR:
 HLE_FORCE("_ZN2nn2vi23SetDisplayVrrCapabilityEPNS0_7DisplayEb", "display VRR capability: the host has no VRR", Result, h_vi_SetVrr, void *disp, unsigned on) {
     (void)disp; (void)on; return RES_OK; }
 // The largest display buffer (vi2 through the SDK, sdk+0x5e10c0, which the host does not serve: Result 0x272 and the output left as the game set it). BufferMaxResolution is
-// 0 1280x720, 1 1920x1080, 2 2560x1440, 3 3840x2160 (Fire Emblem Fortune's Weave's own table, main+0x1abc2c0 / +0x1abc050). Fire Emblem Fortune's Weave sets 0 first, so the failed call
+// 0 1280x720, 1 1920x1080, 2 2560x1440, 3 3840x2160 (another game's own table, main+0x1abc2c0 / +0x1abc050). Another game sets 0 first, so the failed call
 // told it 720p: it chose its 1280x720 DLSS network and rendered at 640x360, and the host scaled that to the window.
 HLE_FORCE("_ZN2nn2vi31QueryDisplayBufferMaxResolutionEPNS0_19BufferMaxResolutionEPKNS0_7DisplayE", "largest display buffer: the Switch 2's screen handheld, the host display's docked",
           Result, h_vi_BufMaxRes, uint32_t *out, const void *disp) {
@@ -174,7 +174,7 @@ HLE_FORCE("_ZN2nn2vi52SetLayerNextHdrExtendedContentLuminanceRangeMetadataEPNS0_
 HLE_FORCE("_ZN2nn2vi52SetLayerNextHdrStandardContentLuminanceRangeMetadataEPNS0_5LayerEtt", "layer HDR metadata: SDR output, nothing to apply", Result, h_vi_HdrStdLum,
           void *layer, uint32_t lo, uint32_t hi) { (void)layer; (void)lo; (void)hi; return RES_OK; }
 // The rest of SDK 22's layer HDR metadata calls (the Bezier tone curve and the clears): the SDK forwards them through a table its graphics system fills, which is null on the host, so
-// unanswered they call through null (Mario Kart World 1.8.0 sets the curve every frame, by pull request #1116)
+// unanswered they call through null (another game 1.8.0 sets the curve every frame, by pull request #1116)
 HLE_FORCE("_ZN2nn2vi39SetLayerNextHdrAdjustableBezierMetadataEPNS0_5LayerEfff", "layer HDR metadata: SDR output, nothing to apply", Result, h_vi_HdrBezier,
           void *layer, float a, float b, float c) { (void)layer; (void)a; (void)b; (void)c; return RES_OK; }
 HLE_FORCE("_ZN2nn2vi41ClearLayerNextHdrAdjustableBezierMetadataEPNS0_5LayerE", "layer HDR metadata cleared: SDR output", Result, h_vi_HdrBezierClear, void *layer) { (void)layer; return RES_OK; }

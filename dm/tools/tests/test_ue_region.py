@@ -30,7 +30,7 @@ def csel(call_at=None):
 
 
 def flag():
-    """Unreal Engine 4.26 (Pikmin 4): the default only while the variable is 0, str x8 with x1 set from the same constant"""
+    """Unreal Engine 4.26 (another game): the default only while the variable is 0, str x8 with x1 set from the same constant"""
     return [lambda a: ADRP(22, a, VAR), LDRX(8, 22, (VAR + 8 & 0xfff) // 8), lambda a: cbnz(8, a, a + 32), MOV_X8_62GB, lambda a: ADRP(0, a, VAR), ADDI(0, 0, VAR & 0xfff),
             MOV_X1_62GB, STRX(8, 22, (VAR + 8 & 0xfff) // 8), lambda a: bl(a, PLT), RET]
 
@@ -80,7 +80,7 @@ class FindTest(unittest.TestCase):
         self.assertFalse(why.startswith('[RED] '), why)
 
     def test_same_constant_set_after_the_store(self):
-        # TRIANGLE STRATEGY (Unreal Engine 4.27): str x8 of the default, then mov x1 of the same constant: the instruction the rewriter makes mov x1, x8
+        # Another game (Unreal Engine 4.27): str x8 of the default, then mov x1 of the same constant: the instruction the rewriter makes mov x1, x8
         words = flag()
         words[6:8] = [words[7], words[6]]
         off, reg, x1_mov, why = ue_region.find(bytes(image(words)), TEXT, RO, DATA)

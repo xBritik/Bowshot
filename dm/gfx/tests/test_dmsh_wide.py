@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from dmsh_wide import wide_loads, constant_reads   # noqa: E402
 import dmsh_abi as abi   # noqa: E402
 
-# Splatoon Raiders' Hoian_UBER (3e5a302ac52b73bf) as spirv-cross writes it, cut down: one light's words from fp_s3 at 80 * index + 16 .. 44, a written buffer,
+# Another game' Hoian_UBER (3e5a302ac52b73bf) as spirv-cross writes it, cut down: one light's words from fp_s3 at 80 * index + 16 .. 44, a written buffer,
 # and words in two blocks
 LIGHT = '''#include <metal_stdlib>
 #include <simd/simd.h>

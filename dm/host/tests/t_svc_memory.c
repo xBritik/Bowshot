@@ -417,7 +417,7 @@ static void module_sources(void) {
     g_nmod = 0; memset(g_mod, 0, sizeof test_modules); assert(!munmap(b, 0x20000));
 }
 
-// A module with the patch area before the base and a second one after the image (patch_nso.py TWO, EA SPORTS FC 27's 185.6 MB of text): data and bss end at the back area,
+// A module with the patch area before the base and a second one after the image (patch_nso.py TWO, another game's 185.6 MB of text): data and bss end at the back area,
 // which is reported as CodeData+RX and is no mapping source, like a patch area after the image
 static void module_back_patch(void) {
     uint8_t *a = mmap(NULL, 0x30000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0), *b = a + 0x8000;
@@ -661,7 +661,7 @@ static void file_rule(void) {
     unsetenv("DM_GUEST_FILE_HOST");
     const uint64_t G = 1ull << 30, M = 1ull << 20, pool9 = 9 * G, pool3 = 0xCD500000, h9 = guest_host_margin(pool9), h3 = guest_host_margin(pool3);
     assert(h9 == pool9 / 2 && h3 == pool3 / 2);   // half the pool
-    assert(guest_file_wanted(NULL, pool9, h9, 8 * G) && guest_file_wanted("", pool9, h9, 6 * G));   // Mario Kart World's pool on an 8 and a 6 GiB limit
+    assert(guest_file_wanted(NULL, pool9, h9, 8 * G) && guest_file_wanted("", pool9, h9, 6 * G));   // Another game's pool on an 8 and a 6 GiB limit
     assert(guest_file_wanted(NULL, pool9, h9, 11 * G + 993 * M));   // and on the iPad of issue #1184, where the pool alone fitted and the host's memory did not
     assert(!guest_file_wanted(NULL, pool9, 0, 11 * G + 993 * M));   // the rule before the margin
     assert(!guest_file_wanted(NULL, pool3, h3, 7 * G + 993 * M) && !guest_file_wanted(NULL, pool3, h3, 5 * G + 819 * M));   // a Switch game's pool stays anonymous with 8 and 6 GiB limits

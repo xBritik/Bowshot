@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Unity's ALLOC_BUCKET BucketAllocator, found in main by its name without a build ID: patch_nso.py cuts its block limit when its reservation is larger than an iPhone can spare.
 Unity's memory manager setup constructs the bucket allocator with its name in x1, the granularity in w2 (16), the bucket count in w3, the block size in w4 (4 MB) and the most
-blocks in w5, then calls the constructor (bl), which reserves (blocks + 1) x block size of address space at once. Unity 2019 passes 255 blocks, a 1 GB region (Subnautica 1.23.83358
-and Subnautica: Below Zero 1.23.55063, Unity 2019.4: the opening commits 20 blocks, and AddMoreBuckets returns false at the limit, so the allocation goes to Unity's other allocators:
-the limit sizes only the reservation); Unity 2020.3 and later pass 1 (Fire Emblem Engage, Patrick's Parabox, Cult of the Lamb, Super Mario RPG and the others on the drives,
+blocks in w5, then calls the constructor (bl), which reserves (blocks + 1) x block size of address space at once. Unity 2019 passes 255 blocks, a 1 GB region (another game 1.23.83358
+and another game 1.23.55063, Unity 2019.4: the opening commits 20 blocks, and AddMoreBuckets returns false at the limit, so the allocation goes to Unity's other allocators:
+the limit sizes only the reservation); Unity 2020.3 and later pass 1 (another game, another game, another game, another game and the others on the drives,
 2026-11-09). On a Switch the alias region is 64 GB, on an iPhone 4.375 GB: the limit becomes the most blocks whose reservation fits 256 MB (63 of 4 MB). Platform-limit cut.
-Unity 2021 and later pass the sizes in registers from the player's settings (boot.config, one block by default: Super Mario RPG, Monster Train 2, Silksong): no cut, a plain reason.
+Unity 2021 and later pass the sizes in registers from the player's settings (boot.config, one block by default: another game, another game, Silksong): no cut, a plain reason.
 It fails closed: the name with more than one reference, or a branch before the call, is a [RED] reason and no cut; no name or a small limit is a plain one.
 Usage on its own: unity_bucket.py <module>... (what it finds in each)"""
 import struct, sys, os

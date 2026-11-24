@@ -1,4 +1,4 @@
-"""Blizzard's CASC as Diablo II: Resurrected ships it (casc.py) gives the split the shaders of its SHAD containers, whatever the files' encodings; the records of the same form in main are
+"""Blizzard's CASC as another game ships it (casc.py) gives the split the shaders of its SHAD containers, whatever the files' encodings; the records of the same form in main are
 found by the reference to their start. Synthetic bytes only."""
 import contextlib
 import io

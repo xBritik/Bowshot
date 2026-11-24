@@ -217,7 +217,7 @@ int main(void) { @autoreleasepool {
         init_fill_case(416 + i, packed[i], NVN_MEMORY_POOL_FLAGS_CPU_UNCACHED);
         init_fill_case(420 + i, packed[i], NVN_MEMORY_POOL_FLAGS_CPU_NO_ACCESS);
     }
-    // RGBA4: R, G, B, A from bit 0 up (Metal's ABGR4 holds them reversed), every nibble different; (B, G, R, A) is Super Mario RPG's shadowmask mapping
+    // RGBA4: R, G, B, A from bit 0 up (Metal's ABGR4 holds them reversed), every nibble different; (B, G, R, A) is another game's shadowmask mapping
     uint16_t rgba4[2] = {0x8421, 0x0f00};
     uint8_t bgra[4] = {NVN_SWZ_B, NVN_SWZ_G, NVN_SWZ_R, NVN_SWZ_A};
     float rgba4f[8] = {1/15.f,2/15.f,4/15.f,8/15.f, 0,0,1,0}, bgra4f[8] = {4/15.f,2/15.f,1/15.f,8/15.f, 1,0,0,0};

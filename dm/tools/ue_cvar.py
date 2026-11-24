@@ -4,14 +4,14 @@ and the host writes the variables the profile decides on (hle_fpslock.c: the fra
 ue_texture_pool).
 A TAutoConsoleVariable is a global in main's data: its static constructor loads the name (adrp + add), registers it through IConsoleManager (a blr), takes the object's address (adrp + add)
 and stores the variable's value pointer at +0x10 (str x0, [xN, #0x10]); the value holds the game thread's copy, then the render thread's. The same sequence registers every variable in the
-Unreal games here: Yoshi's Crafted World (UE 4.1x, UTF-32 names), Pikmin 4 (4.26), OCTOPATH TRAVELER II and DRAGON QUEST VII Reimagined (4.27, UTF-16), OCTOPATH TRAVELER 0 (UE 5, a
-base constructor called between the address and the store) and FINAL FANTASY RESONANCE (5.6); OCTOPATH TRAVELER (4.18) inlines it, addressing the objects from a page base made far
+Unreal games here: another game (UE 4.1x, UTF-32 names), another game (4.26), another game and another game (4.27, UTF-16), another game (UE 5, a
+base constructor called between the address and the store) and another game (5.6); another game (4.18) inlines it, addressing the objects from a page base made far
 before the name (registered_at, base_of). A name registered at two objects gives none, with a [RED] reason.
 Usage on its own: ue_cvar.py <module>... (the objects of NAMES in each)"""
 import re, struct, sys, os
 
 # The variables the host may write: the engine's frame limit, its present interval (rhi., or nvn. in the Switch RHI of UE 4.18), the texture streaming pool, and a game's own frame-limit
-# variable a profile names with ue_fps_cvar (SHIN MEGAMI TENSEI V: Vengeance's Project.FrameRateLimit, which its settings apply to t.MaxFPS). A name a profile names must be listed here
+# variable a profile names with ue_fps_cvar (another game's Project.FrameRateLimit, which its settings apply to t.MaxFPS). A name a profile names must be listed here
 NAMES = ('t.MaxFPS', 'rhi.SyncInterval', 'nvn.SyncInterval', 'r.Streaming.PoolSize', 'Project.FrameRateLimit')
 RET = 0xD65F03C0
 
@@ -80,7 +80,7 @@ def registered_at(word, text_end, j):
     x1, decides: a bl with x0 an address made by adrp + add is the variable's constructor (UE 4.18: TAutoConsoleVariable's, which registers it), and x0 is the object; a blr is
     IConsoleManager's register call (UE 4.2x and 5), and the object is the address made by adrp + add that the value pointer it returns is then stored into, str x0, [xN, #0x10] (UE 5
     calls a base constructor between the two). UE 4.18 also inlines that constructor into a long static initializer, addressing every object from one page base made far before the
-    name (OCTOPATH TRAVELER: str xV, [x22, #k] the vtable, then, after the call that returns the value pointer, str x0, [x22, #k + 0x10]); the object is then base_of(x22) + k.
+    name (another game: str xV, [x22, #k] the vtable, then, after the call that returns the value pointer, str x0, [x22, #k + 0x10]); the object is then base_of(x22) + k.
     Anything else (a lookup by name, a log line) is no registration. Registers are followed from the last call or branch before the name (UE 4.18 loads the object first); those a call
     or a load overwrites are forgotten, and an adrp x1 after the registration (the next variable's name) ends the search"""
     if not (name_add := add_imm(word(j))) or name_add[0] != 1: return None

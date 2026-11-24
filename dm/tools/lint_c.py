@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # C and Objective-C lint of dm/host and dm/gfx, as CI runs it (.github/workflows/lint-c.yml). Two commands:
 #   compdb  writes the compile database dm/host/gen/compile_commands.json from dry runs of the Makefiles (make -n -B): the host (dm/host), the texture tests (dm/gfx/tex/tests),
-#           every graphics test (dm/gfx/tests), the host tests (dm/host/tests) and the Metal sample (dm/gfx/metal), all for one profile (--game, default GAME or Super Mario Bros. Wonder).
+#           every graphics test (dm/gfx/tests), the host tests (dm/host/tests) and the Metal sample (dm/gfx/metal), all for one profile (--game, default GAME or another game).
 #           A source compiled by several of them keeps the first command (the host's). Third-party sources (dm/third_party) are left out.
 #   tidy    runs clang-tidy (the checks in .clang-tidy) on every source of the database and counts its findings per file and check, without line numbers, so that moving code does not
 #           change them. The counts are a ratchet, as dm/tools/lint_python.py's: more findings than dm/tools/lint_c_baseline.tsv lists for a file and check fail (a new one), and so

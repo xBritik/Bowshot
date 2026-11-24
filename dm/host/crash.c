@@ -120,7 +120,7 @@ void crash_off(const char *tag, uint64_t a) {   // Also used by diag.c
     fputs(b, stderr);
 }
 // Frame pointer backtrace: x29 chain [fp]=previous frame's fp, [fp+8]=return address; only 8-byte aligned, monotonically increasing frames are walked.
-// Each frame is read with vm_read_overwrite, which fails instead of faulting: code built without frame pointers keeps data in x29 (STEINS;GATE RE:BOOT's main+0x38921c: x29 = 0x430),
+// Each frame is read with vm_read_overwrite, which fails instead of faulting: code built without frame pointers keeps data in x29 (another game's main+0x38921c: x29 = 0x430),
 // and a probe's backtrace there used to crash the host
 void dm_backtrace(uint64_t fp) {
     fprintf(stderr, "[dm] bt:");
@@ -208,7 +208,7 @@ static void on_crash(int sig, siginfo_t *si, void *uc_) {
         fputc('\n', stderr);
     }
     // What the graphics layer knows of the addresses in the registers (dm_gfx_addr_note: the memory pool, a texture's storage, a GPU write the host recorded on the page). A game's own
-    // data overwritten with float words (PRAGMATA's render command lists) asks whether the GPU or a host copy wrote there
+    // data overwritten with float words (another game's render command lists) asks whether the GPU or a host copy wrote there
     for (int i = 0; i < 29; i++) {
         uint64_t a = uc->uc_mcontext->__ss.__x[i]; char note[512]; note[0] = 0;
         if (a < 0x100000000ull) continue;
@@ -216,7 +216,7 @@ static void on_crash(int sig, siginfo_t *si, void *uc_) {
         if (note[0]) fprintf(stderr, "[dm] x%d %#llx:%s\n", i, (unsigned long long)a, note);
     }
     // DM_CRASH_PEEK="sp+0x248*,x22-0x20": 0x100 bytes at each address, given as sp or a register plus or minus an offset, a trailing * reading the pointer stored there first
-    // (PRAGMATA's render function keeps its current draw item at sp + 0x248: the item and what it points at tell where a bad pointer came from); with what the graphics layer knows of it
+    // (another game's render function keeps its current draw item at sp + 0x248: the item and what it points at tell where a bad pointer came from); with what the graphics layer knows of it
     if (getenv("DM_CRASH_PEEK")) {
         char spec[512]; snprintf(spec, sizeof spec, "%s", getenv("DM_CRASH_PEEK"));
         for (char *tok = strtok(spec, ","); tok; tok = strtok(NULL, ",")) {
@@ -282,7 +282,7 @@ void crash_install(void) {
         pthread_detach(th);
     }
     sigaction(SIGSEGV, &sa, 0); sigaction(SIGBUS, &sa, 0); sigaction(SIGILL, &sa, 0); sigaction(SIGTRAP, &sa, 0);
-    // abort() too (an assertion or an uncaught exception in the host or a framework): Big Brain Academy: Brain vs. Brain died once with SIGABRT 11 minutes into a run with nothing
+    // abort() too (an assertion or an uncaught exception in the host or a framework): another game died once with SIGABRT 11 minutes into a run with nothing
     // in the log and no crash report, so where it came from was lost
     sigaction(SIGABRT, &sa, 0);
 }

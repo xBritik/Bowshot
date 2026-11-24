@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # The pipeline archive made offline: the base of every shader pair, as the host's pipeline prebuild makes it on the device (pre_desc / pre_pair in dm/gfx/nvn/nvn_mtl.m), compiled on the Mac
 # by metal-tt into one Metal 4 pipeline archive per GPU architecture, so an iPhone takes the bases from the app bundle instead of compiling them on its first start.
-# The host matches libraries by content, so the archive serves the libraries the app ships (msl/b-<chain>); measurements are in dm/games/01007EF00011E000/README.md.
+# The host matches libraries by content, so the archive serves the libraries the app ships (msl/b-<chain>); measurements are in dm/games/<title ID>/README.md.
 # Per pair (vertex key, pixel key) of the profile's shader_pairs.tsv and pso_pairs.tsv, read in that order with repeated lines dropped, as the host reads them:
 #   · the vertex shader's pulling library <key>_bp (a vertex shader without stage inputs: its own <key>_b), entry `entry`, or `entry_z` for the near = 0 depth mode, from its reflection
 #     <key>_b.json: the pulling library's under `pull` there (vertex_entry); the pixel shader's <key>_b, entry `entry` (main0); no vertex descriptor, one sample, every colour
@@ -32,7 +32,7 @@
 # Each archive is made again only when its compiler inputs change (key.<arch> in the work folder): the complete pipeline configuration without library locations,
 # the referenced libraries' bytes, architecture, platform, minimum OS and metal-tt version. Chain/profile stamps are validated and refreshed independently.
 # More bases than --batch-size are compiled in sequential groups (batches.<arch>/<index>/ in the work folder, each cached by its own inputs) and merged with metal-pack: one metal-tt on
-# Super Mario Odyssey's 32,864 bases runs an 8 GB Mac out of paging space (docs/reference/shaders.md, Bounded groups for the offline pipeline compiler). The output is the same single file.
+# Another game's 32,864 bases runs an 8 GB Mac out of paging space (docs/reference/shaders.md, Bounded groups for the offline pipeline compiler). The output is the same single file.
 # With compute pipelines, they and the bases are separate groups (batches.<arch>/c<index>/ and <index>/) merged the same way, so new pairs leave the compute pipelines compiled, and the
 # reverse. The compute groups are small (COMPUTE_BATCH) and run --jobs at a time: one metal-tt keeps about three cores busy.
 # Usage: pso_offline.py --msl <b-<chain> folder> --out <folder> --work <folder> [--game <id>] [--pairs <shader_pairs.tsv> [--pairs <pso_pairs.tsv>]] [--gpu g18p[,g17p]]
@@ -61,7 +61,7 @@ HOST_CONSTANTS = {'dm_border_off': (abi.BORDER_FC, True), 'dm_blend_off': (abi.B
 
 BATCH = 1000   # bases per metal-tt run: Odyssey's largest compiler lifetime footprint at this size was 2.065 GiB on an 8 GB M2
 MAX_FAILED = 8   # pipelines of one group metal-tt may fail on before the run counts as failed (compile_isolating)
-COMPUTE_BATCH = 16   # compute pipelines per metal-tt run, JOBS runs at a time: one metal-tt keeps about 2-3 cores busy: Star Fox's 233 took 268 s in 16 groups against 453 s in one run (M5 Pro, background priority, a loaded Mac)
+COMPUTE_BATCH = 16   # compute pipelines per metal-tt run, JOBS runs at a time: one metal-tt keeps about 2-3 cores busy: another game's 233 took 268 s in 16 groups against 453 s in one run (M5 Pro, background priority, a loaded Mac)
 JOBS = max(1, (os.cpu_count() or 2) // 2)
 COLOUR = ('pixel_format', 'write_mask', 'blending_state', 'alpha_blend_operation', 'rgb_blend_operation', 'destination_alpha_blend_factor', 'destination_rgb_blend_factor',
           'source_alpha_blend_factor', 'source_rgb_blend_factor')
@@ -269,7 +269,7 @@ def plan_compute(lib_dir, chain, shaders):
     return pipes, left
 
 
-# metal-tt specializes only a library's first function: the second's (Nintendo Switch Sports Resort's pulling libraries <key>_bp, entry main0_z for its near = 0 depth mode, behind
+# metal-tt specializes only a library's first function: the second's (another game's pulling libraries <key>_bp, entry main0_z for its near = 0 depth mode, behind
 # main0, with the border corrections' constant) fails in applegpu-nt with "cannot find private metadata at offset '8'" (the second function's entry), while
 # main0 of the same library specialized compiles (metal-tt 32023.922, macOS 27.2). So such a function is specialized from a library of its own, cut from its library (dmsh_side.cut,
 # the bytes metallib --function-name gives): the archive serves the host's lookup through the whole library, as the base is found by its function, not by its library file
@@ -497,7 +497,7 @@ def write_failed(work, arch, bases, computes):
 
 def compile_isolating(lib_dir, bases, computes, js, part, work, arch, platform, osmin, meshes=()):
     """compile_archive on the bases, mesh bases and compute pipelines; when metal-tt fails with room on the volume, the pipelines it cannot compile are found and left out, and the rest
-    compiled. → (bases+meshes left out, compute pipelines left out), with their reason printed. One pipeline the GPU compiler stops on ends the whole run (PRAGMATA's pixel shader
+    compiled. → (bases+meshes left out, compute pipelines left out), with their reason printed. One pipeline the GPU compiler stops on ends the whole run (another game's pixel shader
     c4ac3ca598cea32e, in three of its 48,957 bases: "LLVM ERROR: Failed to encode." for every GPU up to applegpu_g17), which cost the app its archive: every base built on
     the device at its first start. Found by halving: a half that compiles is clean, so the other holds a failure; a single pipeline is tried alone before it is named, and a
     run in which nothing compiles, or more than MAX_FAILED pipelines fail, is the tool's failure and stops as before"""

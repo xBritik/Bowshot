@@ -1,5 +1,5 @@
 // nn::codec video decoders (the Switch 2's SDK): taken over on the host, VP9 decoded with libvpx as in hle_movie.c. The SDK sends every call to a decoder service (IPC) the host
-// does not serve: nn::codec::video::Initialize crashed in it (Donkey Kong Bananza, sdk+0x2de99c, after its first punch, when the guide movie starts). The SDK's protocol, read from
+// does not serve: nn::codec::video::Initialize crashed in it (another game, sdk+0x2de99c, after its first punch, when the guide movie starts). The SDK's protocol, read from
 // its implementation (sdk 20.5.19 Ounce):
 //   - the client makes one image pool per output picture (MakeDecodeImagePreference → CalculateDecoderImagePoolBuffer → InitializeDecoderImagePool) and registers each with the
 //     decoder under an index (RegisterVp9DecoderBuffer). Registering gives the buffer to the decoder to fill and puts the index in the decoder's queue of acquirable buffers
@@ -15,7 +15,7 @@
 // found its shown picture not yet given back, and repeated it for a frame or two. Pictures with no released buffer to go into wait in a short queue, and packets are refused
 // once packets and pictures waiting fill it. The SDK's opaque types hold a host pointer at +0 (pool: 0x20 bytes are the SDK's; decoder: 0x400), the decoder's event lives in its type at +0x100.
 // VP8, VP9, H.264 and AV1 decoders share it all (cv_dec_*). Not served: encrypted input and alias pools.
-// SDK 22 (Fire Emblem Fortune's Weave's movie module, subsdk2) reaches the same protocol through other names: ByTransferMemory / ByRemoteMemory initializers, a preference with an image tiling mode,
+// SDK 22 (another game's movie module, subsdk2) reaches the same protocol through other names: ByTransferMemory / ByRemoteMemory initializers, a preference with an image tiling mode,
 // a pool without its mode, and a submission event returned rather than written out. Its player can take pictures the GPU route: GetDecoderImagePoolNativeImageHandle's handle goes through
 // nvnNativeImage to an RGBA texture (hle_nvn.c "Native images"), so a pool whose handle was asked for keeps each picture as RGBA in the pool's own memory, which the texture is made over
 #include "hle.h"
@@ -33,7 +33,7 @@
 #define CV_SYNC 0x53436d44u         // 'DmCS': a sync handle the host made (dec id, index, generation)
 #define CV_BUFS 32
 #define CV_READY 4                  // packets and decoded pictures waiting (cv_pending) at which the submission-ready event goes down
-#define CV_HOLD 12                  // and at which packets are refused. Mario Tennis Fever's player sends one packet per signal and ignores the result (nro0+0xd16130), so a signal in flight when the
+#define CV_HOLD 12                  // and at which packets are refused. Another game's player sends one packet per signal and ignores the result (nro0+0xd16130), so a signal in flight when the
                                     // event goes down must still find room: refused at 4, a packet about 6 s into the title movie was lost, and libvpx found every frame after it corrupt
 #define CV_STAT 600                 // packets between two looks at the decode times (cv_stat)
 #define CV_EVENT_OFF 0x100          // the submission-ready SystemEventType inside the decoder type
@@ -139,7 +139,7 @@ static void fill(cv_dec *d, int decoded) {
     if (had >= CV_HOLD && d->nheld < CV_HOLD) pthread_cond_signal(&d->work);   // the decoder's thread waited for room for its next packet's pictures
 }
 // The event says a packet can come: it rises when one was taken (took) or room came back (before: cv_pending before the change), not at every release (decoder lock held).
-// Mario Tennis Fever's player counts each signal as one packet it may send: raised at every release, its count grew while a seek held back the samples (a skipped cutscene),
+// Another game's player counts each signal as one packet it may send: raised at every release, its count grew while a seek held back the samples (a skipped cutscene),
 // and the packets it then sent overran CV_HOLD
 static void ready(cv_dec *d, int before, int took) {
     if (!d->event) return;
@@ -287,7 +287,7 @@ static void cv_open(cv_dec *d) {   // (re)creates the codec state: a new stream 
     }
     if (d->codec == CV_H264) { if (!d->avc) d->avc = mavc_new(&d->vt); else mavc_drop(d->avc); if (d->csd_n) mavc_param_sets(d->avc, d->csd, d->csd_n); d->vpx_ok = 1; return; }
     if (d->vpx_ok) vpx_codec_destroy(&d->vpx);
-    // Made as hle_movie.c makes its own (md_vpx_open). With 2 threads and no row threading, Mario Tennis Fever's 2560x1440 60 fps opening decoded too slowly for its player,
+    // Made as hle_movie.c makes its own (md_vpx_open). With 2 threads and no row threading, another game's 2560x1440 60 fps opening decoded too slowly for its player,
     // which stopped the sound for 60-80 ms at a time whenever the picture fell behind
     d->vpx_ok = md_vpx_open(&d->vpx, d->codec == CV_VP9, d->w, d->h) == VPX_CODEC_OK;
     if (!d->vpx_ok) LOG("[RED] nn::codec %s decoder: libvpx init failed", k_cv_name[d->codec]);
@@ -326,7 +326,7 @@ static Result cv_dec_fin(void *t) {
     for (uint32_t k = 0; k < d->qcount; k++) free(d->q[(d->qhead + k) % CV_HOLD].data);
     free(d->csd); d->magic = 0;
     // The submission-ready event goes with the decoder, as in the SDK. Kept, it stayed in the host's bound-event table, so the next decoder initialised in the same memory found its
-    // event "bound" and was not given one: the game had cleared that memory, and nn::os aborted on the uninitialised event (Donkey Kong Bananza, its second movie)
+    // event "bound" and was not given one: the game had cleared that memory, and nn::os aborted on the uninitialised event (another game, its second movie)
     static void (*destroy)(void *); if (!destroy && !(destroy = guest_sym("_ZN2nn2os18DestroySystemEventEPNS0_15SystemEventTypeE"))) die("nn::os::DestroySystemEvent missing");
     destroy(d->event);
     pthread_cond_destroy(&d->work); pthread_mutex_destroy(&d->mu); free(d); *(cv_dec **)t = NULL;
@@ -377,7 +377,7 @@ static Result cv_dec_reset(void *t, int stop) {
     pthread_mutex_unlock(&d->mu);
     return 0;
 }
-// A started decoder that has room takes packets, whatever became of the signal Initialize gave. Mario Tennis Fever's player (nro0+0xd19d18) clears that one and drops it while it is not yet started,
+// A started decoder that has room takes packets, whatever became of the signal Initialize gave. Another game's player (nro0+0xd19d18) clears that one and drops it while it is not yet started,
 // then counts only later signals: with none at Start it never sent a packet, and every movie stayed black, with the game waiting behind it
 static Result cv_dec_start(void *t) {
     cv_dec *d = cv_of(t); if (!d) return CV_R(2004);
@@ -547,7 +547,7 @@ static Result cv_dec_props(uint16_t *w, uint16_t *h, uint16_t *cw, uint16_t *ch,
 static Result cv_dec_encrypted(void) { static int once; if (!once++) LOG("[RED] nn::codec: an encrypted input buffer: protected streams are not served"); return CV_R(2004); }
 // Each decoder type's entry points, by their names in the SDK (the work buffer, the two Initialize overloads, …). H.264's two Initialize overloads end with the stream's parameter
 // sets (SPS / PPS: a pointer and a size), which the others do not have: read only for H.264. Past the eight registers the guest's AAPCS64 gives each argument an 8-byte slot where
-// Apple's arm64 packs them, so those are declared 64 bits wide. PRAGMATA (SDK 20.5.15) gives its movies' parameter sets only there: none in the stream, whose packets start with
+// Apple's arm64 packs them, so those are declared 64 bits wide. Another game (SDK 20.5.15) gives its movies' parameter sets only there: none in the stream, whose packets start with
 // an SEI, so with them dropped VideoToolbox had no format and every movie stayed black
 #define CV_FAMILY(tag, codec, s_work, s_init, s_init2, s_fin, s_reg, s_unreg, s_start, s_stop, s_flush, s_ev, s_sub, s_enc, s_acq, s_rel, s_props) \
     HLE_FORCE(s_work, "the host decoder needs no work memory", Result, h_cv_##tag##work, uint64_t *size, uint64_t *align, uint64_t bs, uint16_t w, uint16_t h) { (void)bs; (void)w; (void)h; *size = 0x1000; *align = 0x1000; return 0; } \
@@ -640,7 +640,7 @@ HLE_FORCE("_ZN2nn5codec35InitializeH264DecoderByRemoteMemoryEPNS0_15H264DecoderT
     (void)bs; (void)refs; (void)mode; return cv_dec_init(t, CV_H264, (uint16_t)w, (uint16_t)h, in, out, csd, csd_n);
 }
 HLE_FORCE("_ZN2nn5codec34GetH264DecoderSubmissionReadyEventEPNS0_15H264DecoderTypeE", "signalled while the host decoder takes packets", void *, h_cv_h264ev22, void *t) { cv_dec *d = cv_of(t); return d ? d->event : NULL; }
-// SDK 19's forms (Mario Kart World's base game, SDK 19.3.3 Ounce, whose movie player is in main). Initialize by remote memory takes two sizes before the picture size (`mmttj`), eight
+// SDK 19's forms (another game's base game, SDK 19.3.3 Ounce, whose movie player is in main). Initialize by remote memory takes two sizes before the picture size (`mmttj`), eight
 // arguments in registers (H.264 two more past them: the parameter sets, 8-byte slots as above). The output buffer properties take a nn::movie::ColorSpace* before the time (nine
 // arguments: the index is the first stack slot; the sdk's own wrapper, sdk+0x2ca110, reorders them for the implementation that writes it as 32 bits). The game reads neither the colour space
 // near either call (main+0x19e63d4, +0x19e702c), and it converts the NV12 pictures it reads itself, so it gets 0. MakeDecodeImagePreferenceForCompat is MakeDecodeImagePreference with fewer
@@ -699,7 +699,7 @@ HLE_FORCE("_ZN2nn6syncpt3sdk21RequestSyncPointEventEPNS1_18SyncPointEventTypeERK
     return 0;
 }
 HLE_FORCE("_ZN2nn6syncpt3sdk20CancelSyncPointEventEPNS1_18SyncPointEventTypeE", "disarms the event", void, h_spt_cancel, void *e) { spt_unarm(e); hle_clear_system_event(e); }
-// Whether the awaited picture is in its buffer: the event's SystemEvent is signalled (manual clear, so the look leaves it signalled). Mario Kart World's base game asks it before each
+// Whether the awaited picture is in its buffer: the event's SystemEvent is signalled (manual clear, so the look leaves it signalled). Another game's base game asks it before each
 // request (main+0x19e779c, SDK 19.3.3); the SDK's own went through the same null table as CreateSyncPointEvent (pc 0)
 HLE_FORCE("_ZN2nn6syncpt3sdk21TryWaitSyncPointEventEPKNS1_18SyncPointEventTypeE", "the event's SystemEvent is signalled", bool, h_spt_trywait, const void *e) {
     static uint32_t (*tw)(void *); if (!tw && !(tw = guest_sym("_ZN2nn2os18TryWaitSystemEventEPNS0_15SystemEventTypeE"))) die("nn::os::TryWaitSystemEvent missing");

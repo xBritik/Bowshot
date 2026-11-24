@@ -136,7 +136,7 @@ module_t *module_of(const void *p) {
 }
 
 // Whether main imports a symbol whose name starts with prefix (an undefined dynamic symbol: one main calls but another module defines), for behaviour that follows what the game uses
-// The NROs count too, loaded or not: main may be only a boot stub that loads the game's code as an NRO (Mario Tennis Fever), and a Source engine game's modules are NROs
+// The NROs count too, loaded or not: main may be only a boot stub that loads the game's code as an NRO (another game), and a Source engine game's modules are NROs
 int dm_game_imports(const char *prefix) {
     size_t n = strlen(prefix);
     for (int i = 0; i < g_nmod; i++) if (g_mod[i].nro || !strcmp(g_mod[i].name, "main")) {
@@ -147,7 +147,7 @@ int dm_game_imports(const char *prefix) {
 }
 
 // SDK major version, from the version string the SDK's libraries keep in the sdk module's read-only data ("NintendoSDK_nnSdk-10_4_0"; SDK 12 spells it NintendoSdk_;
-// Switch 2 SDKs name a variant first: "NintendoSdk_nnSdk-Generic_20_5_19", Donkey Kong Bananza).
+// Switch 2 SDKs name a variant first: "NintendoSdk_nnSdk-Generic_20_5_19", another game).
 // Behaviour that follows the SDK version is decided by it (the NVN API version, the shared-font layout), not by the game profile. 0 = no sdk module or no version string
 int dm_sdk_major(void) {
     static int major = -1;
@@ -182,7 +182,7 @@ int dm_sdk_ounce(void) {
 }
 
 // The constants NVN2's own nvnDeviceGetInteger answers: the driver is compiled into the game's sdk, and its API and GPU code versions move with the SDK (20.5.19: API 231.30, GPU code minor 17;
-// 21.4.4: 231.39 and 20). Games check them: Splatoon Raiders requires minor >= 39 and otherwise creates no graphics system (main+0x31b86b0). The driver's switch over the items loads w0 with the
+// 21.4.4: 231.39 and 20). Games check them: another game requires minor >= 39 and otherwise creates no graphics system (main+0x31b86b0). The driver's switch over the items loads w0 with the
 // major first, then jumps through a byte table: mov w0, #231 / adr / adrp + add (the table) / ldrb / add, lsl #2 / br, with cmp wN, #<last item> before it. A case that is a constant is mov w0, #v; b.
 // Returns 1 with *out set when item has such a case; 0 for a case that reads something else (most items go through the driver's table lookup or read the GPU's description), or no such switch
 int dm_sdk_nvn2_item(unsigned item, int *out) {
@@ -432,7 +432,7 @@ static void read_layout(module_t *m, const char *dir) {
                                          || m->back_off + m->back_len != m->image_size))
         die("%s: back patch area, but BACK_OFF / BACK_LEN missing or wrong", path);
     // map_image seals [0, text_end rounded up to 16 KB) read + execute (and gen_embed.py puts it in __TEXT on iOS): data below that would be read-only and SIGBUS in relocate()
-    // (FINAL FANTASY VIII Remastered's Math.nro and Platform.nro). patch_nso.py moves ro and data up (mod_layout.py); stop here on a copy rewritten before that
+    // (another game's Math.nro and Platform.nro). patch_nso.py moves ro and data up (mod_layout.py); stop here on a copy rewritten before that
     if (m->data_off < ((m->text_end + 0x3FFF) & ~0x3FFFull))
         die("%s: data at %#llx shares a 16 KB page with code (text ends at %#llx): rewrite the module again with dm/tools/patch_nso.py", m->name, (unsigned long long)m->data_off, (unsigned long long)m->text_end);
 }
@@ -500,9 +500,9 @@ void dm_fps_state_apply(void) {
     if (t == 40 && !g_fstep_t120) { LOG("[RED] DM_FPS_TARGET=40: this build's frame step takes whole vsyncs of 1/60 s only (no FRAME_STEP_120 stub), so 25 ms frames cannot be stepped; using 30"); t = 30; }
     if (t != 0 && t != 30 && t != 40 && t != 60) { LOG("[RED] DM_FPS_TARGET=%s: must be 0, 30%s or 60; using the game's own frame step", e, g_fstep_t120 ? ", 40" : ""); t = 0; }
     nvn_fstep_target_put(dm_fps_state, (float)t);
-    // Render scale of the 3D views (the stubs at Tears of the Kingdom's main+0xd5cc0, Breath of the Wild's main+0x1266880, Hades II's render size, Ocarina of Time's view-size
+    // Render scale of the 3D views (the stubs at Tears of the Kingdom's main+0xd5cc0, Breath of the Wild's main+0x1266880, another game's render size, Ocarina of Time's view-size
     // update): 1.0 keeps the game's own size and dynamic resolution; another factor fixes the size at that fraction (DM_RENDER_SCALE, 0.5 to the stub's largest scale: 1.0, or
-    // above for a stub that also raises it, Hades II's 3.0). Independent of the frame step: written at target 0 too
+    // above for a stub that also raises it, another game's 3.0). Independent of the frame step: written at target 0 too
     // Bowshot: unset, the profile's render_scale_default (1.0 for a game without one; Ocarina of Time's Potato step): the launcher's default, also with its window off
     const char *rs = getenv("DM_RENDER_SCALE"); float sc = DM_GAME_RENDER_SCALE_DEFAULT, hi = g_render_scale_max;
     if (!(sc >= 0.5f && sc <= hi)) sc = 1.0f;
@@ -577,7 +577,7 @@ static void register_gates(module_t *m, const char *dir) {
     LOG("%s: gates %d patch_off %#llx keys %lu/%lu/%lu/%lu", m->name, ng, m->patch_off, g_key18, g_keytls, g_keytlr, g_keygate);
 }
 
-// DT_RELR (from SDK 20; all three modules of The Legend of Zelda: Breath of the Wild 1.9.0 have it): a compact table of relative relocations with the addend in the slot (*slot += base).
+// DT_RELR (from SDK 20; all three modules of another game 1.9.0 have it): a compact table of relative relocations with the addend in the slot (*slot += base).
 // Each 8-byte entry: even = a new start offset (relocate it, the pointer moves to the next slot); odd = a bitmap whose bits 1-63 stand for the 63 slots after the pointer, which then moves on by 63 slots.
 // Without it main's GOT and vtables hold module offsets (main's RELA keeps only symbol relocations)
 static unsigned relr_apply(module_t *m, uint64_t relr, uint64_t relrsz, uint64_t delta) {
@@ -653,7 +653,7 @@ static void relocate(module_t *m) {
 }
 
 // ---- NRO modules (nn::ro, hle_ro.c) ----
-// A game may load modules at run time: nn::ro::LoadModule hands over an NRO image it read from its files (Super Smash Bros. Ultimate: the fighters' code, 98 NROs in data.arc, whose
+// A game may load modules at run time: nn::ro::LoadModule hands over an NRO image it read from its files (another game: the fighters' code, 98 NROs in data.arc, whose
 // exports main imports: 1,045 lua2cpp::create_agent_* functions). iOS runs no code loaded at run time, so the NROs are rewritten offline like the other modules (dm/tools/nro_collect.py,
 // patch_nso.py) and listed in <patched dir>/nro.tsv with their SHA-256. All are mapped at start (code read-only + execute from then on); none takes part in symbol lookups until the game
 // loads it. A load restores the NRO's data and bss as rewritten (after the first), relocates it against the modules loaded then, in load order (Horizon's rtld does the same), and binds the
@@ -931,7 +931,7 @@ static void remap_at(module_t *m, vm_address_t to, const void *from, unsigned lo
 static const struct mach_header_64 *g_game_image = &_mh_execute_header;
 void dm_set_game_image_header(const void *mh) { g_game_image = mh; }
 #define IMAGE_MH g_game_image
-// The NRO modules (loader.c "NRO modules") are packed instead of getting sections of their own: a Mach-O file has at most 255 sections, and Super Smash Bros. Ultimate's 98 NROs would
+// The NRO modules (loader.c "NRO modules") are packed instead of getting sections of their own: a Mach-O file has at most 255 sections, and another game's 98 NROs would
 // take 294. gen_embed.py puts their pieces one after another, each 16K aligned, in __TEXT,__dm_nro_x0 / __DM_NRO_W,__img / __TEXT,__dm_nro_x1, and __DATA,__dm_nro_tab lists them:
 // 32 bytes of name, then the offset and length of its x0, W and x1 pieces in their sections (u64 each). A module name never holds an underscore, so these names meet no module's
 typedef struct { char name[32]; uint64_t off[3][2]; } nro_ent;
@@ -978,7 +978,7 @@ static void map_image(module_t *m, const char *dir) {
     base += pre;
     remap_at(m, base, x0, z0, FALSE, VM_PROT_READ | VM_PROT_EXECUTE);
     remap_at(m, base + z0, w, zw, TRUE, VM_PROT_READ | VM_PROT_WRITE);
-    // A module with nothing to rewrite has an empty patch area (87 of Super Smash Bros. Ultimate's 98 NROs: no x18, SVC or TLS register use); vm_remap refuses 0 bytes
+    // A module with nothing to rewrite has an empty patch area (87 of another game's 98 NROs: no x18, SVC or TLS register use); vm_remap refuses 0 bytes
     // (KERN_INVALID_ARGUMENT), which stopped the app at launch on an iPhone at the first such NRO (found in PR #94)
     if (z1) remap_at(m, base + m->patch_off, x1, z1, FALSE, VM_PROT_READ | VM_PROT_EXECUTE);
     if (z2) remap_at(m, base + m->back_off, x2, z2, FALSE, VM_PROT_READ | VM_PROT_EXECUTE);

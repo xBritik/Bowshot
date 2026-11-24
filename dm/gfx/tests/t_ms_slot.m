@@ -1,5 +1,5 @@
 // Multisample texture slots: the reflection records texture2d_ms / depth2d_ms (and their arrays) as multisample types, not 2D (URP's CopyDepth reads its MSAA depth
-// through texture2d_ms: Super Monkey Ball Banana Rumble reported the multisample depth bound there as a type mismatch), and the dummy of an unbound multisample slot
+// through texture2d_ms: another game reported the multisample depth bound there as a type mismatch), and the dummy of an unbound multisample slot
 // is a multisample texture that reads 0, which Metal accepts in that argument (a 2D dummy is not).
 #include "../nvn/nvn_mtl.m"
 void *front_metal_layer(void) { return NULL; }

@@ -74,7 +74,7 @@ class MTFrameworkTests(unittest.TestCase):
 
 
 def headed_package(shaders, h=b'\xf2R\xa3c'):
-    # Resident Evil HD Remaster: each record is binding data of its own length, a 0x20-byte header, the control section, the code area.
+    # Another game HD Remaster: each record is binding data of its own length, a 0x20-byte header, the control section, the code area.
     package = bytearray(b'SPK\0' + h + bytes(24))
     for i, (_, ctl, code) in enumerate(shaders):
         package += bytes(8 + 4 * i) + struct.pack('<4s7I', h, len(ctl) + len(code), 0x10003, 4, 0, len(ctl), len(code), len(ctl)) + ctl + code

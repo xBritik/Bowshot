@@ -8,12 +8,12 @@ one call per name with the function in x1 and the name in x0 (icall_code). From 
 - QualitySettings.get_vSyncCount reads the current quality level's count: the QualitySettings object from a global (adrp; ldr xQ, [xP, #lo]) or from the engine's managers array
   (bl to mov w0, #K; b to adrp; add; ldr x0, [x8, w0, sxtw #3]: GetManagerFromContext(K)), the level index (ldrsw xI, [xQ, #IDX]), the levels (ldr xA, [xQ, #ARR]), the level
   (add xL, xA, xI, lsl #S, or mov wT, #SIZE; madd xL, xI, xT, xA), the count (ldr w0, [xL, #VSYNC]): UNITY_QS_PTR (the global), _IDX, _ARR, _SIZE, _VSYNC.
-Found on The Rogue Prince of Persia 1.1.0 (Unity 6000.0.64f1): targetFrameRate at main+0x8d33de8, vSyncCount at [[main+0x90957d8]+0x20] + [[main+0x90957d8]+0x64] * 0x100 + 0x88,
-which the game sets to 2 (present interval 2) and leaves targetFrameRate at -1. Checked on the Unity mains on the drives (2026-11-08): Donkey Kong Country Returns HD (6000.0.28f1)
-has the same layout; Super Mario RPG (2021.3.15f1) reaches QualitySettings through GetManagerFromContext(11) and has levels of 0xa8 bytes with the count at +0x68, its
-targetFrameRate setter behind a branch; Fire Emblem Engage (2020.3.18f1) the same as Super Mario RPG. Pokémon Brilliant Diamond (2019.4) registers from code and keeps a frame in
-the manager getter; Return of the Obra Dinn (2017.4) registers from code (get_vSyncCount only), its managers-array lookup adding the index before an offset load. Unity 2022.3 (SUPER
-ROBOT WARS Y, Super Monkey Ball Banana Rumble, Monster Train 2) keeps no table and registers no name from code that this reads: nothing is found there.
+Found on another game 1.1.0 (Unity 6000.0.64f1): targetFrameRate at main+0x8d33de8, vSyncCount at [[main+0x90957d8]+0x20] + [[main+0x90957d8]+0x64] * 0x100 + 0x88,
+which the game sets to 2 (present interval 2) and leaves targetFrameRate at -1. Checked on the Unity mains on the drives (2026-11-08): another game (6000.0.28f1)
+has the same layout; another game (2021.3.15f1) reaches QualitySettings through GetManagerFromContext(11) and has levels of 0xa8 bytes with the count at +0x68, its
+targetFrameRate setter behind a branch; another game (2020.3.18f1) the same as another game. Another game (2019.4) registers from code and keeps a frame in
+the manager getter; another game (2017.4) registers from code (get_vSyncCount only), its managers-array lookup adding the index before an offset load. Unity 2022.3 (SUPER
+ROBOT WARS Y, another game, another game) keeps no table and registers no name from code that this reads: nothing is found there.
 Usage on its own: unity_fps.py <module>... (what it finds in each)"""
 import struct, sys, os
 
@@ -53,7 +53,7 @@ def icall_table(img, rel, ro_off, data_off):
     return {name_at(rel[start + 8 * i]): rel[end + 8 * i] for i in range(n)}
 
 def icall_code(img, rel, text_end, ro_off, data_off, names):
-    """{internal call name: native function offset} for those of names that main registers from code (Unity 2019.4, Pokémon Brilliant Diamond: adrp x1; ldr x1, [x1, #slot], the
+    """{internal call name: native function offset} for those of names that main registers from code (Unity 2019.4, another game: adrp x1; ldr x1, [x1, #slot], the
     function through a relocated GOT slot, or adrp x1; add x1, the function itself; then adrp x0; add x0, the name; then bl the register call), each registered exactly once"""
     import re
     w = lambda a: struct.unpack_from('<I', img, a)[0]
@@ -115,7 +115,7 @@ def context_global(img, f, text_end):
     if not is_adrp(a) or (b & 0xFFC00000) != 0x91000000 or (b >> 5) & 31 != a & 31: return None
     base, r = adrp_page(a, h) + ((b >> 10) & 0xFFF), b & 31
     if (c & 0xFFE0FC00) == 0xF860D800 and (c >> 5) & 31 == r and (c >> 16) & 31 == 0: return base + 8 * ((u >> 5) & 0xFFFF)   # ldr x0, [xR, w0, sxtw #3]
-    # Unity 2017.4 (Return of the Obra Dinn): add xR, xR, w0, sxtw #3; ldr x0, [xR, #off]
+    # Unity 2017.4 (another game): add xR, xR, w0, sxtw #3; ldr x0, [xR, #off]
     if (c & 0xFFE0FC00) == 0x8B20CC00 and (c >> 16) & 31 == 0 and c & 31 == (c >> 5) & 31 == r and (d & 0xFFC003FF) == 0xF9400000 | r << 5:
         return base + ((d >> 10) & 0xFFF) * 8 + 8 * ((u >> 5) & 0xFFFF)
     return None

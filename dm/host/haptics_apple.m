@@ -69,7 +69,7 @@ static CHHapticPattern *simple_pattern(dm_haptic_level level, NSError **error) {
     ] error:error];
 }
 // DM_RUMBLE_MIN (0 to 0.9, default 0): controller levels below it stay silent and the rest is stretched over the full range. On a Joy-Con's
-// resonant actuator a game's quiet texture is felt as texture; on rotating motors it is rumble that never lets up (Mario Kart 8 Deluxe holds its
+// resonant actuator a game's quiet texture is felt as texture; on rotating motors it is rumble that never lets up (another game holds its
 // low band at 0.1-0.4 all race long: 0.45 leaves crashes and drifts). The mapping stays linear by default: the opposite need, low levels that
 // rotating motors do not render at all (Breath of the Wild's charged attack on an Xbox controller), is open (docs/reference/services.md)
 static float rumble_min;
@@ -93,7 +93,7 @@ static void report(NSError *e, NSString *target, const char *stage) {
 // checkEngineRunning:]: self.running"), and it offers no running state to ask first: the engine stops on its own at any time (an audio interruption,
 // the haptics helper's exit) while its stopped handler is only queued here, and a stop is asynchronous. So every entry into a channel (apply:, stop,
 // the queued renewals and stops) runs its Core Haptics calls through guarded:work:, and a raise drops the engine as a failed one. Uncaught, it ended
-// Mario Kart World on an iPhone (2026-11-07); which call raised there is not known. The host is ARC without -fobjc-arc-exceptions, so a raise leaks
+// Another game on an iPhone (2026-11-07); which call raised there is not known. The host is ARC without -fobjc-arc-exceptions, so a raise leaks
 // what ARC held in the frames it unwinds: the player whose call raised (and so perhaps its dead engine) and the parameters sent to it, once per engine
 // failure (t_haptics_apple under leaks: about 300 bytes a raise, none with the flag). The flag would cover the whole host, or need a per-file rule in
 // both the Makefile and the iOS project; not worth it for this

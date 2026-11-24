@@ -11,7 +11,7 @@ import shader_split
 
 class PkzTests(unittest.TestCase):
     def test_directory_versions(self):
-        # ASTRAL CHAIN's v1 has the same entry/name layout as Bayonetta 3's v2.
+        # Another game's v1 has the same entry/name layout as another game's v2.
         names = b'ZStandard\0shader.dat\0None\0plain.dat\0'
         for version, alignment in ((0x10000, 0), (0x20000, 0x1000)):
             with self.subTest(version=hex(version)), tempfile.TemporaryDirectory() as tmp:

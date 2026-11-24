@@ -19,6 +19,25 @@ struct RequirementRow {
     var enabled: Bool
 }
 
+// One line of the forecast the Game screen shows (scripts/bowshot_forecast.py): state is new, reuse, redo or check
+struct ForecastRow: Identifiable {
+    let id: String
+    let state: String
+    let title: String
+    let detail: String
+}
+
+// One step of the build as the engine reports it: running, then reused (its inputs were as at the last build), rebuilt, or failed
+enum StageState { case running, reused, rebuilt, failed }
+
+struct StageRow: Identifiable {
+    let id: Int
+    var name: String
+    var state: StageState
+    var seconds = 0
+    var summary = ""
+}
+
 final class BuilderModel: ObservableObject {
     // MARK: Screens
     @Published var step: Step = .setup
@@ -30,7 +49,9 @@ final class BuilderModel: ObservableObject {
     var setupProcess: Process?
 
     // MARK: Game folder
-    @Published var folder = ""
+    @Published var folder = "" { didSet { if folder != oldValue { forecast = []; refreshForecast() } } }
+    @Published var forecast: [ForecastRow] = []          // what the next build reuses and makes again, read from the folder before it starts
+    var forecastFolder = ""                              // the folder the forecast in flight was asked for
 
     // MARK: Build
     @Published var building = false
@@ -42,6 +63,9 @@ final class BuilderModel: ObservableObject {
     @Published var fraction: Double = 0                  // the whole build, 0 to 1
     @Published var elapsed: TimeInterval = 0
     @Published var finishedIn: TimeInterval = 0
+    @Published var stages: [StageRow] = []               // every step the engine ran or reused, in order
+    @Published var notices: [String] = []                // why a long step is made again (the engine's shaders_stale event)
+    @Published var freed = ""                            // "13.7 GB of files this build did not use", from bowshot_build.sh's FREED: line
     let log = NSTextStorage()                            // shared by the log views of the setup and build screens
 
     var process: Process?
@@ -54,6 +78,7 @@ final class BuilderModel: ObservableObject {
     var sawError = false
     var lastWarning: NSRange?
     var readyNext = false
+    var readyPath: String?   // the app bowshot_build.sh's READY: line names: in Applications when the install worked
     var stage = (k: 0, n: 0, name: "", step: "")
     var firstStages = 0
     var appPart = false
@@ -213,6 +238,32 @@ final class BuilderModel: ObservableObject {
         return "A game dump (base folder)"
     }
 
+    // MARK: - Forecast
+
+    // The forecast of the chosen folder (bowshot_build.sh --forecast: one line <id>|<state>|<title>|<text> each). It reads file names and never starts the engine,
+    // so it answers at once; an answer for a folder that is no longer the chosen one is dropped
+    func refreshForecast() {
+        guard process == nil, folderProblem == nil, let resources = Bundle.main.resourceURL else { return }
+        let script = resources.appendingPathComponent("engine/scripts/bowshot_build.sh")
+        guard FileManager.default.fileExists(atPath: script.path) else { return }
+        let asked = folder; forecastFolder = asked
+        DispatchQueue.global().async { [weak self] in
+            let task = Process(); task.executableURL = URL(fileURLWithPath: "/bin/bash"); task.arguments = [script.path, "--forecast", asked]
+            let pipe = Pipe(); task.standardOutput = pipe; task.standardError = FileHandle.nullDevice; task.standardInput = FileHandle.nullDevice
+            guard (try? task.run()) != nil else { return }
+            let data = pipe.fileHandleForReading.readDataToEndOfFile(); task.waitUntilExit()
+            let out = String(decoding: data, as: UTF8.self)
+            DispatchQueue.main.async { if self?.folder == asked { self?.applyForecast(out) } }
+        }
+    }
+
+    func applyForecast(_ output: String) {
+        forecast = output.components(separatedBy: "\n").compactMap { l in
+            let p = l.split(separator: "|", maxSplits: 3, omittingEmptySubsequences: false).map(String.init)
+            return p.count == 4 ? ForecastRow(id: p[0], state: p[1], title: p[2], detail: p[3]) : nil
+        }
+    }
+
     // MARK: - Log
 
     // The log, line by line: bowshot_build.sh's blocking errors (ERROR: ) in red, the engine's warnings ([RED] ) in orange, the finished app (READY: and the line
@@ -232,7 +283,9 @@ final class BuilderModel: ObservableObject {
         else if line.hasPrefix("READY: ") || readyNext { color = .systemGreen }
         else if line.hasPrefix("[RED] ") { color = .systemOrange }
         else { color = .textColor }
+        if line.hasPrefix("FREED: ") { freed = String(line.dropFirst(7)).trimmingCharacters(in: .whitespaces) }
         readyNext = line.hasPrefix("READY: ")
+        if readyNext { readyPath = String(line.dropFirst(7)).trimmingCharacters(in: .whitespaces) }
         lastBeat = Date()
         let start = log.length
         log.append(NSAttributedString(string: line + "\n", attributes: [.foregroundColor: color, .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)]))
@@ -284,6 +337,7 @@ final class BuilderModel: ObservableObject {
         case "stage":
             let k = e["k"] as? Int ?? 0, n = e["n"] as? Int ?? 0, name = e["name"] as? String ?? "", step = e["step"] as? String ?? ""
             newStep()
+            stages.append(StageRow(id: stages.count, name: name, state: .running))
             if appPart {
                 inner = (k, n, name); stage.step = step.isEmpty ? name : "\(name) · \(step)"
                 showStage()
@@ -316,6 +370,11 @@ final class BuilderModel: ObservableObject {
             let sec = Int(e["elapsed"] as? Double ?? 0), summary = e["summary"] as? String ?? ""
             let mark = warn ? "⚠" : ok ? "✓" : "✗", time = "\(sec / 60):\(String(format: "%02d", sec % 60))"
             curFrac = 1
+            if let i = stages.indices.last, stages[i].state == .running {   // a step that says "reused" (inputs unchanged) or "kept" was not made again
+                let text = summary.lowercased()
+                stages[i].state = !ok ? .failed : (text.contains("reused") || text.contains("kept")) ? .reused : .rebuilt
+                stages[i].seconds = sec; stages[i].summary = summary
+            }
             if appPart {
                 updateFraction()
                 appendLine("\(mark) [\(stage.k)/\(stage.n)] \(stage.name) · \(inner.name) (\(time))" + (summary.isEmpty ? "" : ": \(summary)"))
@@ -327,6 +386,10 @@ final class BuilderModel: ObservableObject {
             for l in (e["msg"] as? String ?? "").components(separatedBy: "\n") { appendLine(l) }
         case "game":
             appendLine("Game: \(e["name"] as? String ?? "?") \(e["version"] as? String ?? "")")
+        case "shaders_stale":   // the engine's reason for compiling the cached shaders again: the translation chain changed, or the game profile's shader inputs
+            let n = e["count"] as? Int ?? 0, nf = NumberFormatter(); nf.numberStyle = .decimal
+            let why = (e["reason"] as? String) == "chain" ? "the translation chain changed (\(e["old"] as? String ?? "?") to \(e["new"] as? String ?? "?"))" : "the game profile's shader inputs changed"
+            notices.append("The shaders are compiled again: \(why). About \(nf.string(from: NSNumber(value: n)) ?? "\(n)") libraries; later builds reuse them.")
         default: break
         }
     }
@@ -348,7 +411,8 @@ final class BuilderModel: ObservableObject {
 
     // MARK: - Build
 
-    var appURL: URL? { output?.appendingPathComponent("Ocarina of Time.app") }
+    var appURL: URL? { readyPath.map { URL(fileURLWithPath: $0) } ?? output?.appendingPathComponent("Ocarina of Time.app") }
+    var inApplications: Bool { appURL?.deletingLastPathComponent().path == "/Applications" }
 
     func startBuild() {
         guard process == nil, setupProcess == nil, setupReady, folderProblem == nil else { return }
@@ -372,9 +436,10 @@ final class BuilderModel: ObservableObject {
         task.terminationHandler = { [weak self] finished in
             DispatchQueue.main.async { self?.buildEnded(status: finished.terminationStatus) }
         }
-        output = URL(fileURLWithPath: folder).appendingPathComponent("Bowshot-local")
-        log.setAttributedString(NSAttributedString()); pending = ""; lastWarning = nil; sawError = false; readyNext = false
+        output = URL(fileURLWithPath: folder).appendingPathComponent("Bowshot-build")
+        log.setAttributedString(NSAttributedString()); pending = ""; lastWarning = nil; sawError = false; readyNext = false; readyPath = nil
         stage = (0, 0, "", ""); firstStages = 0; appPart = false; inner = (0, 0, ""); curFrac = 0; countText = ""
+        stages = []; notices = []; freed = ""
         stageTitle = "Starting…"; stageIndex = ""; stageDetail = ""; fraction = 0; elapsed = 0; failed = false; failure = ""
         buildStart = Date(); lastBeat = buildStart; stepStart = buildStart
         do {
@@ -382,6 +447,9 @@ final class BuilderModel: ObservableObject {
             ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.tick() }
         } catch { fail("Could not start the builder: \(error.localizedDescription)") }
     }
+
+    var reusedCount: Int { stages.filter { $0.state == .reused }.count }
+    var rebuiltCount: Int { stages.filter { $0.state == .rebuilt }.count }
 
     func fail(_ message: String) { failed = true; failure = message; step = .build }
 
@@ -400,13 +468,14 @@ final class BuilderModel: ObservableObject {
             playDone()
         } else {
             failed = true
+            if let i = stages.indices.last, stages[i].state == .running { stages[i].state = .failed }
             if let r = lastWarning, NSMaxRange(r) <= log.length {   // the engine's reason, shown in red
                 log.addAttribute(.foregroundColor, value: NSColor.systemRed, range: r)
                 let reason = (log.string as NSString).substring(with: r).replacingOccurrences(of: "[RED] ", with: "")
                 if failure.isEmpty || !sawError { failure = reason.trimmingCharacters(in: .whitespacesAndNewlines) }
             }
-            if failure.isEmpty { failure = "The build stopped (exit \(status)) without a message. The full log is build.log in Bowshot-local." }
-            if !sawError && lastWarning == nil { appendLine("ERROR: The build stopped (exit \(status)) without a message. The full log is build.log in Bowshot-local.") }
+            if failure.isEmpty { failure = "The build stopped (exit \(status)) without a message. The full log is build.log in Bowshot-build." }
+            if !sawError && lastWarning == nil { appendLine("ERROR: The build stopped (exit \(status)) without a message. The full log is build.log in Bowshot-build.") }
         }
     }
 

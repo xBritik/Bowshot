@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# OpenGL games' GLSL shaders → one Metal library + a table for the host's GL layer (dm/gfx/gl/hle_gl.m). Digimon Story Cyber Sleuth: Complete Edition renders with
+# OpenGL games' GLSL shaders → one Metal library + a table for the host's GL layer (dm/gfx/gl/hle_gl.m). Another game renders with
 # NVIDIA's desktop GL through EGL and compiles GLSL ES 3.20 source at run time (glShaderSource / glCompileShader); the host finds each shader again by the hash of its source.
 # Sources, all searched in every input path:
 #   · MVGL archives (*.mvgl, dm/gfx/tools/mvgl.py): every .shad file, named <material>_vp / <material>_fp (1,682 files, 615 distinct sources in Digimon);
 #   · an NSO (a file that starts with NSO0, the game's main): every NUL-terminated string that starts with '#version' (its built-in post effects, movie and shadow shaders);
 #   · capture folders (the Mac host's DM_GL_CAPTURE): <key>.vert / <key>.frag, what the game really compiled, for sources it puts together at run time.
-#   · loose source files: *.vert / *.frag, and *.glsl, whose name says nothing of its stage (Mega Man Legacy Collection's shaders/nx/*.glsl, read and compiled as they are).
-#     libGDX's *.vs / *.fs are read where the directory has a complete source of each stage (Slay the Spire).
+#   · loose source files: *.vert / *.frag, and *.glsl, whose name says nothing of its stage (another game's shaders/nx/*.glsl, read and compiled as they are).
+#     libGDX's *.vs / *.fs are read where the directory has a complete source of each stage (another game).
 # Per shader:
 #   · key = sha256(the source text up to its first NUL)[:16] (hex), as the host hashes the strings glShaderSource gets; the Metal function is gl_<key>_v or gl_<key>_f;
 #   · the stage: a capture's extension, an archive file's _vp / _fp; a string in main or a .glsl file says nothing of its stage, so it is translated as each stage that compiles (one of
@@ -21,7 +21,7 @@
 #   u:<name>=<offset>:<type>:<count>:<stride>    a member of the default uniform block (count 0 = not an array)
 #   r:<slot>:<count>                             the argument buffer's Metal buffer slot (-1 when absent), and number of argument IDs
 #   b:<id>:<size>                                the default uniform block: its argument ID and size in bytes
-#   n:<name>=<id>:<size>                         a named uniform block (DOOM 3's matrices_ubo): its argument ID and size in bytes
+#   n:<name>=<id>:<size>                         a named uniform block (another game's matrices_ubo): its argument ID and size in bytes
 #   t:<name>=<texture id>:<sampler id>:<type>[:<unit>]  a combined sampler (-1 sampler ID if MSL omits it; optional initial unit from explicit layout(binding))
 #   o:<name>=<location>                          a fragment output, [[color(location)]]
 # <TAB> where it came from
@@ -44,12 +44,12 @@ def text_of(b):
     b = bytes(b); z = b.find(b'\0')
     return b[:z] if z >= 0 else b
 
-# A whole shader defines its entry point. DOOM 3's main holds two '#version 150' strings that are not shaders but the prefix its renderer puts before the GLSL it
+# A whole shader defines its entry point. Another game's main holds two '#version 150' strings that are not shaders but the prefix its renderer puts before the GLSL it
 # generates from its render programs at run time (helper functions, no main): those are left to the capture (dm/games/profile_guess.py GL_ENTRY, the same rule)
 GL_ENTRY = re.compile(rb'\bvoid\s+main\s*\(')
 
 def nso_strings(path):
-    """'#version <number>' strings of an NSO's read-only segment (dm/tools/nso.py) that are whole shaders (GL_ENTRY); a main that links glslang (Balatro's LÖVE) also has its
+    """'#version <number>' strings of an NSO's read-only segment (dm/tools/nso.py) that are whole shaders (GL_ENTRY); a main that links glslang (another game's LÖVE) also has its
     messages that start with '#version:'. nso.Error (a ValueError) on a damaged file"""
     import nso
     with open(path, 'rb') as f: m = nso.load(f.read(), path)
@@ -113,12 +113,12 @@ def sources(roots):
 #   · the GLSL ES 1.0 texture functions (89 of Digimon's fragment shaders call textureCube; with -V glslang reads textureCube as Vulkan's texture type, so a macro cannot rename it);
 #   · a redeclaration of gl_Position as a plain output (the built-in sprite shader of main declares `out float4 vPosition;` with vPosition defined as gl_Position);
 #   · textureOffset with an offset that is not a constant (the built-in FXAA shader): Metal's sample offsets are constants too, so it becomes texture at P + offset / level 0 size;
-#   · built-ins redeclared as plain inputs and outputs, which DOOM 3's renderer writes into every GLSL 1.50 shader it generates (`out vec4 gl_Position;`, `in vec4 gl_FragCoord;`,
+#   · built-ins redeclared as plain inputs and outputs, which another game's renderer writes into every GLSL 1.50 shader it generates (`out vec4 gl_Position;`, `in vec4 gl_FragCoord;`,
 #     `out float gl_FragDepth;`): the declarations go, the built-ins stay; `out vec4 gl_FragColor;` becomes a plain output of the shader's own (Vulkan GLSL has no gl_FragColor);
-#   · the compatibility colour declared as a plain varying, `out vec4 gl_FrontColor;` in the vertex shader and `in vec4 gl_Color;` in the fragment shader (DOOM 3): NVIDIA links the two
+#   · the compatibility colour declared as a plain varying, `out vec4 gl_FrontColor;` in the vertex shader and `in vec4 gl_Color;` in the fragment shader (another game): NVIDIA links the two
 #     as GL's fixed pipeline does, so both become one varying, dm_Color, which the host matches by name;
-#   · `sampler` as a name (DOOM 3's helpers take `sampler2D sampler`): a reserved word in Vulkan GLSL, an ordinary name in OpenGL's;
-#   · a function body closed with `};` (Mega Man Legacy Collection's shaders/nx/*.glsl end main that way): GLSL ES has no empty declaration at file scope, so the `;` goes.
+#   · `sampler` as a name (another game's helpers take `sampler2D sampler`): a reserved word in Vulkan GLSL, an ordinary name in OpenGL's;
+#   · a function body closed with `};` (another game's shaders/nx/*.glsl end main that way): GLSL ES has no empty declaration at file scope, so the `;` goes.
 #     A struct's or a block's `};` ends its declaration and stays: only a `{` opened right after a `)` at file scope is a function body
 OLD_TEX = [(r'\btexture2DLod\s*\(', 'textureLod('), (r'\btextureCubeLod\s*\(', 'textureLod('), (r'\btexture3DLod\s*\(', 'textureLod('),
            (r'\btexture2DProj\s*\(', 'textureProj('), (r'\btexture3DProj\s*\(', 'textureProj('),
@@ -231,7 +231,7 @@ def promote_legacy(t, stage, renamed=None, desktop=False):
     if stage == 'frag' and 'gl_FragColor' in t:
         t = 'out vec4 gm_FragColor;\n' + t.replace('gl_FragColor', 'gm_FragColor')
     t = rename_identifier(t, 'sample', 'gm_sample', renamed)   # `sample` became a reserved word after ES 1.00 (GameMaker's sprite shaders use it as a variable)
-    # `texture` became a built-in function after ES 1.00, and a name declared `texture` redefines it (Fate/hollow ataraxia REMASTERED: `uniform sampler2D texture;`); a call stays
+    # `texture` became a built-in function after ES 1.00, and a name declared `texture` redefines it (another game: `uniform sampler2D texture;`); a call stays
     t = rename_identifier(t, 'texture', 'dm_texture', renamed, keep_calls=True)
     header = '#version 450 core\n' if desktop else '#version 310 es\nprecision highp float;\nprecision highp int;\n'
     return header + t

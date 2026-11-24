@@ -1,5 +1,5 @@
 // DLSS's MetalFX scalers outlive the submissions that encoded them (dlss_scaler_for): a Metal 4 command buffer does not retain what is encoded into it, so a scaler dropped before the
-// submission completes is freed under its encoders, and the commit crashes (Fast Fusion, at its 8th network: "-[AGXG17XFamilyMLContext executable]: unrecognized selector" in
+// submission completes is freed under its encoders, and the commit crashes (another game, at its 8th network: "-[AGXG17XFamilyMLContext executable]: unrecognized selector" in
 // -[_MTL4MachineLearningCommandEncoder encodeToCommandQueue:]). A scaler replaced for new sizes, or taken by a fifth network, is held until the next fence completes; the fifth network
 // takes the slot used least recently, not slot 0 (the network the game is drawing with). A network is named by the serial nvnDlssNetworkInitialize gives it, so one made again in
 // the same memory takes a scaler of its own, with a new history. A bias mask's format is part of the scaler's key (PR #1904): a mask makes a scaler with a reactive mask
@@ -46,11 +46,11 @@ int main(void) { @autoreleasepool {
     check(held(sc[2]), "the scaler of the network it replaces is held until the submission completes");
     check(!held(sc[1]) && !held(sc[3]) && !held(sc[4]), "the other networks' scalers are not");
 
-    // New sizes for network 1 (Fast Fusion's 1920x972 output): a new scaler, the old one held
+    // New sizes for network 1 (another game's 1920x972 output): a new scaler, the old one held
     dlss_scaler *e1 = dlss_scaler_for(&c[1], col, dep, mot, out2, nil, 960, 486);
     check(e1 && e1->sc && e1->sc != sc[1] && held(sc[1]), "new sizes make a new scaler and hold the old one");
 
-    // A bias mask (Star Fox's: R8, the input's size): its format is in the scaler's key, so the network takes a scaler made with a reactive mask, and the one without is held
+    // A bias mask (another game's: R8, the input's size): its format is in the scaler's key, so the network takes a scaler made with a reactive mask, and the one without is held
     dlss_scaler *em = dlss_scaler_for(&c[3], col, dep, mot, out, tex(MTLPixelFormatR8Unorm, 960, 540), 960, 540);
     check(em && em->sc && em->sc != sc[3] && em->mask && held(sc[3]), "a bias mask makes a scaler with a reactive mask and holds the one without");
 

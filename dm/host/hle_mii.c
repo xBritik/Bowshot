@@ -1,7 +1,7 @@
 // Mii service layer (nn::mii::Database, the Mii editor applet). On hardware Database talks to the mii:u service (an IDatabaseService the SDK keeps at Database +0) and AppendMii /
 // ShowMiiEdit start the MiiEdit library applet; the host has neither. It answers with the six default Miis, the player's console database when they supply it (mii_db_load: the
 // mii service's system save, read-only), and Miis made in its stand-in for the editor (AppendMii: the default Mii, kept in a file of the host's own).
-// Mario Kart 8 Deluxe (SDK 4.4.0) initializes a Database at boot (mii:e and mii:u were the first services it opened itself) and builds 12 random Miis for its title screen's demo race; their
+// Another game (SDK 4.4.0) initializes a Database at boot (mii:e and mii:u were the first services it opened itself) and builds 12 random Miis for its title screen's demo race; their
 // heads are drawn by the SDK's Mii rendering code linked into main, from the MiiModel system data (the host's stand-in below, mounted by hle_fs.c MountSystemData).
 // The CharInfo the host builds (0x58 bytes) is the system's default Mii as the mii service's StoreData::BuildDefault makes it: the 3DS-era default parameters, with the colours converted to
 // the Switch's common colour indices (hair 1, eyes 8, mouth 19, glasses 8), a create ID of UUID version 4 (fixed for each default Mii, fresh for a random one) and the nickname "no name";
@@ -149,7 +149,7 @@ HLE_FORCE("_ZN2nn3mii8Database9IsUpdatedEi", "mii:u service; true once after App
     pthread_mutex_lock(&g_mii_mu); int r = g_mii_changed; g_mii_changed = 0; pthread_mutex_unlock(&g_mii_mu); return r;
 }
 HLE_FORCE("_ZNK2nn3mii8Database14IsFullDatabaseEv", "mii:u service; full at 100 Miis", int, h_mii_Full, const void *self) { (void)self; return g_mii_n >= MII_DB_MAX; }
-// Source flags: 1 the console's database, 2 the six default Miis every console has; the database's come first, as the mii service lists them. Mario Kart 8 Deluxe asks for the defaults with room for 6 and never reads the count
+// Source flags: 1 the console's database, 2 the six default Miis every console has; the database's come first, as the mii service lists them. Another game asks for the defaults with room for 6 and never reads the count
 // (main+0x81e954): its boot-time list of Mii icons (main+0x419dc8) builds a head for each of the six, and zeroed entries failed the model's CharInfo check
 enum { MII_SRC_DATABASE = 1, MII_SRC_DEFAULT = 2, MII_DEFAULTS = 6 };
 static int mii_get(void *buf, int n, int src, size_t stride) {
@@ -199,7 +199,7 @@ HLE_FORCE("_ZN2nn3mii8Database6ImportEPKvm", "mii:u service; importing needs the
 HLE_FORCE("_ZNK2nn3mii8Database6ExportEPvm", "mii:u service; nothing to export", Result, h_mii_Export, const void *self, void *p, size_t n) {
     (void)self; (void)p; (void)n; LOG("[RED] mii: Database::Export refused"); return MII_RES_TEST_MODE;
 }
-// MiiModel system data (0100000000000802) stand-in, also the Switch 2's MiiResource (0400000000000849, below). The Mii rendering code an application links (Mario Kart 8 Deluxe 4.0.0: main+0x8f1400..+0x8fc000) reads one texture file
+// MiiModel system data (0100000000000802) stand-in, also the Switch 2's MiiResource (0400000000000849, below). The Mii rendering code an application links (another game 4.0.0: main+0x8f1400..+0x8fc000) reads one texture file
 // (NXTexture{Low,Mid}{Linear,SRGB}.dat) and one shape file (Shape{Mid,High}.dat) whole and builds each part of a head from them; the firmware's files are not the host's to ship, so it writes
 // files of the same layout in which every part is blank:
 //   texture file: +0x0c u32 largest decompressed size of each of the 11 part kinds, +0x38 their alignments, then from +0x64 one 0x1c-byte entry per part (u32 offset, u32 size, u32 stored size,
@@ -251,7 +251,7 @@ static int mii_write(const char *dir, const char *name, int parts, size_t size) 
     if (!ok) LOG("[RED] mii: cannot write the Mii model stand-in %s", p);
     return ok;
 }
-// One stand-in serves both archives, the Switch's MiiModel (0100000000000802) and the Switch 2's (0400000000000849), whose files have the same layout (Nintendo Switch Sports Resort's
+// One stand-in serves both archives, the Switch's MiiModel (0100000000000802) and the Switch 2's (0400000000000849), whose files have the same layout (another game's
 // accessors, main+0x1cdcd80..+0x1cdd0c4: 11 texture part kinds from +0x64 in 0x1c-byte entries, 12 shape kinds from +0x6c in 0x58-byte entries, hair transforms at +0x12704, faceline
 // at +0x14c24); the Switch 2's adds its own texture sets, OunceTexture{Low,Mid,High}{Linear,SRGB}.dat, and a game reads only the files it names. Written once per process (the query
 // and the mount both ask, for either archive), so a host with another layout never leaves old files behind; again only if the directory changes (a test's DM_TEMP)
@@ -275,7 +275,7 @@ int dm_mii_standin(const char *dir) {
 }
 
 // The Mii editor (MiiEdit library applet). AppendMii opens it to make a new Mii: the host answers as a player who saves the editor's starting Mii, the system's default one (male,
-// "no name") with a create ID of its own, added to the database and kept in the host's file (mii_host_save); *index is its place in the database. Mario Golf: Super Rush's Golf
+// "no name") with a create ID of its own, added to the database and kept in the host's file (mii_host_save); *index is its place in the database. Another game's Golf
 // Adventure asks for one when the database holds none, and went back to its save slots at a cancel (issue #2361). A full database cancels, as the editor cannot add one then
 HLE_FORCE("_ZN2nn3mii9AppendMiiEPi", "MiiEdit applet; the default Mii is made and added", Result, h_mii_Append, int *index) {
     DM_APPLET("Mii editor"); mii_db_once();

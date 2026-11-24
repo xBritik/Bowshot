@@ -85,8 +85,8 @@ int main(int argc, char **argv) { @autoreleasepool {
     CHECK(unorm_chan_masks(MTLPixelFormatBGRA8Unorm, bits) && bits[2] == 0xff); CHECK(!unorm_chan_masks(MTLPixelFormatRGBA16Float, bits));
     k.cfmt[0] = MTLPixelFormatRG32Uint; k.chmask = 0; CHECK(lop_key(&k, ps, 0) == 0);   // no colour written: nothing to combine, no red line
     k.chmask = 0xf; S.color.logic_op = NVN_LOGIC_OP_COPY; CHECK(lop_key(&k, ps, 0) == 0);
-    // The typed-output entry point per pipeline's target classes (pso_cls, typed_fn): a float target beside an integer one, as Pokémon Sword's and Trails in the Sky 2nd Chapter's G-buffers,
-    // Kirby and the Forgotten Land's R8Uint colour 5 (GitHub issue #2760), and signed ones (Mortal Kombat 11, PR #2807)
+    // The typed-output entry point per pipeline's target classes (pso_cls, typed_fn): a float target beside an integer one, as another game's and another game's G-buffers,
+    // Another game's R8Uint colour 5 (GitHub issue #2760), and signed ones (Mortal Kombat 11, PR #2807)
     uint32_t cls; ps->rf.color_mask = 3; memset(&k, 0, sizeof k); k.cfmt[0] = MTLPixelFormatRGBA8Unorm; k.cfmt[1] = MTLPixelFormatRG32Uint;
     CHECK(pso_cls(&k, ps, &cls) && cls == 2u);
     k.cfmt[0] = MTLPixelFormatRGBA16Uint; CHECK(pso_cls(&k, ps, &cls) && cls == 3u);

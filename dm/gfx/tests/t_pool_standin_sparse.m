@@ -1,6 +1,6 @@
 // Stand-ins (pool_stand, t_pool_standin) for textures in a sparse pool, through the real NVN entry points: past the walk's budget, a sparse pool's texture no shader has read holds a
 // stand-in of its smallest levels, gathered through the pool's page table (stand_fill), not the dummy. One whose small levels are not mapped yet holds the dummy and waits, with no
-// look at it from walks, for a mapping over its pages, which makes its stand-in (PRAGMATA maps a streamed texture's small levels after registering it)
+// look at it from walks, for a mapping over its pages, which makes its stand-in (another game maps a streamed texture's small levels after registering it)
 #define nvn_game_fps nvn_game_fps_mtl_default
 #include "../nvn/nvn_mtl.m"
 #undef nvn_game_fps
@@ -47,7 +47,7 @@ int main(void) { @autoreleasepool {
     CHECK("physical pool", h_nvnMemoryPoolInitialize((NVNmemoryPool *)&g_phys, (const NVNmemoryPoolBuilder *)&pb));
     pb = (pool_builder_t){.size = DM_GAME_APP_POOL + (1ull << 32), .flags = NVN_MEMORY_POOL_FLAGS_VIRTUAL};
     CHECK("sparse pool", h_nvnMemoryPoolInitialize((NVNmemoryPool *)&g_sparse, (const NVNmemoryPoolBuilder *)&pb));
-    id<MTLBuffer> hog = [g_dev newBufferWithLength:pool_budget() + (1u << 20) options:MTLResourceStorageModePrivate];   // past the walk's budget, as PRAGMATA is from its first scene
+    id<MTLBuffer> hog = [g_dev newBufferWithLength:pool_budget() + (1u << 20) options:MTLResourceStorageModePrivate];   // past the walk's budget, as another game is from its first scene
     CHECK("over the budget", hog && pool_budget_full());
     const tex_t *B = tex_at(0, 1u << 20, 0);
     atomic_store(&g_cur_frame, 100);

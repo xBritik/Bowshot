@@ -3,12 +3,12 @@
 # a .nup file, or a folder that holds one, and goes on with its other steps; run on its own, this script does only this step.
 # A NUP holds the same packages as a dump folder (scripts/pack_dump.py): the base game, updates by version and DLC by title ID, each an exefs/ and romfs/ tree, its files stored raw or as one zstd
 # frame each, with a SHA-256 per file. Its files are not encrypted, so it needs no keys. Unlike a dump it may carry control data in each package's meta block: the NACP and the icon. Its name,
-# publisher and display version records are labels the packer typed (Hyrule Warriors: Age of Imprisonment's says "HWAoI"), not the console's: without a NACP the name comes from the profile.
+# publisher and display version records are labels the packer typed (another game's says "HWAoI"), not the console's: without a NACP the name comes from the profile.
 # The build script can use a numeric display version label from the selected package after checking control data and the profile.
 # A container may hold no base game, in two forms that mean the same: no base record, with standalone_update on every update (SPEC §3.1.2), or a base record with no files (title ID 0), as packers
-# leave when an update holds the whole game (Pokemon Pokopia's v655360). The title ID is then the program ID of the code present, there is no version 0, and the selected update needs its own ExeFS
+# leave when an update holds the whole game (another game's v655360). The title ID is then the program ID of the code present, there is no version 0, and the selected update needs its own ExeFS
 # and RomFS, taken as the whole game. The flag does not promise that (the spec says such an update needs a matching base elsewhere), and nothing in a container can prove it, so the scripts say so
-# (NO_BASE). What was measured: the update RomFS of both NUPs at hand holds every path of its base (Hyrule Warriors: Age of Imprisonment, Yoshi and the Mysterious Book).
+# (NO_BASE). What was measured: the update RomFS of both NUPs at hand holds every path of its base (another game, another game).
 # Writes, under the build folder (<folder of the .nup>/<title ID>_build unless --work-dir names another):
 #   extract/v<version>/ExeFS/   the version's code modules
 #   extract/v<version>/RomFS.img   its RomFS as one image (dm/tools/romfs_image.py), written straight from the container: the RomFS is never unpacked into loose files
@@ -271,8 +271,8 @@ def nacp_ids(k):   # (application ID, add-on content base ID) from the package's
 
 def scan(n, program=None):
     """What a NUP holds: (title ID, base package or None, {update version: package}, {DLC title ID: package}), with the checks pack_dump.scan makes. The title ID is the program ID of the
-    program packed. One application can hold several programs, each its own base package and updates (a Switch 2 Edition of a Switch 1 game: Super Mario Bros. Wonder's Switch 1 program
-    010015100B514000 and its Switch 2 program 040015100B514001, whose code mounts the first one's RomFS by program index, nn::fs::MountRom(name, 0, ...)). Programs are told apart by their
+    program packed. One application can hold several programs, each its own base package and updates (a Switch 2 Edition of a Switch 1 game: another game's Switch 1 program
+    <title ID> and its Switch 2 program <title ID>, whose code mounts the first one's RomFS by program index, nn::fs::MountRom(name, 0, ...)). Programs are told apart by their
     NPDM's program ID, whose low 12 bits are the program index; they belong to one application when their NACPs name it (SaveDataOwnerId), else when their program IDs agree above those bits.
     program: the index of the program to pack, default the highest (a Switch 2 Edition's Switch 2 program). Sets n.application, n.aoc_base (a DLC's index is its title ID minus this,
     the NACP's AddOnContentBaseId, else the application's + 0x1000) and n.siblings ({index: (program ID, base package or None, {version: update})}: the other programs, whose RomFS

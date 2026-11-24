@@ -150,7 +150,7 @@ static void ghost_held_add(const void *o, int d) { count_add(&g_ghost_held, o, d
 // their storage (alias_take_over). Under g_smu
 static nvn_hmap g_alias = {.klen = sizeof(alias_key)};
 // The shared textures by where their storage lies, for alias_take_over and the image families' owner lookup (own_alias_at_locked): {pool, 64 KB cell of the pool} → the entries whose
-// bytes reach into that cell, each with its end. It walked g_alias's whole capacity for every texture made instead: Mario Golf: Super Rush's All-Star Summit registers 134,400 textures
+// bytes reach into that cell, each with its end. It walked g_alias's whole capacity for every texture made instead: another game's All-Star Summit registers 134,400 textures
 // and makes about 90,000 of them as the course loads, each walk 131,072 slots with a layout and a lookup per entry of the pool, and the load had not finished after 12 minutes on one
 // core. An entry lies in every cell its bytes reach, so one of 8 MB is in 128 of them. Kept by alias_put and alias_del, the only writers of g_alias's keys (an upgrade replaces a value in place)
 typedef struct { alias_key k; int64_t end; } alias_ent;
@@ -206,7 +206,7 @@ int own_alias_del_locked(const alias_key *k) { return alias_del(k); }
 // A new shared texture takes over storage: entries of the same pool whose storage overlaps the new texture's under another description go, unless a live texture object still resolves
 // to them (an object rebuilt over the same storage with the same description must keep finding it: SMBW's transient render targets) or a lookup found them in the last ALIAS_IDLE submissions
 // (Breath of the Wild finalizes its transient render targets before it submits and makes them again the next frame: targets sharing storage would evict each other every frame). On NVN
-// the memory now belongs to the new texture; the old private Metal texture only held a copy nothing can name again. STEINS;GATE RE:BOOT decodes every image it shows into one scratch
+// the memory now belongs to the new texture; the old private Metal texture only held a copy nothing can name again. Another game decodes every image it shows into one scratch
 // region of a pool that lives for good and finalizes the texture before the next one: each image added an entry, 468 of them and 1.58 GB of GPU memory 24,000 frames into a new game.
 // The texture is retired (deferred until the submissions that used it complete); one a finalized object still resolves through the ghost table stays resident until that table lets it go
 // (own_retire_locked). The change reports no serial (own_note(0)), as it changes no serial's texture: an entry a live serial holds is not evicted

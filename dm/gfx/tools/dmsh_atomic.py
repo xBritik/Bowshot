@@ -18,7 +18,7 @@ import re
 _EMULATED = re.compile(r'\bspvImage2DAtomicCoord\b|device\s+atomic_u?int\s*\*\s*\w+_atomic\b')
 
 
-# 64-bit image atomics (after uncraftablexd's PRAGMATA bring-up, PR #1801). Ampere SURED.D.2D.MAX.U64 (PRAGMATA's visibility buffer: depth << 32 | ID, 336 compute
+# 64-bit image atomics (after uncraftablexd's another game bring-up, PR #1801). Ampere SURED.D.2D.MAX.U64 (another game's visibility buffer: depth << 32 | ID, 336 compute
 # shaders) is a 64-bit unsigned max with no result. Metal has it as texture2d<ulong, access::read_write>::atomic_max / atomic_min (MSL 3.1, an RG32Uint texture made with
 # the shader-atomic usage, Apple GPU family 9: M3 / A17 Pro and later), with no fetch form and no other operation. SPIRV-Cross refuses every 64-bit atomic, so the translator
 # (CodeGen/Spirv GenerateImageAtomic) writes the operation on its rg32ui image as two 32-bit atomics of the same operation on the same texel, the low word then the high word,

@@ -9,7 +9,7 @@
 //     Engage: F001 → 1 (E0), F002 → 2 (H0); the content itself is in the 2.0.0 update's RomFS and each DLC package holds one empty marker file; the game calls MountAddOnContent for each index ListAddOnContent returns (hle_fs.c).
 //   No DM_AOC_DIR: none (on a Switch 2 Mario 1.2.1 uses it to tell whether the upgrade pack is owned, and the user has no Mario add-on content files).
 //   DM_AOC_OWNED=0: always none (test switch, for runs without the DLC).
-// Room for every index the scan accepts (1..2000): Super Smash Bros. Ultimate has 99 DLC, and a cap below the folder count dropped whichever readdir returned last (fighters among them).
+// Room for every index the scan accepts (1..2000): another game has 99 DLC, and a cap below the folder count dropped whichever readdir returned last (fighters among them).
 static int g_aoc[2000], g_naoc = -1;
 static int aoc_int_cmp(const void *a, const void *b) { return *(const int *)a - *(const int *)b; }
 static void aoc_load(void) {
@@ -80,7 +80,7 @@ HLE_FORCE("_ZN2nn2ec22ShowShopProductDetailsENS0_5NsUidE", "shop applet, out of 
 HLE_FORCE("_ZN2nn2ec22ShowShopProductDetailsENS0_5NsUidERKNS_7account10UserHandleE", "shop applet, out of scope; cut: no-op", void, h_ec_Prod2, void) { DM_APPLET("shop"); LOG("ec::ShowShopProductDetails (cut): the host has no shop"); }
 HLE_FORCE("_ZN2nn2ec19ShowShopProductListEPKNS0_5NsUidEiPKc", "shop applet, out of scope; cut: no-op", void, h_ec_ProdList1, void) { DM_APPLET("shop"); LOG("ec::ShowShopProductList (cut): the host has no shop"); }
 HLE_FORCE("_ZN2nn2ec19ShowShopProductListEPKNS0_5NsUidEiPKcRKNS_7account10UserHandleE", "shop applet, out of scope; cut: no-op", void, h_ec_ProdList2, void) { DM_APPLET("shop"); LOG("ec::ShowShopProductList (cut): the host has no shop"); }
-// The overloads without an ApplicationId (the calling application's own pages; The Great Ace Attorney Chronicles, SDK 10, imports these beside the ones above)
+// The overloads without an ApplicationId (the calling application's own pages; another game, SDK 10, imports these beside the ones above)
 HLE_FORCE("_ZN2nn2ec30ShowShopApplicationInformationEv", "shop applet, out of scope; cut: no-op", void, h_ec_AppInfo3, void) { DM_APPLET("shop"); LOG("ec::ShowShopApplicationInformation (cut): the host has no shop"); }
 HLE_FORCE("_ZN2nn2ec30ShowShopApplicationInformationERKNS_7account10UserHandleE", "shop applet, out of scope; cut: no-op", void, h_ec_AppInfo4, void) { DM_APPLET("shop"); LOG("ec::ShowShopApplicationInformation (cut): the host has no shop"); }
 HLE_FORCE("_ZN2nn2ec24ShowShopSubscriptionListEv", "shop applet, out of scope; cut: no-op", void, h_ec_Sub5, void) { DM_APPLET("shop"); LOG("ec::ShowShopSubscriptionList (cut): the host has no shop"); }
@@ -108,7 +108,7 @@ HLE_FORCE("_ZN2nn2ec19ShopServiceAccessor13AsyncResponseD1Ev", "shop async respo
 HLE_FORCE("_ZN2nn2ec19ShopServiceAccessor13AsyncResponse7TryWaitEv", "shop async response: complete at once (cut)", unsigned, h_ec_ArTryWait, void *self) { (void)self; return 1; }
 HLE_FORCE("_ZN2nn2ec19ShopServiceAccessor13AsyncResponse7GetSizeEPm", "shop async response: no data (cut)", Result, h_ec_ArGetSize, void *self, size_t *n) { (void)self; if (n) *n = 0; return RES_FAIL; }
 HLE_FORCE("_ZN2nn2ec19ShopServiceAccessor13AsyncResponse3GetEPvm", "shop async response: no data (cut)", Result, h_ec_ArGet, void *self, void *buf, size_t n) { (void)self; (void)buf; (void)n; return RES_FAIL; }
-// DRAGON QUEST VII Reimagined (Unreal Engine 4.27) also imports these three: the library's finalize (its SDK version closes the ec session the init never opened) and two response calls
+// Another game (Unreal Engine 4.27) also imports these three: the library's finalize (its SDK version closes the ec session the init never opened) and two response calls
 HLE_FORCE("_ZN2nn2ec31FinalizeForShopServiceAccessorsEv", "shop service accessors' library finalize: nothing was set up", void, h_ec_FinSsa, void) {}
 HLE_FORCE("_ZN2nn2ec19ShopServiceAccessor13AsyncResponse6CancelEv", "shop async response: nothing to cancel (cut)", void, h_ec_ArCancel, void *self) { (void)self; }
 HLE_FORCE("_ZNK2nn2ec19ShopServiceAccessor13AsyncResponse12GetErrorCodeEv", "shop async response: no error code (cut)", uint64_t, h_ec_ArErr, const void *self) { (void)self; return 0; }
@@ -121,7 +121,7 @@ HLE_FORCE("_ZN2nn3err9ShowErrorENS_6ResultE", "error display applet; the host pr
 }
 
 // ---------- ngc profanity filter: the word list is in a system data save (mounted via IPC); single-player has no text visible to others, always judged as no profanity ----------
-// The class is polymorphic, and games call it through its vtable too: Monster Hunter Rise checks the hunter's name with slot 8, MaskProfanityWordsInText(int *, char16_t *, uint32_t)
+// The class is polymorphic, and games call it through its vtable too: another game checks the hunter's name with slot 8, MaskProfanityWordsInText(int *, char16_t *, uint32_t)
 // (main+0x6bca160). The constructor used to do nothing, the object kept what the heap held there, and that call jumped into the heap. It now gets a host vtable: each slot of the SDK's
 // (_ZTVN2nn3ngc15ProfanityFilterE) is matched by address with the class's methods and given the host's version (no word list: nothing is profanity, nothing is masked); others return 0
 static Result ngc_v_zero(void) { return RES_OK; }
@@ -144,7 +144,7 @@ static void *ngc_vtable(void) {
     module_t *mod = module_of(sdk); int n = 0, named = 0;
     vt[0] = sdk[0]; vt[1] = sdk[1];   // offset to top, type info
     // A slot holds SDK code, or the host's version where the loader bound the slot by name to a forced take-over (Initialize, GetContentVersion, CheckProfanityWords): those stay.
-    // The table ends at the first value that is neither (Monster Hunter Rise's SDK: 9 slots, then a 1)
+    // The table ends at the first value that is neither (another game's SDK: 9 slots, then a 1)
     for (; n < NV && (uintptr_t)sdk[2 + n] >= 0x10000; n++) {
         if (module_of(sdk[2 + n]) != mod) { if (module_of(sdk[2 + n])) break; vt[2 + n] = sdk[2 + n]; continue; }   // another guest module: not this class's table
         vt[2 + n] = (void *)ngc_v_zero;
@@ -164,7 +164,7 @@ HLE_FORCE("_ZN2nn3ngc15ProfanityFilter19CheckProfanityWordsEPjjPPKcm", "profanit
     for (uint64_t i = 0; i < n; i++) masks[i] = 0;
     return RES_OK;
 }
-// Called by name as well as through the vtable (The Great Ace Attorney Chronicles, SDK 10, imports these three): the SDK's versions read the word list the host never mounted
+// Called by name as well as through the vtable (another game, SDK 10, imports these three): the SDK's versions read the word list the host never mounted
 HLE_FORCE("_ZN2nn3ngc15ProfanityFilter24MaskProfanityWordsInTextEPiPcj", "profanity masking (UTF-8); nothing is masked", Result, h_ngc_Mask8, void *self, int *masked, char *text, uint32_t region) { return ngc_v_mask(self, masked, text, region); }
 // The UTF-16 forms by name: Dark Souls Remastered (SDK 4) masks the character name with the unsigned short one right after the name entry; the SDK's version allocated from a heap the host never set up
 HLE_FORCE("_ZN2nn3ngc15ProfanityFilter24MaskProfanityWordsInTextEPiPtj", "profanity masking (UTF-16); nothing is masked", Result, h_ngc_Mask16, void *self, int *masked, uint16_t *text, uint32_t region) { return ngc_v_mask(self, masked, text, region); }
@@ -179,7 +179,7 @@ HLE_FORCE("_ZN2nn3nsd9ResolveExEPNS0_4FqdnERKS1_", "server name resolution, netw
 // The permission query answers as TryBegin / IsFreeCommunicationAvailable do: the SDK's version calls the pctl service (pctl::detail::ipc::GetService), which the host never opens (DRAGON QUEST XI S imports it; from PR #38)
 HLE_FORCE("_ZN2nn4pctl32CheckFreeCommunicationPermissionEb", "parental controls · permission to communicate with others, networking out of scope; never, no system UI", unsigned, h_pctl_CheckFree, unsigned show_ui) { (void)show_ui; return 0; }
 HLE_FORCE("_ZN2nn4pctl25TryBeginFreeCommunicationEb", "parental controls · communication with others, networking out of scope; never allowed", unsigned, h_pctl_TryBegin, unsigned show_ui) { (void)show_ui; return 0; }
-// Parental control of the 3D (VR goggles) mode, Super Mario Odyssey: no restriction, nothing to configure
+// Parental control of the 3D (VR goggles) mode, another game: no restriction, nothing to configure
 HLE_FORCE("_ZN2nn4pctl26GetStereoVisionRestrictionEv", "parental controls · 3D view restriction; never restricted", unsigned, h_pctl_GetStereo, void) { return 0; }
 HLE_FORCE("_ZN2nn4pctl26SetStereoVisionRestrictionEb", "parental controls · 3D view restriction; the host does not store it", void, h_pctl_SetStereo, unsigned on) { (void)on; }
 HLE_FORCE("_ZN2nn4pctl42ConfirmStereoVisionRestrictionConfigurableEv", "parental controls · whether the 3D view restriction can be changed; yes", Result, h_pctl_ConfStereo, void) { return RES_OK; }
@@ -187,7 +187,7 @@ HLE_FORCE("_ZN2nn4pctl53RequestStereoVisionRestrictionConfigurationPermissionEv"
 HLE_FORCE("_ZN2nn4pctl20EndFreeCommunicationEv", "parental controls · communication with others", void, h_pctl_End, void) {}
 // Engage asks on entering a battle map (no UI); without this the SDK connects to the pctl service through sm, which the host does not have, and aborts
 HLE_FORCE("_ZN2nn4pctl28IsFreeCommunicationAvailableEv", "parental controls · whether communication with others is available, networking out of scope; never", unsigned, h_pctl_IsFree, void) { return 0; }
-// The Legend of Zelda: Breath of the Wild: checks the parental-control permission for stereoscopic 3D before turning on the options' Labo VR mode (returns bool; the argument = whether to
+// Another game: checks the parental-control permission for stereoscopic 3D before turning on the options' Labo VR mode (returns bool; the argument = whether to
 // show UI, the game passes 0). The host has no VR display (pl::BeginVrMode refuses, hle_sdk16.c): not permitted, so the game clears its VR flag and stays 2D (as MacNativeGames found on 1.6.0 and 1.9.0)
 HLE_FORCE("_ZN2nn4pctl33CheckAgcPermissionUnderMinimumAgeERKNS_7account3UidE", "parental controls · a user's permission under the minimum age (SDK 22), networking out of scope; never", unsigned, h_pctl_CheckAgc, const void *uid) { (void)uid; return 0; }
 HLE_FORCE("_ZN2nn4pctl27CheckStereoVisionPermissionEb", "parental controls · stereoscopic 3D permission; the host has no VR display, not permitted", unsigned, h_pctl_Stereo, unsigned show_ui) { (void)show_ui; return 0; }
@@ -195,7 +195,7 @@ HLE_FORCE("_ZN2nn4pctl27CheckStereoVisionPermissionEb", "parental controls · st
 // swkbd software keyboard: see hle_swkbd.c
 
 // ---------- streamplay: GameShare / GameChat streaming (Switch 2 SDKs) ----------
-// Donkey Kong Bananza initializes it at boot (main+0x5471c0) through the stpl:u service, which the host does not serve. The host streams to nobody: the library is ready, no session is open
+// Another game initializes it at boot (main+0x5471c0) through the stpl:u service, which the host does not serve. The host streams to nobody: the library is ready, no session is open
 // and no guest is connected, so every guest pad, sensor, vibration and mouse query has nothing to report. Opening a session (OpenSessionWithMatchmakeSupport, StartStreaming) is a player
 // action and stays unhooked: it would reach the service, open
 HLE_FORCE("_ZN2nn10streamplay21GetRequiredMemorySizeENS0_14StreamPlayTypeENS0_13StreamingModeEi", "streamplay work memory (stpl:u): one page, the host keeps no state in it",
@@ -203,7 +203,7 @@ HLE_FORCE("_ZN2nn10streamplay21GetRequiredMemorySizeENS0_14StreamPlayTypeENS0_13
 HLE_FORCE("_ZN2nn10streamplay10InitializeENS0_14StreamPlayTypeENS0_13StreamingModeEPvm", "streamplay (stpl:u): ready, no session", Result, h_stpl_Init, int type, int mode, void *work, size_t size) {
     (void)type; (void)mode; (void)work; (void)size; return RES_OK; }
 HLE_FORCE("_ZN2nn10streamplay8FinalizeEv", "streamplay (stpl:u): nothing to release", void, h_stpl_Fini, void) {}
-// Guest displays are per guest: CreateIndividualDisplays only starts vi2 and the guest device resources for them. Pokemon Pokopia creates one at boot (main+0x11321b8), before any session, and
+// Guest displays are per guest: CreateIndividualDisplays only starts vi2 and the guest device resources for them. Another game creates one at boot (main+0x11321b8), before any session, and
 // keeps the window handle for the session it may open (main+0x1133660); with no guest there is no display, and the handle stays unused
 HLE_FORCE("_ZN2nn10streamplay24CreateIndividualDisplaysEi", "guest displays: none (no guest)", void, h_stpl_CreateDisplays, int n) { (void)n; }
 HLE_FORCE("_ZN2nn10streamplay25DestroyIndividualDisplaysEv", "guest displays: none (no guest)", void, h_stpl_DestroyDisplays, void) {}
@@ -241,7 +241,7 @@ HLE_FORCE("_ZN2nn10streamplay18GetGuestJcmsStatesEPNS0_14GuestJcmsStateEiRKNS0_1
           int, h_stpl_JcmsStates, void *out, int n, const void *h) { (void)out; (void)n; (void)h; return 0; }
 
 // ---------- chat: GameChat (Switch 2 SDKs) ----------
-// Hyrule Warriors: Age of Imprisonment initializes it at boot (main+0x14480b8); the SDK's Initialize connects to the chat:u service, which the host does not serve, and aborts (Result 0xe15).
+// Another game initializes it at boot (main+0x14480b8); the SDK's Initialize connects to the chat:u service, which the host does not serve, and aborts (Result 0xe15).
 // The host has no GameChat: the library is ready and no chat is running, so the game's screen sharing has nobody to share with. The SDK's other calls go through the service object that
 // Initialize would have made, so each one a game imports needs a hook here
 HLE_FORCE("_ZN2nn4chat10InitializeEv", "GameChat (chat:u): ready, no chat", void, h_chat_Init, void) {}
@@ -288,7 +288,7 @@ HLE_FORCE("_ZN2nn4chat25GetLocalCameraImageHandleEPKNS0_20LocalCameraVideoTypeEi
     return chat_video_image(type, i); }
 HLE_FORCE("_ZN2nn4chat26GetRemoteCameraImageHandleEPKNS0_21RemoteCameraVideoTypeEi", "GameChat remote camera image: its blank native image", uint32_t, h_chat_RemoteImage, const void *type, int i) {
     return chat_video_image(type, i); }
-// Star Fox (SDK 21.4.4) asks after the chat from its title screen on: who is chatting, the room, the sharing key, the virtual camera (what the game shows the other members instead of its
+// Another game (SDK 21.4.4) asks after the chat from its title screen on: who is chatting, the room, the sharing key, the virtual camera (what the game shows the other members instead of its
 // screen), the members' audio levels, the camera streams and the full-screen sections. The SDK's versions go through the service object Initialize would have made: GetChattingUid read a null
 // (sdk+0x6be4d4, from main+0xb57a9d0). No chat here: nobody is chatting (a zero Uid), there is no room (GetRoomInfo fails), the camera and sharing calls succeed and do nothing
 typedef struct { uint64_t a, b; } chat_uid_t;   // nn::account::Uid, returned in two registers

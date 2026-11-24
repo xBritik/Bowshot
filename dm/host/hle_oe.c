@@ -26,9 +26,9 @@ enum { MSG_FOCUS = 15, MSG_OPMODE = 30, MSG_PERFMODE = 31, MSG_STARTUP_LOGO = 95
 static pthread_mutex_t g_mq_lock = PTHREAD_MUTEX_INITIALIZER; static pthread_cond_t g_mq_cond = PTHREAD_COND_INITIALIZER;   // cond: wakes the blocking PopNotificationMessage
 static uint32_t g_mq[MQ]; static int g_mqh, g_mqn;
 static _Atomic int g_ntf_opmode, g_ntf_perfmode;          // only pushed after the game turns it on with Set*NotificationEnabled
-// Notification event (Hades main+0x3ed18c polls it every frame and pops one message each time it fires): the SDK's version returns the event oe::Initialize would have
+// Notification event (another game main+0x3ed18c polls it every frame and pops one message each time it fires): the SDK's version returns the event oe::Initialize would have
 // created, and the host's oe::Initialize is a no-op, so TryWaitSystemEvent asserted on it. A host-owned auto-clear SystemEvent instead, which follows the queue as the am service's
-// does: signalled while a notification is queued, cleared when the last one is popped. Monster Hunter Rise's MessageSuperviseThread (main+0x6bc8fc4) waits on it with WaitAny,
+// does: signalled while a notification is queued, cleared when the last one is popped. Another game's MessageSuperviseThread (main+0x6bc8fc4) waits on it with WaitAny,
 // which does not clear it, then pops until the queue is empty; when the event was only ever signalled, the first focus change on iOS left it set and the thread spun on a core
 // (995 ms/s, 5-6 W on an iPhone). The count is read and the event set or cleared under g_mq_lock, so a push racing a pop cannot leave it cleared over a queued notification
 // (lock order g_mq_lock → G → g_se_lock; nothing takes g_mq_lock while holding G)
@@ -69,13 +69,13 @@ void dm_set_opmode(int m) {   // called by the front end (overheat downgrade etc
 static _Atomic int g_focus = 1; static _Atomic uint64_t g_focus_in_ns;   // the front end's state; time of its most recent entry into InFocus
 // Focus handling mode the game set (-1: none). The SDK's oe::SetFocusHandlingMode (SDK 18 sdk+0x3c5770) turns it into am's SetFocusHandlingMode(notify, ?, suspend) and
 // SetOutOfFocusSuspendingEnabled: 0 → (0, 0, 1), 1 → (1, 1, 0), 2 → (1, 0, 1), 3 → (0, 0, 1) + out-of-focus suspending. Only 1 and 2 ask for focus notifications; under 0 and 3
-// the system suspends the game out of focus and it never sees message 15 (the host's suspend is the guest clock freeze and the graphics gate). Super Mario Galaxy 2 sets 3, and
+// the system suspends the game out of focus and it never sees message 15 (the host's suspend is the guest clock freeze and the graphics gate). Another game sets 3, and
 // its Wii layer's pause on focus 2 (main+0x663ba0) never finished: the main loop waits for the GX thread to pause (main+0x5ce870), which waits for work the paused CPU never sends
 static _Atomic int g_focus_mode = -1;
 static int focus_notifies(void) { int m = atomic_load(&g_focus_mode); return m != 0 && m != 3; }   // no mode set: notify, as before
 // Library applets the game has open (dm_applet_enter / dm_applet_leave, DM_APPLET in hle.h). On Horizon an applet the application starts takes its focus: am sends message 15
 // with OutOfFocus when it opens (libnx: AppletFocusState_OutOfFocus, "LibraryApplet open") and 15 with InFocus when it closes, and the application's Show call returns once it
-// has closed. The host's stand-ins answer on the caller's thread, so the game sees that pair around the call. Mario Kart 8 Deluxe applies the controller applet's answer only
+// has closed. The host's stand-ins answer on the caller's thread, so the game sees that pair around the call. Another game applies the controller applet's answer only
 // after the InFocus notification (its notification thread main+0x8ea560 sets the flag main+0x87b5d0 takes each frame); with none its 2P character select never took input
 // (GitHub issue #550). The game sees the front end's state, or 2 while an applet is open over an application in focus; a change of what it sees is one notification 15
 static int g_applets; static _Atomic int g_seen = 1; static pthread_mutex_t g_seen_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -113,29 +113,29 @@ HLE_FORCE("_ZN2nn2oe18DisableCrashReportEv", "Horizon crash-report service switc
 HLE_FORCE("_ZN2nn2oe20SwitchLcdBacklightOnEv", "turn the handheld screen on (through am); the host has no Switch LCD", void, h_oe_LcdOn, void) {}
 HLE_FORCE("_ZN2nn2oe21SwitchLcdBacklightOffEv", "turn the handheld screen off (through am); the host has no Switch LCD", void, h_oe_LcdOff, void) {}
 // Screenshot / video recording switches: the host has no system screenshot service, no-op
-// Star Fox (SDK 21): the game marks the sections where it shows the player's own photographs (GameChat's camera pictures on screen); the system keeps those out of captures. No captures here
+// Another game (SDK 21): the game marks the sections where it shows the player's own photographs (GameChat's camera pictures on screen); the system keeps those out of captures. No captures here
 HLE_FORCE("_ZN2nn2oe32BeginPresentPhotographedContentsEv", "photographed contents on screen: noted nowhere (no capture service)", void, h_oe_PhotoBegin, void) {}
 HLE_FORCE("_ZN2nn2oe30EndPresentPhotographedContentsEv", "photographed contents off screen", void, h_oe_PhotoEnd, void) {}
 HLE_FORCE("_ZN2nn2oe41ExitApplicationAndGoBackToInStoreDemoMenuEv", "the in-store demo's exit: the host runs no demo menu, the call is logged and ignored", void, h_oe_DemoExit, void) {
     static int once; if (!once++) LOG("[RED] oe: ExitApplicationAndGoBackToInStoreDemoMenu called: ignored (no in-store demo menu)");
 }
-HLE_FORCE("_ZN2nn2oe17FinishStartupLogoEv", "dismiss the system boot screen (through the am application proxy); the host has no boot screen", void, h_oe_FinishLogo, void) {}   // Metroid Dread calls it at main+0xadfed0
+HLE_FORCE("_ZN2nn2oe17FinishStartupLogoEv", "dismiss the system boot screen (through the am application proxy); the host has no boot screen", void, h_oe_FinishLogo, void) {}   // Another game calls it at main+0xadfed0
 HLE_FORCE("_ZN2nn2oe35EnableStartupLogoDisappearedMessageEv", "startup logo is already absent: deliver its notification through the host's queue, without an am proxy",
           void, h_oe_EnableStartupLogoMessage, void) { mq_push(MSG_STARTUP_LOGO); }
 // am retains the requested inactivity extension even when auto-sleep is disabled.
 // SDK 12.3.9 maps the normal setter to mode 1, Unsafe to mode 2, and false to 0.
-// Xenoblade Chronicles 3 reads it after the opening movie (sdk+0x3391f0).
+// Another game reads it after the opening movie (sdk+0x3391f0).
 static _Atomic int g_inactivity_mode;
 HLE_FORCE("_ZN2nn2oe44SetUserInactivityDetectionTimeExtendedUnsafeEb", "inactivity extension mode 2 or 0; the host never turns the screen off", void, h_oe_InactivityExt, unsigned on) { g_inactivity_mode = (on & 1) ? 2 : 0; }
 HLE_FORCE("_ZN2nn2oe38SetUserInactivityDetectionTimeExtendedEb", "inactivity extension mode 1 or 0; the host never turns the screen off", void, h_oe_InactivityExtSafe, unsigned on) { g_inactivity_mode = on & 1; }
 HLE_FORCE("_ZN2nn2oe43GetUserInactivityDetectionTimeExtensionModeEv", "inactivity extension mode requested by the application", int, h_oe_InactivityMode, void) { return g_inactivity_mode; }
 HLE_FORCE("_ZN2nn2oe15EnableRecordingEv", "video recording switch; the host has no system recording", void, h_oe_EnableRec, void) {}
 // Applet resource user ID (ARUID, the number am assigns to this process): the host has no am, and the SDK's own getter returns 0. SDK 20's OpenAudioRenderer (the CPU rendering + manual execution path, sdk+0x221730)
-//   aborts when it gets 0 (The Legend of Zelda: Breath of the Wild 1.9.0); SDK 16 did not check. Report a fixed non-zero ID, used only as an identifier
+//   aborts when it gets 0 (another game 1.9.0); SDK 16 did not check. Report a fixed non-zero ID, used only as an identifier
 HLE_FORCE("_ZN2nn6applet23GetAppletResourceUserIdEv", "applet resource user ID; the host returns a fixed non-zero value", uint64_t, h_applet_Aruid, void) { return DM_APPLET_RESOURCE_USER_ID; }
 // Launch parameter (present only when another program launched this one with one; returns bool): the host never passes one
 // Launch parameter (present only when another program launched this one with one; returns bool): DM_LAUNCH_PARAM=<file>, written by oe::ExecuteProgram on the way here (below), else what
-// the profile's launch_param describes, for a program of a multi-program application run by itself: Super Mario 3D All-Stars' games quit without the launcher's language and two volumes
+// the profile's launch_param describes, for a program of a multi-program application run by itself: another game' games quit without the launcher's language and two volumes
 // (fields: lang8, the language code GetDesiredLanguage gives; f32:<value>; u32:<value>; hex:<bytes>). Handed over once, as a popped parameter
 static uint64_t h_oe_GetLang(void);
 HLE_FORCE("_ZN2nn2oe21TryPopLaunchParameterEPmPvm", "launch parameter: what the program that started this one handed over, else the profile's launch_param; once", unsigned, h_oe_PopLaunchParam, size_t *out, uint8_t *buf, size_t n) {
@@ -173,8 +173,8 @@ HLE_FORCE("_ZN2nn2oe23GetPreviousProgramIndexEv", "previous program index: the p
 // run folder, and its environment (DM_ROOT, DM_ROMFS, DM_SAVE, DM_MSL_DIR, …; the NSP script writes it). Each program has a host of its own, as a host is built for one profile.
 // oe::ExecuteProgram ends this program and starts the named one in its place, as Horizon does: execve of its host after the graceful exit, with this environment less every key a row sets,
 // then the row's keys, DM_LAUNCH_PARAM=<cwd>/launch_param.bin and DM_PREV_PROGRAM.
-// The call never returns on Horizon, and the code after it is not code to run: a trap (Super Mario 3D All-Stars' launcher, main+0x10a58) or the next function (ROMANCE OF THE THREE KINGDOMS 8
-// REMAKE, main+0xa31914). A program with no row (Super Mario 3D All-Stars' Galaxy, 32-bit ARM, which Apple silicon cannot run): the application's first program starts instead, as after a
+// The call never returns on Horizon, and the code after it is not code to run: a trap (another game' launcher, main+0x10a58) or the next function (ROMANCE OF THE THREE KINGDOMS 8
+// REMAKE, main+0xa31914). A program with no row (another game' Galaxy, 32-bit ARM, which Apple silicon cannot run): the application's first program starts instead, as after a
 // restart from HOME. No table (a program run by itself): ExecuteProgram of its own index starts this host again, with its own arguments and folder; another program cannot start, and this one ends.
 // oe::RequestToRelaunchApplication is the same start of program 0 with no parameter and no previous program (GetPreviousProgramIndex -1, as from HOME), and DM_RELAUNCH=1 instead of
 // DM_LAUNCH_PARAM and DM_PREV_PROGRAM (DM_CTL resumes at the end of its file after either, instead of replaying the presses that led here).
@@ -311,16 +311,16 @@ static void oe_start(int index, const void *param, size_t n, int relaunch) {
 }
 void dm_oe_execute(int index, const void *param, size_t n) { oe_start(index, param, n, 0); }
 HLE_FORCE("_ZN2nn2oe14ExecuteProgramEiPKvm", "end this program and start another of the application (DM_PROGRAMS on the Mac); never returns", void, h_oe_ExecProgram, int index, const void *param, size_t n) { dm_oe_execute(index, param, n); }
-// Super Smash Bros. Ultimate 13.0.5 calls it after Options > Language > Yes ("the software will restart"), once the new language is saved. The SDK asks the am application proxy, which the
+// Another game 13.0.5 calls it after Options > Language > Yes ("the software will restart"), once the new language is saved. The SDK asks the am application proxy, which the
 // host never opens: applet::RequestToLaunchApplication read through the null proxy (sdk+0x804c8, SIGSEGV at address 0)
 HLE_FORCE("_ZN2nn2oe28RequestToRelaunchApplicationEv", "end this application and start it again from its first program, no launch parameter (on the Mac an execve of the host); never returns", void, h_oe_Relaunch, void) { oe_start(0, NULL, 0, 1); }
 HLE_FORCE("_ZN2nn2oe16DisableRecordingEv", "video recording switch; the host has no system recording", void, h_oe_DisableRec, void) {}
-// Silence the game's sound in system video captures (through am; FINAL FANTASY RESONANCE imports both): the host records nothing
+// Silence the game's sound in system video captures (through am; another game imports both): the host records nothing
 HLE_FORCE("_ZN2nn2oe13MuteRecordingEv", "mute the sound of system video recording; the host has no system recording", void, h_oe_MuteRec, void) {}
 HLE_FORCE("_ZN2nn2oe15UnmuteRecordingEv", "unmute the sound of system video recording; the host has no system recording", void, h_oe_UnmuteRec, void) {}
 HLE_FORCE("_ZN2nn2oe16EnableScreenShotEv", "screenshot switch; the host has no system screenshot", void, h_oe_EnableShot, void) {}
 HLE_FORCE("_ZN2nn2oe17DisableScreenShotEv", "screenshot switch; the host has no system screenshot", void, h_oe_DisableShot, void) {}
-// Super Mario Odyssey: HOME button blocking around its own menus, screenshot orientation, and the auto-sleep query (all through am)
+// Another game: HOME button blocking around its own menus, screenshot orientation, and the auto-sleep query (all through am)
 HLE_FORCE("_ZN2nn2oe23BeginBlockingHomeButtonEv", "temporarily block the HOME button (through am); the host has no HOME button", void, h_oe_BlockHome, void) {}
 HLE_FORCE("_ZN2nn2oe21EndBlockingHomeButtonEv", "restore the HOME button (through am)", void, h_oe_UnblockHome, void) {}
 HLE_FORCE("_ZN2nn2oe29SetScreenShotImageOrientationENS_5album16ImageOrientationE", "screenshot orientation (through am); the host has no system screenshot", void, h_oe_ShotOrient, int o) { (void)o; }
@@ -330,7 +330,7 @@ HLE_FORCE("_ZN2nn2oe29BeginAutoSleepDisabledSectionEv", "open an auto-sleep disa
 HLE_FORCE("_ZN2nn2oe27EndAutoSleepDisabledSectionEv", "close an auto-sleep disabled section (through am)", void, h_oe_NoSleepEnd, void) { if (g_nosleep > 0) g_nosleep--; }
 HLE_FORCE("_ZN2nn2oe19IsAutoSleepDisabledEv", "whether an auto-sleep disabled section is open", unsigned, h_oe_NoSleepQ, void) { return g_nosleep > 0; }
 HLE_FORCE("_ZN2nn2oe37IsUserInactivityDetectionTimeExtendedEv", "whether the application requested an inactivity extension", unsigned, h_oe_InactivityExtQ, void) { return g_inactivity_mode != 0; }
-// Hyrule Warriors: Age of Calamity (SDK 9.6.0, main+0x8d1238): the copyright frame buffer, an overlay the system draws only into screenshots and recordings. The SDK hands the buffer to am as transfer memory
+// Another game (SDK 9.6.0, main+0x8d1238): the copyright frame buffer, an overlay the system draws only into screenshots and recordings. The SDK hands the buffer to am as transfer memory
 // (svcCreateTransferMemory, then a null applet proxy). The host has no system capture, so it keeps nothing
 HLE_FORCE("_ZN2nn2oe30InitializeCopyrightFrameBufferEPvm", "copyright overlay buffer (for screenshots / recording, through am); the host has no system screenshot", void, h_oe_CopyrightInit, void *buf, size_t n) { (void)buf; (void)n; }
 HLE_FORCE("_ZN2nn2oe17SetCopyrightImageEPKvmiiiiNS0_16WindowOriginModeE", "copyright overlay image; the host has no system screenshot", void, h_oe_CopyrightImage, const void *p, size_t n, int x, int y, int w, int h, int origin) { (void)p; (void)n; (void)x; (void)y; (void)w; (void)h; (void)origin; }
@@ -338,13 +338,13 @@ HLE_FORCE("_ZN2nn2oe22SetCopyrightVisibilityEb", "copyright overlay visibility; 
 
 // OperationMode: 0 Handheld, 1 Console; PerformanceMode: 0 Normal, 1 Boost (one-to-one with the operation mode)
 HLE_FORCE("_ZN2nn2oe16GetOperationModeEv", "operation mode query; a fixed value from DM_OPMODE", int, h_oe_GetOpMode, void) { return opmode(); }
-// Profile perf_mode boost: Boost whatever the operation mode, a combination a Switch 1 never reports, so a profile choice and not a default. Rhythm Heaven Groove keeps one flag per mode
+// Profile perf_mode boost: Boost whatever the operation mode, a combination a Switch 1 never reports, so a profile choice and not a default. Another game keeps one flag per mode
 //   (main+0xa764 / main+0xa784): console means a TV, which gets a latency calibration (main+0x20d0, scene script main+0x4c0820), and Boost alone picks its 1920x1080 draw size
 //   (table main+0xada6d0, else 1280x720). Handheld with Boost: no TV calibration on a phone, full-size drawing
 HLE_FORCE("_ZN2nn2oe18GetPerformanceModeEv", "performance mode query; same as the operation mode (profile perf_mode boost: Boost)", int, h_oe_GetPerfMode, void) { return DM_GAME_PERF_BOOST ? 1 : opmode(); }
-// SDK 11 calls of Monster Hunter Rise: the CPU overclock query reads an apm session the host never opened (null read in sdk+0x35258 at the start of nnMain, main+0x6bc8650);
+// SDK 11 calls of another game: the CPU overclock query reads an apm session the host never opened (null read in sdk+0x35258 at the start of nnMain, main+0x6bc8650);
 // the default display resolution is the TV's (1080p docked) or the panel's (720p handheld) and only changes with the operation mode
-// Taiko Risshiden V DX (SDK 12.3.3) turns it on in nnMain (main+0x2e1e4c): the setter goes through the same apm session (null read at sdk+0x362b8). The host does not scale clocks;
+// Another game (SDK 12.3.3) turns it on in nnMain (main+0x2e1e4c): the setter goes through the same apm session (null read at sdk+0x362b8). The host does not scale clocks;
 // the query reports what was set, as apm does
 static unsigned char g_cpu_oc;
 HLE_FORCE("_ZN2nn2oe21IsCpuOverclockEnabledEv", "CPU overclock state (through apm): what SetCpuOverclockEnabled set, off at start", unsigned, h_oe_CpuOc, void) { return g_cpu_oc; }
@@ -353,9 +353,9 @@ HLE_FORCE("_ZN2nn2oe22SetCpuOverclockEnabledEb", "CPU overclock switch (through 
 // oe::GetGraphicsScalingParameters). The SDK maps the parameter's first word 10 / 20 / 30 to scale 0 / 1 / 2. Which tier a console reports when is not measured. The games that
 // read it render at full size and count their whole GPU time with tier 0, and less with 1 and 2, so it is taken as how much of the GPU the game may use, not as the operation
 // mode (an inference from their code; a system that needs the GPU itself, as for GameChat's video, would lower it, which the host never does): the host answers 0 in both
-// modes. Donkey Kong Bananza takes it as its display manager's scale index (+0x1c7, main+0x549348): its frame buffer is the display's size times {1.0, 0.8, 2/3}[tier]
+// modes. Another game takes it as its display manager's scale index (+0x1c7, main+0x549348): its frame buffer is the display's size times {1.0, 0.8, 2/3}[tier]
 // (main+0x30f840; docked 2304x1296 with tier 1, 2880x1620 with 0), and as an index into {3, 12, 16} (main+0x1d1a604) whose value less 3 (0, 9, 13) its dynamic resolution
-// adds to its GPU time (main+0x549614). Star Fox keeps only "tier 0" (byte +0xa of its event 5, main+0xba69970) and renders 0.8 times smaller below it: docked, 768x432 for
+// adds to its GPU time (main+0x549614). Another game keeps only "tier 0" (byte +0xa of its event 5, main+0xba69970) and renders 0.8 times smaller below it: docked, 768x432 for
 // its 1920x1080 window where tier 0 gives 960x540, its handheld size. Ocarina of Time draws 2048x1152 with tier 1 and 2560x1440 with 0. The host answered 1 docked until
 // these were found. DM_GFX_SCALE sets a tier, to see what a game does with a reduced one
 static int gfx_scale(void) { const char *e = getenv("DM_GFX_SCALE"); int v = e ? atoi(e) : 0; return v >= 0 && v <= 2 ? v : 0; }
@@ -364,7 +364,7 @@ HLE_FORCE("_ZN2nn2oe42SetGraphicsScaleChangedNotificationEnabledEb", "graphics s
           void, h_oe_GfxScaleNotify, unsigned on) { (void)on; }
 // The frame length the game aims at (Switch 2 SDKs): oe::SetGraphicsTargetFrameRate maps up to 59 fps to mode 1, up to 119 to mode 2 and above to mode 3, SetGraphicsTargetFrameRateAuto
 // to mode 0, and both call this, which locks the gs graphics server's context and sends it the mode. The host has no graphics server (nv::InitializeGraphics), so the context is null and
-// the lock crashed: Hyrule Warriors: Age of Imprisonment sets 60 / its present interval at boot (main+0x1e5d244). The host paces by the window's present interval, so the mode is only noted
+// the lock crashed: another game sets 60 / its present interval at boot (main+0x1e5d244). The host paces by the window's present interval, so the mode is only noted
 HLE_FORCE("_ZN2nn2gs3sdk26SetGraphicsFrameLengthModeENS1_23GraphicsFrameLengthModeE", "target frame length (Switch 2, gs): noted; the host paces by the present interval",
           void, h_gs_FrameLength, int mode) {
     static int last = -1; if (mode != last) { LOG("gs: graphics frame length mode %d (0 auto, 1 30 fps, 2 60 fps, 3 120 fps)", mode); last = mode; }
@@ -378,10 +378,10 @@ HLE_FORCE("_ZN2nn2oe40SendServerMaintenanceOverlayNotificationENS_4time9PosixTim
 // apm performance configurations: Normal 0x00010000 (CPU 1020 / GPU 384 / EMC 1600 MHz, the handheld default), Boost 0x00010001 (GPU 768 MHz, the docked default)
 HLE_FORCE("_ZN2nn2oe27GetPerformanceConfigurationENS0_15PerformanceModeE", "query the CPU/GPU clock config (through apm); reports the default for the mode", int, h_oe_GetPerfCfg, int mode) { return mode == 1 ? 0x00010001 : 0x00010000; }
 HLE_FORCE("_ZN2nn2oe24SetAlbumImageOrientationENS_5album16ImageOrientationE", "screenshot orientation (through am); the host has no system screenshot", void, h_oe_AlbumOrient, int o) { (void)o; }
-// The Great Ace Attorney Chronicles (SDK 10), first thing in nnMain (main+0x6b188c): the SDK's version asks am through the applet proxy the host never made (null read at sdk+0x338070)
+// Another game (SDK 10), first thing in nnMain (main+0x6b188c): the SDK's version asks am through the applet proxy the host never made (null read at sdk+0x338070)
 HLE_FORCE("_ZN2nn2oe34DisableAlbumImageTakenNotificationEv", "screenshot-taken notifications (through am); the host takes no system screenshots", void, h_oe_AlbumNotifyOff, void) {}
 // Enable uses the same am application proxy (SDK 13.3.5 sdk+0x36ec50); the host produces no system-album notifications.
-// Xenoblade Chronicles 3 (SDK 12.3.9) enables this at main+0x127fac4;
+// Another game (SDK 12.3.9) enables this at main+0x127fac4;
 // the SDK otherwise dereferences the absent am SelfController at sdk+0x33b0f0.
 // As with Disable, there is no producer: the host has no Horizon album captures.
 HLE_FORCE("_ZN2nn2oe33EnableAlbumImageTakenNotificationEv", "screenshot-taken notifications (through am); the host takes no system screenshots", void, h_oe_AlbumNotifyOn, void) {}
@@ -389,8 +389,8 @@ HLE_FORCE("_ZN2nn2oe24IsInStoreDemoModeEnabledEv", "retail store demo mode (thro
 HLE_FORCE("_ZN2nn2oe27SetPerformanceConfigurationENS0_15PerformanceModeEi", "set the CPU/GPU clock config; the host does not scale clocks", void, h_oe_SetPerfCfg, int mode, int cfg) {
     LOG("oe::SetPerformanceConfiguration mode=%d cfg=%#x (ignored)", mode, cfg);
 }
-// The one-argument overload sets the configuration of both modes (SDK 14.3, TUNIC's sdk+0x3a5630: a table lookup, then apm::SetPerformanceConfiguration for Normal and for Boost); SDK 21.4.7's
-// goes through oe::detail::ApmSetPerformanceConfiguration. Both read the apm session the host never opened (Warhammer Survivors: null read at sdk+0x40720c as a scene begins)
+// The one-argument overload sets the configuration of both modes (SDK 14.3, another game's sdk+0x3a5630: a table lookup, then apm::SetPerformanceConfiguration for Normal and for Boost); SDK 21.4.7's
+// goes through oe::detail::ApmSetPerformanceConfiguration. Both read the apm session the host never opened (another game: null read at sdk+0x40720c as a scene begins)
 HLE_FORCE("_ZN2nn2oe27SetPerformanceConfigurationEi", "set the CPU/GPU clock config of both modes (through apm); the host does not scale clocks", void, h_oe_SetPerfCfgBoth, int cfg) {
     LOG("oe::SetPerformanceConfiguration cfg=%#x (ignored)", cfg);
 }
@@ -444,7 +444,7 @@ HLE_FORCE("_ZN2nn2oe25TryPopNotificationMessageEPj", "system notification queue;
 // The blocking form (Link's Awakening pops on a thread of its own, main+0xfa1ff8): the SDK's version waits on the system event oe::Initialize would have created,
 // and the host's oe::Initialize is a no-op, so it aborted on an uninitialized event. Wait for the host queue instead, then take the message the Try path's way
 HLE_FORCE("_ZN2nn2oe22PopNotificationMessageEv", "system notification queue (blocking); waits on the host queue", uint32_t, h_oe_PopMsg, void) {
-    pthread_once(&g_oe_once, oe_script_start);   // DM_OE_SCRIPT also for games that only pop this way (Mario Kart 8 Deluxe): the wait below reaches the Try path only once a notification is queued
+    pthread_once(&g_oe_once, oe_script_start);   // DM_OE_SCRIPT also for games that only pop this way (another game): the wait below reaches the Try path only once a notification is queued
     uint32_t m = 0;
     for (;;) {
         pthread_mutex_lock(&g_mq_lock);
@@ -458,7 +458,7 @@ HLE_FORCE("_ZN2nn2oe22PopNotificationMessageEv", "system notification queue (blo
     }
 }
 HLE_FORCE("_ZN2nn2oe27GetNotificationMessageEventEv", "notification event: the host's auto-clear SystemEvent, signalled while the queue holds notifications", void *, h_oe_GetMsgEv, void) {
-    pthread_once(&g_oe_once, oe_script_start);   // DM_OE_SCRIPT also for games that wait on the event and pop only once it fires (Monster Hunter Rise)
+    pthread_once(&g_oe_once, oe_script_start);   // DM_OE_SCRIPT also for games that wait on the event and pop only once it fires (another game)
     if (!atomic_load(&g_mq_ev_on)) { hle_bind_system_event(g_mq_ev, 1); atomic_store(&g_mq_ev_on, 1); mq_ev_sync(); }   // bound on the game's thread (it runs SDK code)
     return g_mq_ev;
 }
@@ -495,7 +495,7 @@ HLE_FORCE("_ZN2nn2oe18GetDesiredLanguageEv", "system language query; value from 
     return v;
 }
 
-// The console's region (Animal Crossing: New Horizons 3.0.3): the SDK asks settings::system::GetRegionCode, which reaches set:sys. A region that fits the language the game is given:
+// The console's region (another game 3.0.3): the SDK asks settings::system::GetRegionCode, which reaches set:sys. A region that fits the language the game is given:
 // 0 Japan, 1 the Americas, 2 Europe, 4 Hong Kong / Taiwan / Korea (nn::settings::system::RegionCode; 3 Australia and 5 China are left out, no language points at them alone)
 HLE_FORCE("_ZN2nn2oe13GetRegionCodeEv", "console region (set:sys); from DM_LANG, else control.nacp", int, h_oe_GetRegion, void) {
     const char *e = oe_lang();

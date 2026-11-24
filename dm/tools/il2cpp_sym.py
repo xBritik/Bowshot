@@ -35,7 +35,7 @@ def symbols(path, text_end):
 
 
 def functions(module):
-    """Sorted [(start, end)] of the .eh_frame functions in text: IL2CPP code has unwind tables for its C++ exceptions (98% of BALL x PIT's text)"""
+    """Sorted [(start, end)] of the .eh_frame functions in text: IL2CPP code has unwind tables for its C++ exceptions (98% of another game's text)"""
     try:
         ranges = fde_ranges(module.image)
     except (AssertionError, IndexError, ValueError, struct.error) as e:

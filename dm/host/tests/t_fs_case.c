@@ -90,7 +90,7 @@ int main(void) {
     CHECK(mount("rom", save, 1) == RES_OK && content("rom:/LEGACY", "old"), "a read-only mount reads mapped names");
     CHECK(h_fs_GetEntryType(&type, "rom:/Legacy") == RES_PATH_NOT_FOUND, "a read-only mount also looks up by exact case");
     const uint64_t uid[2] = {DM_UID0, DM_UID1};
-    // MountSaveDataReadOnly: this game's own save data is its committed save (Nintendo Switch Sports Resort mounts it as SaveReadOnly), another program's has none
+    // MountSaveDataReadOnly: this game's own save data is its committed save (another game mounts it as SaveReadOnly), another program's has none
     CHECK(h_fs_MountSaveRO("SaveReadOnly", DM_GAME_PROGRAM_ID, uid) == RES_OK, "this game's own save data mounts read-only");
     CHECK(content("SaveReadOnly:/LEGACY", "old") && h_fs_GetEntryType(&type, "SaveReadOnly:/plain") == RES_PATH_NOT_FOUND, "it reads the committed save, not the work directory's uncommitted files");
     CHECK(h_fs_CreateFile("SaveReadOnly:/new", 0) != RES_OK && h_fs_GetEntryType(&type, "save:/new") == RES_PATH_NOT_FOUND, "it refuses writes");

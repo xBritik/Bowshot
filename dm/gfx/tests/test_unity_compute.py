@@ -57,7 +57,7 @@ class LegacyComputeTests(unittest.TestCase):
         self.assertEqual(shaders, [('fixture#LegacySkinning#SkinVertices.0', 'cs', control, code)])
 
     def test_kernel_with_no_code_is_skipped_and_the_others_are_read(self):
-        # DAVE THE DIVER's Data/resources.assets: an empty code raised, and the file lost its 1,815 programs.
+        # Another game's Data/resources.assets: an empty code raised, and the file lost its 1,815 programs.
         data, type_hash, control, code = legacy_compute()
         trees = {(72, type_hash): unityfs.known_tree(72, type_hash)}
         program = list(unityfs.serialized_objects(data, {}, {72}, trees))[0][2]['variants'][0]['kernels'][0]['code']

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Rockstar RPF6 archives (RAGE, the format of Red Dead Redemption on PS3 / Xbox 360). Double Eleven's Switch port of Red Dead Redemption (01007820196A6000, 1.0.0) keeps all of its RomFS
+# Rockstar RPF6 archives (RAGE, the format of another game on PS3 / Xbox 360). Double Eleven's Switch port of another game (<title ID>, 1.0.0) keeps all of its RomFS
 # but two Bink movies in 134 of them (11 GB; shaders.rpf, fragments.rpf, audio_switch.rpf, redemption/territory_swall/*.rpf, …). shader_split.py reads them through this module (rpf_jobs).
 # Layout (big-endian, as on the consoles):
 #   header  16 bytes: 'RPF6', u32 entry count, u32 name table offset / 8, u32 encryption tag (0xfffffffd in every Switch archive: the entry table and the name table are encrypted)

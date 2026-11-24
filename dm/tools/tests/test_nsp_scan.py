@@ -130,7 +130,7 @@ class ContentMeta(unittest.TestCase):
         self.assertEqual(nsp.nsp_versions(fam), {'v0': None, 'v131072': upd})
         self.assertEqual(self.said, [f'{upd.name}: its name says v65536, its content meta v131072, which is the version it is taken for'])
 
-    def test_a_base_game_at_its_own_version(self):   # Castlevania: Belmont's Curse's base, tagged [v0], is 1.1.0 (v65536): the profile's v65536 row, not an unregistered v0
+    def test_a_base_game_at_its_own_version(self):   # Another game's base, tagged [v0], is 1.1.0 (v65536): the profile's v65536 row, not an unregistered v0
         base = self.tmp / 'Castlevania [0100BA4026E94000][v0].nsz'; pfs0(base, [meta(APP, 65536)])
         app, fam = nsp.scan_nsps(self.tmp, fake_contents)
         self.assertEqual((fam['base_version'], nsp.nsp_versions(fam)), (65536, {'v65536': None}))
@@ -222,7 +222,7 @@ class Reader(unittest.TestCase):
 
 class Merged(unittest.TestCase):
     """A merged package: base game + update + DLC in one NSP (\"[Base eShop + Update 4.0.1 - v1507328 + 1 DLC].nsp\"), or a cartridge dump with its update. Its tickets name every
-    title, the first one in any order, and nx_extract opened it as the base game alone (Mario Kart 8 Deluxe 1.0.0's main is 32-bit: the build stopped). Its content metas make it
+    title, the first one in any order, and nx_extract opened it as the base game alone (another game 1.0.0's main is 32-bit: the build stopped). Its content metas make it
     count as each of them"""
     CONTENTS = [('Application', APP, 0), ('Patch', APP | 0x800, 1507328), ('AddOnContent', APP + 0x1001, 65536)]
 
@@ -252,7 +252,7 @@ class Merged(unittest.TestCase):
         m = self.merged_nsp(); size = m.stat().st_size
         self.assertEqual(nsp.extract_bytes({'v1507328': (m, m)}, clones=False), size)
 
-    def test_two_games_on_one_cartridge(self):   # Super Mario Galaxy + Super Mario Galaxy 2 on one XCI: two Application content metas, two games; --title-id names the one to pack
+    def test_two_games_on_one_cartridge(self):   # Another game + another game on one XCI: two Application content metas, two games; --title-id names the one to pack
         GAME2 = 0x0100FD8022DAA000
         cart = self.tmp / 'Galaxy 1 + 2.xci'; xci(cart, [meta(APP), 'b.nca', meta(GAME2), 'd.nca'])
         with self.assertRaisesRegex(nsp.BuildError, r'more than one game .*--title-id'): nsp.scan_nsps(self.tmp, fake_contents)

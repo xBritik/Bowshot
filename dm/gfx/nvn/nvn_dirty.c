@@ -482,7 +482,7 @@ void nvn_dirty_gpu_written(uintptr_t addr, size_t len) {
 void nvn_dirty_touch(void) { atomic_fetch_add(&g_now, 1); }
 // As nvn_dirty_since, with the caller's last range kept in *span (rechecked, scanned again only if it no longer holds the span; a slot reused by another pool over the same memory
 // holds it too, and a stamp older than that pool's registration then counts as written: born): a packaged texture keeps its handle (the scan over every range ran twice per texture lookup), and a sparse texture's page-table walk (hle_nvn.c vpt_walk) asks once per run of
-// physical pages, which mostly lie in one pool, where find_span scans every registered range (about 4,300 in a Mario Kart World race)
+// physical pages, which mostly lie in one pool, where find_span scans every registered range (about 4,300 in a another game race)
 int nvn_dirty_since_cached(const void **span, const void *addr, size_t len, uint64_t stamp) {
     if (!len) return 0;
     uintptr_t a = (uintptr_t)addr; range_t *r = pin_span((range_t *)*span, a, len); *span = r;

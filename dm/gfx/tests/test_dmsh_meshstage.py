@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""NVN2 task and mesh shaders as Metal stage functions (dmsh_meshstage.py), on the shape of Mario Kart World's: the control section's facts, the SPH's outputs, the stage memory's layout
+"""NVN2 task and mesh shaders as Metal stage functions (dmsh_meshstage.py), on the shape of another game's: the control section's facts, the SPH's outputs, the stage memory's layout
 and the wrapper's entry points. When the Metal compiler is installed, the stages compile for macOS and iOS."""
 from pathlib import Path
 import os
@@ -189,7 +189,7 @@ class Facts(unittest.TestCase):
         lay, size = ms.memory(ms.info(control(6), bytes(0x80)))
         self.assertEqual(lay, [0, 0x10, 0x10, 0x110]); self.assertEqual(size, 0x110)
 
-    def test_payload_spill_memory(self):   # Nintendo Switch Sports Resort's 07abb052a670b8ba / d60092d7424cb5b4: 27,904 payload bytes, past Metal's 16 KB
+    def test_payload_spill_memory(self):   # Another game's 07abb052a670b8ba / d60092d7424cb5b4: 27,904 payload bytes, past Metal's 16 KB
         t = ms.info(control(6, payload=27904), bytes(0x80))
         self.assertTrue(ms.payload_spill(t)); self.assertFalse(ms.payload_spill(ms.info(control(6, payload=abi.MESH_PAYLOAD_MAX), bytes(0x80))))
         self.assertEqual(ms.memory(t), ([0, 0x10, 0x10, 0x10 + 27904], 0x10 + 27904))
@@ -218,7 +218,7 @@ class Facts(unittest.TestCase):
         self.assertEqual(lay[3], lay[2] + 5 * 0x80); self.assertEqual(size, lay[3] + 4 + 32)
 
     def test_primitive_system_value_has_room(self):
-        # PRAGMATA 5aab38bb5ba67ef7 (and 493 more): 128 vertices of a position, 126 primitives, a per-primitive SPH enabling only the primitive array id (0x35 bit 0).
+        # Another game 5aab38bb5ba67ef7 (and 493 more): 128 vertices of a position, 126 primitives, a per-primitive SPH enabling only the primitive array id (0x35 bit 0).
         # Its code writes vertex v at (v / 32) * 0x200 + 0x80 * c and primitive p's id at 0x800 + (p / 32) * 0x80 + 4 * (p % 32) from the outputs: the id must not
         # reach the primitive bytes (before, the count byte was 0x893, inside primitive 0's id, so every workgroup drew nothing)
         area = sph(0xf0) + sph(0x01)
@@ -240,7 +240,7 @@ class Facts(unittest.TestCase):
     def test_system_values_of_an_sph(self):
         self.assertEqual(ms.sph_system(sph(0xf1)), [8]); self.assertEqual(ms.sph_system(sph(0xf0)), [])
 
-    def test_mesh_vertex_records(self):   # PRAGMATA 6adf14e9a4100082's shape: 128 vertices of 6 components. Its non-skew attribute stores (mode 0xb8) name vertex records from
+    def test_mesh_vertex_records(self):   # Another game 6adf14e9a4100082's shape: 128 vertices of 6 components. Its non-skew attribute stores (mode 0xb8) name vertex records from
         # the end of its own SoA area, 24 bytes a vertex: [4..6] tell the translator where (AosToSoa)
         lay, _ = ms.memory(ms.info(control(7, payload=128, max_v=128, max_p=64), sph(0xf0, b'\x30')))
         self.assertEqual(lay[4:], [lay[3] - lay[2], 6, 128 * 24])
@@ -401,7 +401,7 @@ class Stage(unittest.TestCase):
         self.assertNotIn('_9', entries)
 
     def test_primitive_id_handed_to_metal(self):
-        # PRAGMATA 5aab38bb5ba67ef7: its per-primitive SPH enables only the primitive id (0x35 bit 0), which its code writes as (cluster << 7) | p and its fragment shader
+        # Another game 5aab38bb5ba67ef7: its per-primitive SPH enables only the primitive id (0x35 bit 0), which its code writes as (cluster << 7) | p and its fragment shader
         # 6c475973 reads as gl_PrimitiveID (the visibility buffer's cluster bits). The primitive gets it as its [[primitive_id]], from the first primitive block's first component
         # (36 + 4 * 4 * 32 words: the four vertex blocks of a position)
         area = sph(0xf0) + sph(0x01)
@@ -610,7 +610,7 @@ class PrimitiveIdOnTheGpu(unittest.TestCase):
 
 
 class IntegerPassThrough(unittest.TestCase):
-    """dmsh_entry.py fs_uint: a pixel shader that passes a flat input through to an integer target needs the typed-output entry point: Mario Kart World's dcb0504c844f1ecc, whose R8Uint
+    """dmsh_entry.py fs_uint: a pixel shader that passes a flat input through to an integer target needs the typed-output entry point: another game's dcb0504c844f1ecc, whose R8Uint
     output comes from its mesh stage's per-primitive attribute. Every pixel shader has it now, whatever its code writes (GitHub issue #2760)"""
     SRC = """struct main0_out
 {
@@ -642,7 +642,7 @@ fragment main0_out main0(main0_in in [[stage_in]])
     def test_flat_input_directly(self):
         self.assertIsNotNone(self.fs_uint(self.SRC % (', flat', 'in.m_16.x')))
 
-    # Kirby Star Allies' grass shader (c44819fbd37e33dc): normal and albedo reach their outputs as the bits of floats, its material word from integer locals, one a denormal literal after SPIRV-Cross
+    # Another game' grass shader (c44819fbd37e33dc): normal and albedo reach their outputs as the bits of floats, its material word from integer locals, one a denormal literal after SPIRV-Cross
     GBUFFER = """struct main0_out
 {
     float4 m_48 [[color(0)]];
@@ -683,7 +683,7 @@ fragment main0_out main0(main0_in in [[stage_in]])
             line = f'    if (dm_du) r.{nm}_du = out.{nm}; else {body}\n' if n == 1 else f'    if (!dm_du) {{ {body} }}\n' if n >= 2 else f'    {body}\n'
             self.assertIn(line, src)
 
-    def test_smooth_or_computed_inputs_too(self):   # the code no longer decides: an R8Uint target beside them would have been refused (Kirby and the Forgotten Land, #2760)
+    def test_smooth_or_computed_inputs_too(self):   # the code no longer decides: an R8Uint target beside them would have been refused (another game, #2760)
         self.assertIsNotNone(self.fs_uint(self.SRC % ('', '_26')))
         self.assertIsNotNone(self.fs_uint(self.SRC % (', flat', '_26 * 2.0')))
 

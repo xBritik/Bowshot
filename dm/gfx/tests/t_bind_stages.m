@@ -61,7 +61,7 @@ int main(void) { @autoreleasepool {
     CHECK(S.prog && S.prog != &p_vs && S.prog != &p_ps && prog_get(S.prog)->sh[0] == vs1 && prog_get(S.prog)->sh[1] == fs1,
           "single-stage VS then PS with 0x1f yields composite with both stages");
 
-    // 2. Xenoblade Chronicles 2 pattern: VS+FS then VS-only bound with 0x1f must unbind fragment
+    // 2. Another game pattern: VS+FS then VS-only bound with 0x1f must unbind fragment
     bind_op(&p_vs_fs, 0x1f);
     CHECK(S.prog == &p_vs_fs && S.bst[0] == &p_vs_fs && S.bst[1] == &p_vs_fs, "VS+FS bound with 0x1f replaces all graphics stages");
     bind_op(&p_vs, 0x1f);
@@ -74,7 +74,7 @@ int main(void) { @autoreleasepool {
     bind_op(&p_vs_fs, 0x1f);
     CHECK(S.prog == &p_vs_fs && !prog_get(S.prog)->sh[2], "VS+FS bound with 0x1f unbinds geometry stage");
 
-    // 4. NVN2 Mario Kart World / Ocarina of Time: VS+FS then task+mesh+FS with 0xff / 0xc3 replaces vertex slot (no bogus composite)
+    // 4. NVN2 another game / Ocarina of Time: VS+FS then task+mesh+FS with 0xff / 0xc3 replaces vertex slot (no bogus composite)
     bind_op(&p_mesh_fs, 0xff);
     CHECK(S.bst[0] == &p_mesh_fs && S.bst[1] == &p_mesh_fs && S.bst[4] == &p_mesh_fs && S.prog == &p_mesh_fs,
           "NVN2 task+mesh+FS bound with 0xff replaces vertex slot without a composite");
@@ -100,7 +100,7 @@ int main(void) { @autoreleasepool {
     CHECK(S.cprog == &p_cs && S.bst[0] == &p_cs && S.prog == &p_cs,
           "compute-only program bound with 0xff updates compute and does not keep stale VS");
 
-    // 8. Explicit NULL unbinds still clear every bit they name (Metroid Dread / Scarlet)
+    // 8. Explicit NULL unbinds still clear every bit they name (another game / Scarlet)
     bind_op(NULL, 0x1f);
     bind_op(&p_vs_fs, 0x3);
     bind_op(NULL, 0x2);

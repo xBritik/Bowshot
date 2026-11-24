@@ -2,21 +2,21 @@
 """Unreal Engine's fixed frame rate, UEngine::FixedFrameRate on the engine object GEngine points to, found in main without a build ID: patch_nso.py writes its place into main's fixups
 (UE_FIXED_RATE_PTR, GEngine's offset in main, and UE_FIXED_RATE_FIELD, the property's offset in UEngine), and the host writes the profile's fps_target there (hle_fpslock.c).
 With bUseFixedFrameRate on, the engine steps every frame by exactly 1 / FixedFrameRate seconds and holds its tick to that rate, whatever rhi.SyncInterval and t.MaxFPS say
-(ue_cvar.py). DRAGON BALL: Sparking! ZERO (UE 5.1.1) and Pikmin 4 (UE 4.26.2) turn it on in their configs (bUseFixedFrameRate=True; 30, set by Sparking! ZERO's config and Unreal's
-Switch frame pace, main+0x1e1e904, and Pikmin 4's by the engine's default), so their gameplay stayed at 30 with the present interval raised. The value is the frame rate, so the game's speed
+(ue_cvar.py). Another game (UE 5.1.1) and another game (UE 4.26.2) turn it on in their configs (bUseFixedFrameRate=True; 30, set by Sparking! ZERO's config and Unreal's
+Switch frame pace, main+0x1e1e904, and another game's by the engine's default), so their gameplay stayed at 30 with the present interval raised. The value is the frame rate, so the game's speed
 holds at any rate, as far as the game's own code steps by the engine's delta time. Both links hold in any Unreal 4.22 to 5 build, each unique or nothing is written:
 - the property's reflection entry: the data word holding the address of its UTF-8 name "FixedFrameRate" (the module's relative relocations applied; the linker may share the string with the
   tail of "bUseFixedFrameRate"), whose generated-property kind is Float (0x0A at +24) and whose array size is 1 (+32). The offset follows the array size (+36, Unreal Engine 4.22 to 5.0:
-  Pikmin 4's 0x7a8) or, from Unreal Engine 5.1 on, a setter and a getter pointer after it (+56: Sparking! ZERO's 0x9c8);
+  another game's 0x7a8) or, from Unreal Engine 5.1 on, a setter and a getter pointer after it (+56: Sparking! ZERO's 0x9c8);
 - GEngine, where FEngineLoop::Init makes the engine: it reads the engine class from the config key TEXT("GameEngine") (UTF-16; Sparking! ZERO's linker shares it with the tail of
   "UGameEngine"), makes the object and stores it into GEngine (str xV, [xR, #lo]), then loads it back and makes a virtual call on it (ParseCommandline: ldr x0, [xR, #lo], then a blr).
-  xR is the global's page (adrp; Pikmin 4: main+0x9fbf000 + 0x880), that plus an offset (adrp + add), or the address a GOT slot holds (adrp + ldr; Sparking! ZERO: the slot main+0x8dbfb40
+  xR is the global's page (adrp; another game: main+0x9fbf000 + 0x880), that plus an offset (adrp + add), or the address a GOT slot holds (adrp + ldr; Sparking! ZERO: the slot main+0x8dbfb40
   → main+0x9aefa30). Every reference with that shape must name the same global. Until 2026-11-08 the rule took the global through which code stores the property, which only Sparking! ZERO's
-  frame pace does (main+0x1e1ea04), and before that any global through which code reached the offset: Pikmin 4's one load there (main+0x1689a70) reads another object
+  frame pace does (main+0x1e1ea04), and before that any global through which code reached the offset: another game's one load there (main+0x1689a70) reads another object
   (main+0x9350560, -980 at +0x7a8), and the host's range check refused it.
 - the flag bUseFixedFrameRate, a bitfield bool: its reflection entry (kind Bool, 0x0C) holds the function that sets it on an object (ldrb w, [x0, #byte]; orr w, w, #bit; strb; ret:
-  Sparking! ZERO +0x9c4, Pikmin 4 and Princess Peach: Showtime! +0x7a4, bit 0x40). The host writes the rate only while the flag is set on the object, so a game whose engine steps by the
-  time that passed (Princess Peach: Showtime!, at 60 by the present interval alone) is left as it is, and an object that is not the engine would also need the flag's bit and a frame rate.
+  Sparking! ZERO +0x9c4, another game and another game +0x7a4, bit 0x40). The host writes the rate only while the flag is set on the object, so a game whose engine steps by the
+  time that passed (another game, at 60 by the present interval alone) is left as it is, and an object that is not the engine would also need the flag's bit and a frame rate.
 Usage on its own: ue_fixed_rate.py <module>... (what it finds in each)"""
 import re, struct, sys, os
 

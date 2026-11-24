@@ -5,7 +5,7 @@ static id<MTLBuffer> g_tf_state;
 static id<MTLComputePipelineState> g_tf_prepare;
 // The capture state (four byte offsets, the count, tf_prepare's words) is known on the CPU from a begin until a resume loads it from a control buffer or a geometry capture
 // takes its count from the GPU: an array capture's count is in its draw. While it is known a capture needs no tf_prepare dispatch and no copy into g_tf_state, and captures that
-// follow each other share one attachment-less pass (g_tf_enc). Pokémon Scarlet and Violet skin with a begin, one capture and an end per mesh, 73 to 182 a frame: each was a
+// follow each other share one attachment-less pass (g_tf_enc). Another game and Violet skin with a begin, one capture and an end per mesh, 73 to 182 a frame: each was a
 // copy encoder, a compute encoder and a render pass behind full barriers, and on an iPad Pro M4 the GPU had nothing to run for 17 of a frame's 34 ms (Scarlet) and 45 of 58 ms
 // (Violet) between those encoders. DM_NVN_TF_CPU=0: every capture through tf_prepare in a pass of its own
 // Metal orders nothing between the draws of one pass for what their vertex functions read and write, so a capture that may touch what an earlier capture of the pass read or

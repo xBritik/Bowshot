@@ -11,7 +11,7 @@
 
 // c2: the handle tables, one 32-bit handle word every DMSH_C2_ROW bytes
 #define DMSH_C2_ROW 8                    // bytes from one slot's handle word to the next
-#define DMSH_C2_TEX 0x20                 // combined handles (nvnCommandBufferBindTexture), slot r at 0x20 + 8 r. The driver has 32 such slots, but a game may bind higher ones, whose words lie in the image table (Hades II binds slot 34)
+#define DMSH_C2_TEX 0x20                 // combined handles (nvnCommandBufferBindTexture), slot r at 0x20 + 8 r. The driver has 32 such slots, but a game may bind higher ones, whose words lie in the image table (another game binds slot 34)
 #define DMSH_C2_TEX_SLOTS 41             // combined slots up to the separate texture table: past slot 31 a slot shares its word with an image slot (nvn_mtl.m tex_slot_h)
 #define DMSH_C2_IMG 0x120                // images (nvnCommandBufferBindImage), slot r at 0x120 + 8 r
 #define DMSH_C2_IMG_SLOTS 8              // image slots in that table
@@ -27,7 +27,7 @@
 #define DMSH_C0_SSBO_CS 0x310            // compute stage storage buffer table
 #define DMSH_C0_SSBO_GS 0x410            // geometry stage storage buffer table (NieR:Automata); the hull and domain stages' bases were never seen
 #define DMSH_C0_SSBO_PS 0x510            // pixel stage storage buffer table
-#define DMSH_C0_SSBO_TS 0x670            // NVN2 task stage storage buffer table: Mario Kart World's task shaders read c0 0x670 and 0x680, and the game binds their buffers at slots 0 and 1
+#define DMSH_C0_SSBO_TS 0x670            // NVN2 task stage storage buffer table: another game's task shaders read c0 0x670 and 0x680, and the game binds their buffers at slots 0 and 1
 #define DMSH_C0_SSBO_MS 0x770            // NVN2 mesh stage storage buffer table: its mesh shaders read c0 0x770, 0x780, 0x790 and 0x7b0, and it binds slots from 0
 #define DMSH_MESH_DRAW_SLOT 29           // a task or object function's buffer: the draw's {count, first} workgroups, NVN's DrawMeshTasksIndirect record (dmsh_meshstage.py, nvn_geometry.inc mtk_encode)
 #define DMSH_MESH_GRID 1024              // Metal's limit of threadgroups in a mesh grid: a mesh shader with no task shader is drawn by an object function launching blocks of this many (dmsh_meshstage.py)
@@ -55,11 +55,11 @@
 #define DMSH_MESH_SCRATCH_STRIDE 16384
 #define DMSH_MESH_SCRATCH_TRIES 64
 #define DMSH_C0_DISPATCH 0x200           // compute: the dispatch's workgroup counts x, y, z (32 bits each; Link's Awakening's light culling)
-#define DMSH_C0_DISPATCH_NVN2 4          // NVN2 compute keeps them here, below its per-shader layout at 0x10 (x and y read by Fire Emblem Fortune's Weave's light culling; z by their order)
+#define DMSH_C0_DISPATCH_NVN2 4          // NVN2 compute keeps them here, below its per-shader layout at 0x10 (x and y read by another game's light culling; z by their order)
 #define DMSH_C0_CS_UBO 0x210             // compute: uniform slot r's address and size at 0x210 + 0x10 r, read through global memory (the build's ubo_ptr bindings); it ends where the storage buffer table starts
 #define DMSH_C0_CS_UBO_SLOTS 16          // uniform slots of that table
 // NVN2 graphics stages read the buffer entries the game pushes for them from a bank of their own: stage i's (vertex 0, hull or mesh 1, domain 2, geometry 3, pixel 4) is
-// c[25 + i], which holds graphics push block 1 + i (DMSH_PUSH_BLOCKS): {address, size} entries of 16 bytes, or 8-byte handles. PRAGMATA's shaders read c[25] in 9,944
+// c[25 + i], which holds graphics push block 1 + i (DMSH_PUSH_BLOCKS): {address, size} entries of 16 bytes, or 8-byte handles. Another game's shaders read c[25] in 9,944
 // vertex shaders, c[26] in 538 mesh and 3 hull shaders, c[27] in 37 domain shaders, c[28] in 1 geometry shader and c[29] in 12,195 pixel shaders, and the game binds no
 // storage buffer at all. The translator maps the bank onto that block of c[24] (the build's job key stage_bank, InstEmitAmpere.cs AStageBlock)
 #define DMSH_NVN2_STAGE_BANK 25
@@ -90,14 +90,14 @@
 #define DMSH_SBLEN_SLOTS 32              // storage slots of a table, two u32 each, as uint4s: 256 bytes
 // The push call's word before the offset names a block of the stage group; c[24] holds block b at b * DMSH_PUSH_SIZE. Block 0 holds the group's constants. Block 1 + i holds
 // stage i's buffer entries: compute has one stage and reads block 1 where its c0 layout counts it (control +0xaa, in words, right after block 0's +0xa9; the translator maps it
-// to c[24] + DMSH_PUSH_SIZE); graphics stage i reads its block through its own bank (DMSH_NVN2_STAGE_BANK + i), up to the pixel stage's block 5. PRAGMATA pushes 16-byte buffer
+// to c[24] + DMSH_PUSH_SIZE); graphics stage i reads its block through its own bank (DMSH_NVN2_STAGE_BANK + i), up to the pixel stage's block 5. Another game pushes 16-byte buffer
 // entries (a 64-bit GPU address, then a size) or 8-byte handles there before its dispatches and draws, and its shaders load and store through those addresses
 #define DMSH_PUSH_BLOCKS 8              // native groups each contain eight 256-byte banks; RT consumes the compute group's full 0x800 bytes
-#define DMSH_C0_POINT_SIZE 0x610         // graphics stages: the largest point size, to which GLSLC clamps a shader-written gl_PointSize (Super Mario Odyssey's point sprites)
+#define DMSH_C0_POINT_SIZE 0x610         // graphics stages: the largest point size, to which GLSLC clamps a shader-written gl_PointSize (another game's point sprites)
 #define DMSH_C0_SAMPLE_TABLE 0x620       // pixel stage: GLSLC's sample position table, one byte per (pixel of the location grid, sample): x and y in 1/16 pixel, low and high nibble
 #define DMSH_C0_SAMPLE_BYTES 16          // bytes of that table
-#define DMSH_C0_SAMPLE_INFO 0x630        // pixel stage: the table's index words: sample index mask, log2 of the sample count, grid x mask (also the shift of y), grid y mask (Metroid Prime Remastered)
-#define DMSH_C0_BASE_INSTANCE 0x644      // graphics stages: the draw's base instance, which GLSLC adds to Maxwell's instance ID (Pokémon Legends: Z-A's occlusion boxes)
+#define DMSH_C0_SAMPLE_INFO 0x630        // pixel stage: the table's index words: sample index mask, log2 of the sample count, grid x mask (also the shift of y), grid y mask (another game)
+#define DMSH_C0_BASE_INSTANCE 0x644      // graphics stages: the draw's base instance, which GLSLC adds to Maxwell's instance ID (another game's occlusion boxes)
 
 // Binding kinds: the "kind" of each binding in a shader's <key>_b.json, as the build writes it and the host reads it (nvn_refl.m turns each into an NVN_RB_* code, nvn_refl.h)
 #define DMSH_KIND_CBUF "cbuf"            // uniform buffer slot reg (c[3 + reg]); fixed = its bytes the shader reads at fixed offsets

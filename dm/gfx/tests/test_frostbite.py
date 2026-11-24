@@ -9,7 +9,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 import frostbite as fb
 
-CHUNK = 0xA3A00DE1   # installpackage_00's persistentIndex in EA SPORTS FC 27
+CHUNK = 0xA3A00DE1   # installpackage_00's persistentIndex in another game
 
 
 def leb(n):

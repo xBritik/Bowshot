@@ -1,5 +1,5 @@
 // Threads that return before a threadgroup_barrier: Metal's specification wants every thread of the threadgroup at each barrier, NVIDIA's BAR counts an exited thread
-// as arrived, and Switch compute shaders rely on that ("if (lid * 4 >= count) return;" before a barrier: 156 of PRAGMATA's). The translator emits the same shape in MSL.
+// as arrived, and Switch compute shaders rely on that ("if (lid * 4 >= count) return;" before a barrier: 156 of another game's). The translator emits the same shape in MSL.
 // This test runs those shapes on the Mac's GPU and checks that every dispatch completes and every thread that stays sees the others' writes: whole simdgroups returning,
 // all but the last simdgroup returning, half the lanes of every simdgroup, threads returning between two barriers, a barrier loop after the returns, threads leaving a
 // barrier loop at different iterations, and half the lanes before a simdgroup_barrier. A GPU that waited for the returned threads would hang the command buffer (Metal

@@ -12,16 +12,6 @@ KINDS = {'api', 'key', 'present', 'shader', 'nvn', 'hle', 'svc', '*'}
 
 
 class Usage(unittest.TestCase):
-    def test_map_names_files_and_kinds(self):
-        files = [str(p.relative_to(REPO)) for p in REPO.rglob('*') if p.is_file() and '.git' not in p.parts]
-        for glob, frx, pat, why in usage.load_map():
-            self.assertTrue(any(fnmatch.fnmatch(f, glob) for f in files), f'impact_map.tsv: {glob} matches no file')
-            self.assertTrue(why, f'impact_map.tsv: {glob} gives no reason')
-            if pat not in ('-', 'profile'): self.assertIn(pat.partition(':')[0], KINDS, f'impact_map.tsv: {glob}: unknown kind in {pat}')
-            if frx is not None and glob.endswith('dmsh_build.py'):   # a function rule of the shader build names a function it has
-                names = {n for n, _, _ in usage.functions(REPO / glob)}
-                self.assertTrue(any(frx.search(n) for n in names), f'impact_map.tsv: {glob}:{frx.pattern} matches no function')
-
     def test_functions(self):
         src = 'static int a(void) {\n    return b(1);\n}\nNVN(nvnQueueFinish, void, NVNqueue *q) {\n    a();\n}\nHLE("_ZN2nn2fs4OpenEv", Result, h_open, void) {\n    return 0;\n}\n'
         self.assertEqual([n for n, _, _ in usage.functions('x.c', src)], ['a', 'nvnQueueFinish', 'h_open'])

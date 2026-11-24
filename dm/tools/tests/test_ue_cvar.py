@@ -48,7 +48,7 @@ BASE = 0xa100   # the inlined form's page base (adrp x22 + add x22, x22, #0x100)
 
 
 def inline_form(at, name, obj, vtable=True, clobber=False, far=False):
-    """UE 4.18 inlined (OCTOPATH TRAVELER): x22 = the page base, made once, then an if / else block (a forward b over the else block) and other work, then the name into x1, blr
+    """UE 4.18 inlined (another game): x22 = the page base, made once, then an if / else block (a forward b over the else block) and other work, then the name into x1, blr
     (register), str x0, [x22, #k + 8] (the registered variable), str x8, [x22, #k] (the vtable), blr (the value pointer), str x0, [x22, #k + 0x10]. clobber writes x22 between;
     far ends the else block with a b past the store"""
     k = obj - BASE

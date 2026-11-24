@@ -3,7 +3,7 @@
 // keep each one's own output. A network that takes new textures after an evaluation in the same submission replaces its scaler, and the submission still completes: the
 // replaced scaler lives until then (a Metal 4 command buffer retains nothing; released at once, the commit messages a freed object, which the Makefile's NSZombieEnabled
 // turns into a crash every time: "-[_MTL4MachineLearningPipelineState executable]: message sent to deallocated instance").
-// An input between the network's optimal size and its output (Xenoblade Chronicles 2's Switch 2 program: 1024x576 into its 1536x864 network, inside the range GetOptimalSettings
+// An input between the network's optimal size and its output (another game's Switch 2 program: 1024x576 into its 1536x864 network, inside the range GetOptimalSettings
 // reports) is scaled, and a smaller input in the same textures (a dynamic resolution) goes through the same scaler and fills the output too
 // The scaler comes after the work before it and the next draw pass after the scaler (mfx_order): a slow pass that ends with no barrier writes the colour just before each
 // evaluation, and a draw pass copies the output just after it; the Makefile's DM_NVN_BARRIER=game run makes that pass skip its consumer barrier unless the scaler cleared the
@@ -127,7 +127,7 @@ int main(void) { @autoreleasepool {
     mtl_tex_init(&col3); mtl_tex_init(&dep3); mtl_tex_init(&mot3); mtl_tex_init(&out3);
     fill(tex_mtl(&col3), MTLClearColorMake(b[0], b[1], b[2], b[3]), 0); fill(tex_mtl(&dep3), MTLClearColorMake(0, 0, 0, 0), 1); fill(tex_mtl(&mot3), MTLClearColorMake(0, 0, 0, 0), 0);
     p_dlss c3 = c; c3.net = c.net = 2; c.reset = 1; c3.tex[DLSS_COLOR] = &col3; c3.tex[DLSS_DEPTH] = &dep3; c3.tex[DLSS_MOTION] = &mot3; c3.tex[DLSS_OUTPUT] = &out3; c3.iw = 960; c3.ih = 486; c3.ow = 1920; c3.oh = 972;
-    // A new network evaluated at 1920x1080, then at 1920x972 (Fast Fusion's second size) in the same submission: its first scaler is replaced before its first commit. The
+    // A new network evaluated at 1920x1080, then at 1920x972 (another game's second size) in the same submission: its first scaler is replaced before its first commit. The
     // encoding thread has made the first evaluation's calls by then (rec_drain, as a game's frame of records hands them over in pieces), so the recording holds the scaler no longer
     mtl_sub_begin(); dlss_eval(&c);
     const void *first = (__bridge void *)g_dlss[1].sc;   // its address only: a reference here would keep it alive
@@ -167,7 +167,7 @@ int main(void) { @autoreleasepool {
         CHECK(mtl_wait(mtl_sub_commit(), 5000000000ull) && !mtl_last_commit_error(), "the offset input submission completes");
         CHECK(alpha_flat(tex_mtl(&out4), b[3]), "offset input alpha clamps to all four content edges");
     }
-    // NetworkResize leaves the original builder size in the record; RGB follows the actual output texture (Star Fox's 1920x1080 network resized to 960x540).
+    // NetworkResize leaves the original builder size in the record; RGB follows the actual output texture (another game's 1920x1080 network resized to 960x540).
     c4.ow = 3072; c4.oh = 1728; c4.reset = 1;
     mtl_sub_begin(); dlss_eval(&c4);
     CHECK(mtl_wait(mtl_sub_commit(), 5000000000ull) && !mtl_last_commit_error(), "the submission with the original builder size completes");

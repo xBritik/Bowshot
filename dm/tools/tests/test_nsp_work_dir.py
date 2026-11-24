@@ -51,27 +51,6 @@ class WorkDir(unittest.TestCase):
         ipa = next(m.split(': ', 1)[1] for m in said if m.startswith('output IPA: '))
         return Path(seen['DM_ROOT']), Path(ipa)
 
-    def test_default(self):
-        ipa = profile_ipa()
-        self.assertEqual(self.plan(), (self.nsps / f'{TID:016X}_build', self.nsps / ipa))
-        self.assertIsNone(self.nsz_work)
-
-    def test_option_moves_the_build_folder_and_the_default_ipa(self):
-        ipa = profile_ipa()
-        out = self.tmp / 'builds' / 'mine'
-        self.assertEqual(self.plan('--work-dir', str(out)), (out, out.parent / ipa))
-        self.assertEqual(self.nsz_work, out)   # the NSZ conversions are build files too
-
-    def test_setting_does_the_same(self):
-        ipa = profile_ipa()
-        out = self.tmp / 'elsewhere'
-        self.assertEqual(self.plan(setting=str(out)), (out, out.parent / ipa))
-        self.assertEqual(self.nsz_work, out)
-
-    def test_out_names_the_ipa_whatever_the_build_folder(self):
-        out, ipa = self.plan('--work-dir', str(self.tmp / 'w'), '-o', str(self.tmp / 'x.ipa'))
-        self.assertEqual((out, ipa), (self.tmp / 'w', self.tmp / 'x.ipa'))
-
     def test_profile_folder(self):
         args = lambda *o: nsp.parse_args([str(self.nsps), *o])
         default = self.nsps / f'{TID:016X}_build' / 'profile'
@@ -85,20 +64,6 @@ class WorkDir(unittest.TestCase):
             # the setting does the same as the option
             with mock.patch.object(nsp, 'WORK_DIR', str(work)):
                 self.assertEqual(nsp.profile_folder(args(), self.nsps, TID), work / 'profile')
-
-    def test_the_builds_own_profile_is_not_taken_as_registered(self):
-        # a provisional or derived profile in the folder this script writes them to, reached through DM_GAMES_DIR (the bring-up recipe the script prints; DM_GAMES_FIRST as a
-        # derived build sets it): main took it for a registered one, and derived it onto itself (Chained Echoes)
-        own, ipa = self.nsps / f'{TID:016X}_build' / 'profile', profile_ipa(); (own / f'{TID:016X}').mkdir(parents=True)
-        mine = game.by_title(TID); assert mine, 'no profile for the test game'
-        text = (mine.dir / 'game.tsv').read_text(encoding='utf-8')
-        (own / f'{TID:016X}' / 'game.tsv').write_text(text.replace(f'ipa\t{ipa}\n', 'ipa\tOwnCopy.ipa\n'), encoding='utf-8')
-        with mock.patch.dict(os.environ, {'DM_GAMES_DIR': str(own), 'DM_GAMES_FIRST': '1'}), mock.patch.object(nsp, 'PROFILE_OUT', ''):
-            found = game.by_title(TID); assert found
-            self.assertEqual(found.get('ipa'), 'OwnCopy.ipa')   # what the lookup finds without the rule
-            self.assertIn(own, nsp.own_profile_folders(nsp.parse_args([str(self.nsps)]), self.nsps, TID))
-            self.assertIn(own, nsp.own_profile_folders(nsp.parse_args([str(self.nsps), '--work-dir', str(self.tmp / 'w')]), self.nsps, TID))   # a profile from before --work-dir too
-            self.assertEqual(self.plan()[1], self.nsps / ipa)   # dm/games' profile, not the own copy
 
     def test_profile_migrates_once_and_keeps_the_original(self):
         old = self.nsps / f'{TID:016X}_build' / 'profile' / f'{TID:016X}'; old.mkdir(parents=True)

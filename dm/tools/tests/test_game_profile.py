@@ -48,8 +48,8 @@ MAP = ('# kind: evidence  Test shaders\n# column 5 records where each key first 
        'ps_other.bin\t4\tpixel\t0e423e497f1e3355\t/Lib/agl/agl_resource.Nin_Ounce_NVN2.release.sarc.zs/agl_ndsr.pck#NDSR@0x1247d8\n'   # the pack's draw shaders: not the upscaler
        'cs_other.bin\t5\tcompute\t0123456789abcdef\t/Lib/agl/agl_resource.Nin_Ounce_NVN2.release.sarc.zs/agl_common.sharcb#BAHS@0x40\n'
        'cs_other.bin\t6\tcompute\tfa3033d05c0a41d6\t/Lib/agl/agl_resource.Nin_Ounce_NVN2.release.sarc.zs/agl_ndsr_vr_light.pck#NDSR@0x84910\n'   # Ocarina of Time's sibling packs
-       'cs_other.bin\t7\tcompute\t805f2de96bd6d78d\t/Bin/Nvn2-upper_left.ndsr#NDSR@0xc4500\n'   # the pack under another engine's name (Kirby Air Riders)
-       'cs_other.bin\t8\tcompute\tddc729bcdb4c8df9\t/data.zip/66e36a907a6b7251#NDSR@0x12da#NDSR@0xec640\n'   # nested in another container (Star Fox)
+       'cs_other.bin\t7\tcompute\t805f2de96bd6d78d\t/Bin/Nvn2-upper_left.ndsr#NDSR@0xc4500\n'   # the pack under another engine's name (another game)
+       'cs_other.bin\t8\tcompute\tddc729bcdb4c8df9\t/data.zip/66e36a907a6b7251#NDSR@0x12da#NDSR@0xec640\n'   # nested in another container (another game)
        'cs_other.bin\t9\tcompute\tc2fc2ddd604c25e7\t/Movie/Ndve/Ndve-Nvn2-vid_seq5.dat.zs#NDSR@0x1000\n'   # the pack inside nn::ndve's movie file
        'cs_other.bin\t10\tcompute\tba079f68ae288dba\t/Movie/Ndve/Ndve-Nvn2-vid_seq5.dat.zs#NDVE@0x1423e8\n')   # that file's own movie network: not the pack's
 
@@ -77,9 +77,9 @@ if __name__ == '__main__':
 
 
 class BuildModules(unittest.TestCase):
-    """Versions of a game with different modules (Mario Kart World: the base game has main subsdk0 sdk, 1.8.0 main subsdk0 subsdk1 sdk): each build row's own modules, in the load order
+    """Versions of a game with different modules (another game: the base game has main subsdk0 sdk, 1.8.0 main subsdk0 subsdk1 sdk): each build row's own modules, in the load order
     of modules, go into the header for the host (main.c profile_modules picks the row of main's build), `game.py modules` gives the same list for a folder of rewritten modules, and a
-    module a row names that modules does not list stays unloaded (Hades' subsdk0 and subsdk1)"""
+    module a row names that modules does not list stays unloaded (another game' subsdk0 and subsdk1)"""
     ROWS = ('modules\tmain subsdk0 subsdk1 sdk\n'
             'build\tv0\t1.0.0\tmain=' + 'a' * 32 + '\tsubsdk0=' + 'b' * 32 + '\tsdk=' + 'c' * 32 + '\n'
             'build\tv917504\t1.8.0\tmain=' + 'd' * 32 + '\tsubsdk1=' + 'e' * 32 + '\tsubsdk0=' + 'f' * 32 + '\tsdk=' + '1' * 32 + '\n')

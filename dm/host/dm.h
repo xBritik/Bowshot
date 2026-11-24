@@ -46,7 +46,7 @@ __attribute__((weak)) void dm_log(const char *fmt, ...) {
 #define die(...) do { LOG("FATAL " __VA_ARGS__); abort(); } while (0)
 
 #define DM_SWITCH_ALIAS  UINT64_C(0x1000000000)   // a Switch's alias region: 64 GB
-#define DM_SWITCH2_ALIAS UINT64_C(0x2000000000)   // a Switch 2's alias region on Mac: 128 GB (holds two 60 GB reservations, e.g. Xenoblade Chronicles 2 Switch 2 Edition)
+#define DM_SWITCH2_ALIAS UINT64_C(0x2000000000)   // a Switch 2's alias region on Mac: 128 GB (holds two 60 GB reservations, e.g. Another game Switch 2 Edition)
 // The alias region this run gets: on the Mac, at least the console's alias region (64 GB for Switch 1, 128 GB for Switch 2 when ounce is set);
 // on an iPhone, the profile's mem_alias; or DM_ALIAS_SIZE when set.
 // Shared by mem_init_once (hle_svc.c, with ounce = dm_sdk_ounce() after sdk loads) and the Mac loader's undo_alias_cuts (loader.c, which runs before sdk loads and compares against DM_SWITCH_ALIAS).

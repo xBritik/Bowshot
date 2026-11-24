@@ -91,7 +91,7 @@ class HeapCheckAddressSpace(unittest.TestCase):
         keys = {'mem_reserve': '0x140000000', 'mem_alias': '0x118000000', 'mem_stack': '0x10000000', 'app_pool': '0xCD500000', 'sys_resource': '0x3000000', **keys}
         return pg.heap_signals(log, type('Profile', (), {'get': staticmethod(lambda k, d='': keys.get(k, d))}))
 
-    def test_a_full_alias_region_caps_standardallocator_and_keeps_the_pool(self):   # AI: THE SOMNIUM FILES - nirvanA Initiative: +4.26 GB of 4.38 in 5 s with the hardware pool
+    def test_a_full_alias_region_caps_standardallocator_and_keeps_the_pool(self):   # Another game: +4.26 GB of 4.38 in 5 s with the hardware pool
         sig = self.signals()
         self.assertEqual(set(sig), {'stdalloc_cap'})   # no app_pool: the game reads the hardware's 3.2 GB, above Pokémon Friends' 2048 MB
         self.assertEqual(int(sig['stdalloc_cap'][0], 0), 0x40000000)
@@ -105,7 +105,7 @@ class HeapCheckAddressSpace(unittest.TestCase):
         self.assertEqual(self.signals(sys_resource='0x0'), {})
 
     def test_a_profile_that_already_limits_standardallocator_is_kept(self):
-        self.assertEqual(self.signals(stdalloc_cap='0x60000000'), {})   # Sonic Superstars' hand-set 1.5 GB
+        self.assertEqual(self.signals(stdalloc_cap='0x60000000'), {})   # Another game' hand-set 1.5 GB
         self.assertEqual(self.signals(app_pool='0x40000000'), {})       # a profile from the heap check's earlier rule, which set a 1 GB pool
 
 
@@ -151,7 +151,7 @@ class GlslSources(unittest.TestCase):
     def test_language_preamble_is_not_a_shader(self):
         self.assertEqual(pg.glsl_sources(b'#version 450 core\n#define float4 vec4\n\0void main() {}\0'), 0)
 
-    def test_gl_prefixes_are_not_sources(self):   # DOOM 3's main: the prefix its renderer puts before the GLSL it makes at run time, so the game gets a run-time capture
+    def test_gl_prefixes_are_not_sources(self):   # Another game's main: the prefix its renderer puts before the GLSL it makes at run time, so the game gets a run-time capture
         image = b'\0#version 150\n#define PC\nfloat saturate( float v ) { return clamp( v, 0.0, 1.0 ); }\n\0#version 330\nvoid main() {}\0'
         self.assertEqual(pg.gl_sources(image), 1)
         self.assertEqual(pg.gl_sources(image[:image.index(b'#version 330') - 1]), 0)
@@ -171,7 +171,7 @@ class GlslSources(unittest.TestCase):
             self.assertEqual(pg.romfs_glsl_files(root), 2)
 
 
-    def test_glsl_files_are_gl_sources(self):   # Mega Man Legacy Collection's shaders/nx/*.glsl, which gl_shaders.py reads: no run-time capture
+    def test_glsl_files_are_gl_sources(self):   # Another game's shaders/nx/*.glsl, which gl_shaders.py reads: no run-time capture
         self.assertIn('.glsl', pg.GL_FILES)
         s = pg.shader_sources({'eglCreateWindowSurface'}, 0, [], 0, 0, gl_names=1, gl_src=2, gl_files=6)
         self.assertEqual(s['graphics'][0], 'gl'); self.assertFalse(s['gl_capture'][0])
@@ -231,7 +231,7 @@ class ModulesLeftOut(unittest.TestCase):
         self.syms[name] = (name.encode() + b'\0' + comp, [(s, False, 1) for s in imports] + [(s, True, 1) for s in exports])
         (self.dir / name).write_bytes(b'NSO0')
 
-    def test_a_module_main_imports_from_is_added(self):   # Absolum 1.2.1: the movie module moved to subsdk0
+    def test_a_module_main_imports_from_is_added(self):   # Another game 1.2.1: the movie module moved to subsdk0
         self.module('main', ['_ZN5movie9ExtractorC1Ev', 'nvnBootstrapLoader'])
         self.module('sdk', exports=['nvnBootstrapLoader'])
         self.module('subsdk0', exports=['_ZN5movie9ExtractorC1Ev'], comp=b'NintendoSDK_movie-20_5_29')
@@ -242,7 +242,7 @@ class ModulesLeftOut(unittest.TestCase):
         self.module('main', ['f', 'g'])
         self.module('sdk', exports=['f'])
         self.module('subsdk0', exports=['f', 'g'], comp=b'NintendoSDK_movie-20_5_29')
-        self.assertEqual(pg.main_modules(self.dir, ['main', 'sdk'], hooks={'g'}), {})   # sdk has f, the host g (GLSLC and nn::pcm under Super Mario Galaxy 2)
+        self.assertEqual(pg.main_modules(self.dir, ['main', 'sdk'], hooks={'g'}), {})   # sdk has f, the host g (GLSLC and nn::pcm under another game)
 
     def test_gpu_drivers_and_rtld_stay_out(self):
         self.module('main', ['eglGetDisplay', 'rtld_f'])
@@ -255,7 +255,7 @@ class ModulesLeftOut(unittest.TestCase):
         (self.dir / 'main').write_bytes(b'NSO0'); (self.dir / 'main.npdm').write_bytes(b'META')
         self.assertEqual(pg.main_modules(self.dir, ['main'], hooks=set()), {})
 
-    def test_nro_modules_still_adds_what_an_nro_imports(self):   # Portal's video_nx.nro and the movie module; a symbol another NRO defines needs nothing
+    def test_nro_modules_still_adds_what_an_nro_imports(self):   # Another game's video_nx.nro and the movie module; a symbol another NRO defines needs nothing
         self.module('main'); self.module('sdk')
         self.module('subsdk2', exports=['m'], comp=b'NintendoSDK_movie-20_5_29')
         self.module('subsdk3', exports=['n'], comp=b'NintendoSDK_movie-20_5_29')
@@ -268,12 +268,12 @@ class ModulesLeftOut(unittest.TestCase):
 class Switch2(unittest.TestCase):
     FACTS = {'mods': {'main': {'imports': {pg.HEAP_API}, 'bss': 0, 'far': False}}, 'romfs': {'root': set(), 'exts': {}}, 'sysres': 0}
 
-    def test_pool(self):   # Donkey Kong Bananza's profile: a 9 GB pool, and a heap region that holds it
+    def test_pool(self):   # Another game's profile: a 9 GB pool, and a heap region that holds it
         keys = pg.guess(dict(self.FACTS, ounce=True), hooks=set())
         self.assertEqual((keys['app_pool'][0], keys['mem_reserve'][0]), ('0x240000000', '0x270000000'))
         self.assertEqual(pg.guess(self.FACTS, hooks=set())['app_pool'][0], '0xCD500000')
 
-    def test_sdk_variant(self):   # nnSdk-Generic_22_2_0 (Fire Emblem Fortune's Weave)
+    def test_sdk_variant(self):   # nnSdk-Generic_22_2_0 (another game)
         self.assertEqual(pg.SDK_VERSION.findall(b'NintendoSdk_nnSdk-Generic_22_2_0\0NintendoSDK_nnSdk-16_2_0\0'), [b'22_2_0', b'16_2_0'])
 
 
@@ -296,7 +296,7 @@ class AddressRegions(unittest.TestCase):
         self.assertIn('returning to main+0x10', f[0][1])
 
     def test_standard_allocator_regions_the_host_caps(self):
-        # alone: the host's cap makes it fit (not red); with 1.5 GB of regions made after it (Absolum's .NET garbage collector): red, with the stdalloc_cap value that leaves them room
+        # alone: the host's cap makes it fit (not red); with 1.5 GB of regions made after it (another game's .NET garbage collector): red, with the stdalloc_cap value that leaves them room
         alone = self.HEAD + '0x4000000\t0x300000000\tmain+0x10\t0x60000000\t0\t0x300000000\t0x1010\n'
         f = pg.region_findings(alone, 0x110000000, self.SYMS)
         self.assertFalse(any(red for red, _ in f), f)
@@ -305,7 +305,7 @@ class AddressRegions(unittest.TestCase):
         later = alone + '0x304000000\t0x60000000\tmain+0x40\t0x40000000\t0\t0x60000000\t0x2010\n'
         red, text = pg.region_findings(later, 0x118000000, self.SYMS)[-1]
         self.assertTrue(red)
-        # the value leaves them room and the host's own 256 MB for what the run did not see: 4.38 - 0.06 - 1.5 - 0.25 GB (Absolum: 2.56 GB, between the 2.5 and 2.72 GB that both play)
+        # the value leaves them room and the host's own 256 MB for what the run did not see: 4.38 - 0.06 - 1.5 - 0.25 GB (another game: 2.56 GB, between the 2.5 and 2.72 GB that both play)
         self.assertIn('the regions made after the one returning to main+0x10 take 1.50 GB, more than the 0.25 GB the host leaves them: stdalloc_cap 0xa4000000 (2.56 GB)', text)
         self.assertNotIn('main+0x40 takes', text)   # it fits once the region before it is capped
         self.assertEqual(pg.stdalloc_cap_needed(pg.region_rows(later, self.SYMS), 0x118000000), 0xa4000000)
@@ -314,7 +314,7 @@ class AddressRegions(unittest.TestCase):
     def test_the_profiles_stdalloc_cap(self):
         later = (self.HEAD + '0x4000000\t0xa00000000\tmain+0x10\t0x60000000\t0\t0xa00000000\t0x1010\n'
                  '0xa04000000\t0x60000000\tmain+0x40\t0x40000000\t0\t0x60000000\t0x2010\n')
-        f = pg.region_findings(later, 0x118000000, self.SYMS, cap=0xa0000000)   # Absolum's 2.5 GB
+        f = pg.region_findings(later, 0x118000000, self.SYMS, cap=0xa0000000)   # Another game's 2.5 GB
         self.assertFalse(any(red for red, _ in f), f)
         self.assertIn("the profile's stdalloc_cap gives it 2.50 GB, which leaves the 1.50 GB of regions made after it room", f[0][1])
         red, text = pg.region_findings(later, 0x118000000, self.SYMS, cap=0xc0000000)[-1]

@@ -46,7 +46,7 @@ class FindTest(unittest.TestCase):
         self.assertIsNotNone(cut, why)
         assert cut is not None
         self.assertEqual(cut[0], 0x1000 + 4 * 6)
-        self.assertEqual((cut[1], cut[2]), ('e51f8052', 'e5078052'))   # mov w5, #255 → mov w5, #63: the registered cut of both Subnautica builds
+        self.assertEqual((cut[1], cut[2]), ('e51f8052', 'e5078052'))   # mov w5, #255 → mov w5, #63: the registered cut of both another game builds
 
     def test_unity2020_one_block(self):
         cut, why = find(image(lambda a: setup(a, blocks=1)))

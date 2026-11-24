@@ -1,5 +1,5 @@
 // The game shaders a failed command buffer encoded, and those common to all such failures (cbs_note, cbs_take, cbs_feedback): a GPU fault's error names no pass or shader. A victim of another's
-// fault and a submission refused after one ran nothing of their own and do not count (Splatoon Raiders, issue #1289)
+// fault and a submission refused after one ran nothing of their own and do not count (another game, issue #1289)
 #include "../nvn/nvn_mtl.m"
 void *front_metal_layer(void) { return NULL; }
 module_t *module_of(const void *p) { (void)p; return NULL; }

@@ -137,7 +137,7 @@ static void t_npads(void) {
     CHECK(buttons_of(0, STYLE_FULLKEY) == DM_BTN_Y && lx_of(0) == 0, "player 1 does not see player 2");
     CHECK(buttons_of(1, STYLE_HANDHELD) == 0, "player 2 is not a handheld controller");
     CHECK(h_hid_Led(&(uint32_t){0}) == 0x1 && h_hid_Led(&(uint32_t){1}) == 0x3 && h_hid_Led(&(uint32_t){7}) == 0x6, "player LED patterns");
-    {   // Home button protection: what the game set, per npad, off by default (Nintendo Switch Sports Resort asks at boot)
+    {   // Home button protection: what the game set, per npad, off by default (another game asks at boot)
         uint32_t no1 = 0, no8 = 7, other = 0x10, handheld = 0x20, bad = 9;
         CHECK(!h_hid_HomeProtectOn(&no1) && !h_hid_HomeProtectOn(&handheld), "Home protection starts off");
         h_hid_HomeProtect(&no1, true); h_hid_HomeProtect(&handheld, true);
@@ -864,7 +864,7 @@ static void t_touch_sampling(void) {
     g_mode = 1; touch_stub_n = 0; memset(touch_stub_attr, 0, sizeof touch_stub_attr);
 }
 
-// Unintended Home button input protection: one flag per npad, on until the game turns it off (Nintendo Switch Sports Resort asks, then turns it off for each npad)
+// Unintended Home button input protection: one flag per npad, on until the game turns it off (another game asks, then turns it off for each npad)
 
 // Npad IMU (Switch 2): the host serves the layer the SDK's sensor fusion reads from. Enabled with the game's buffer, disabled again; no samples yet (the buffer is never written)
 static void t_npad_imu(void) {
@@ -1672,7 +1672,7 @@ static void t_icon_decoration(void) {
     CHECK(h_hid_IconColor(a, &bad) != 0x4b6ca && h_hid_IconColor(a, &bad) != 0 && a[0] == 0xAB, "icon decoration: an id that is no npad is refused");
 }
 
-// A game that supports no full-key style (Nintendo Switch Sports Resort's lobby: Handheld | JoyDual, 0x6): a controller that is not a Joy-Con pair (the keyboard, a Pro-like pad)
+// A game that supports no full-key style (another game's lobby: Handheld | JoyDual, 0x6): a controller that is not a Joy-Con pair (the keyboard, a Pro-like pad)
 // is shown on No1..No8 as a dual Joy-Con pair, the supported style that has its buttons and both sticks, so GetNpadStyleSet only answers supported styles; the states, six-axis
 // sensors and IMU samples, vibration handles and the controller applet's answer follow, and a style change signals the npad's style event. The Handheld npad and a game that
 // supports full-key: unchanged

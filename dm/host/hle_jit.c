@@ -1,6 +1,6 @@
 // nn::jit (code generation at run time). On Horizon the jit service loads the game's JIT plugin, an NRO the game reads from its own files, into a process of its own, maps the
 // code memory the game gave it read-write there and read + execute in the game, and calls the plugin's entry points for GenerateCode and Control (yuzu's service/jit has the same
-// calling conventions). Super Mario 64 (Super Mario 3D All-Stars, program 1) translates the N64 code its precompiled NRO lacks this way; its main imports nn::jit::Initialize,
+// calling conventions). Super Mario 64 (another game, program 1) translates the N64 code its precompiled NRO lacks this way; its main imports nn::jit::Initialize,
 // CreateJitEnvironment, GenerateCode, Control, GetJitEnvironmentInfo, DestroyJitEnvironment and Finalize, and the SDK's Initialize reached for the service and crashed (sdk+0x2e5414).
 // The host has no service process, so it takes over the whole API: the plugin is one of the rewritten NROs (dm/tools/nro_collect.py finds it by the hash the game's NRR registers),
 // loaded alone (loader.c nro_load_alone: on Horizon it is not linked with the game), and its entry points run on the calling thread. Its state lives in the transfer memory the game

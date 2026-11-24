@@ -1,5 +1,5 @@
 // Two NVN textures over the same storage that differ only by the formats of an sRGB / linear pair share their bytes: what is written through one reads back through the other
-// (Mario Kart World's Grand Prix movie: an RGBA8 render target sampled through an RGBA8_SRGB texture).
+// (another game's Grand Prix movie: an RGBA8 render target sampled through an RGBA8_SRGB texture).
 #include "../nvn/nvn_mtl.m"
 void *front_metal_layer(void) { return NULL; }
 module_t *module_of(const void *p) { (void)p; return NULL; }

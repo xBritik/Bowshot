@@ -9,8 +9,8 @@ The game's simulation derives its elapsed-time step from this interval too.
 Whole unwind-function fingerprints retain constants, registers, branches and
 direct callees (nso_match). Addresses come from relative relocations, never a
 build or title ID. A missing or ambiguous part leaves the engine untouched.
-Reviewed: Xenoblade Chronicles X DE 1.0.0/1.0.1, Xenoblade Chronicles 2 2.1.0,
-and Xenoblade Chronicles 3 2.2.1. Their different code generation is explicit.
+Reviewed: Xenoblade Chronicles X DE 1.0.0/1.0.1, another game 2.1.0,
+and another game 2.2.1. Their different code generation is explicit.
 """
 from dataclasses import dataclass
 import struct

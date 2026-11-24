@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Blizzard's CASC storage as Diablo II: Resurrected ships it on the Switch (its .build.config: "build-playbuild-installer = ngdptool_casc2"): the RomFS folder data/ holds the files' bytes in
+# Blizzard's CASC storage as another game ships it on the Switch (its .build.config: "build-playbuild-installer = ngdptool_casc2"): the RomFS folder data/ holds the files' bytes in
 # archives named <chunk>-<archive>.data (two decimal digits, eight decimal digits: 00-00000001.data … 17-00000002.data, 40 files, 8.4 GB in 1.0.34) and lists them in text manifests, not in
 # the PC client's binary .idx files. build_key.txt holds the current build's config key; the manifest whose "## config-key" comment line names it (build_manifest.psv) lists the current files.
 # A manifest is pipe-separated text: comment lines start with '#', its header line names the columns with their types (FileId!STRING:0|KeyLayout!DEC:4|Chunk!DEC:8|Archive!DEC:8|CKey!HEX:16|

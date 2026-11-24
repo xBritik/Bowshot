@@ -1,5 +1,5 @@
 // A partly covered uniform shadow while an earlier submission still runs: that submission's inline updates are known to the CPU, so they do not refuse the shadow (the pass would end for it); its other GPU writes do.
-// Splatoon Raiders updates 0x00..0x14 and 0x18..0x70 of its ink query block before each of about 150 queries a frame while the shader reads 0x00..0x70, and the page is updated again every frame
+// Another game updates 0x00..0x14 and 0x18..0x70 of its ink query block before each of about 150 queries a frame while the shader reads 0x00..0x70, and the page is updated again every frame
 #include "../nvn/nvn_mtl.m"
 void *front_metal_layer(void) { return NULL; }
 module_t *module_of(const void *p) { (void)p; return NULL; }
@@ -77,7 +77,7 @@ int main(void) { @autoreleasepool {
         const uint32_t *got = made_shadow(other, 12);
         CHECK(!got || got[0] == 0xa6, "a slot collision refuses or shows the update"); commit_as_running(); }
 
-    // Splatoon Raiders' third boss stage: about 1,550 queries in one submission, 7 updates of the block before each (about 11,000 writes). Past the pending list's old 8,192 entries the
+    // Another game' third boss stage: about 1,550 queries in one submission, 7 updates of the block before each (about 11,000 writes). Past the pending list's old 8,192 entries the
     // submission counted as writing everywhere, and every partly covered shadow was refused while it ran
     for (int q = 0; q < 1550; q++) for (int k = 0; k < 7; k++) update(0x1c000 + 16 * k, (uint32_t)q, 4);
     CHECK(!g_pend_over, "a submission of 10,850 inline updates fits the pending list");
@@ -109,7 +109,7 @@ int main(void) { @autoreleasepool {
     }
 
     // A counter report of a running submission: the host writes its 16 bytes when the submission completes, so they refuse a shadow over them and nothing else on their page
-    // (Ori and the Will of the Wisps: two timestamp reports a frame in the page of its uniform blocks, issue #1660)
+    // (another game: two timestamp reports a frame in the page of its uniform blocks, issue #1660)
     mtl_sub_counter((uint64_t)mem + 0x14000, 0); commit_as_running(); g_npost = 0;
     update(0x14104, 0xc5, 4);
     { const uint32_t want[] = {0x22222222, 0xc5}; words(made_shadow(0x14100, 8), want, 2, "a running report does not refuse a shadow beside it on its page"); }

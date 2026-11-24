@@ -46,7 +46,7 @@ def mac_min():
     with open(os.path.join(GFX, '../mac/min_os.mk')) as f: return f.read().split('MACOS_MIN := ')[1].split()[0]
 # The Mac compile of a game's shaders (dmsh_build.py; the iPhone's is ios_metal.py METAL). It is here, not in dmsh_build.py, which runs a build when imported, so tests compile with it
 # -fpreserve-invariance: vertex positions are marked [[invariant]], but without this flag Metal does not promise that two different shaders compute the same expression to the same value; on Maxwell the same multiply-adds always agree.
-# Super Mario Odyssey draws a depth pre-pass with alRenderDepthOnly, then the G-buffer with another vertex shader and depth test less-or-equal: a hair off and the test failed, leaving those pixels with old content (Cap Kingdom's ground in 32x32 blocks)
+# Another game draws a depth pre-pass with alRenderDepthOnly, then the G-buffer with another vertex shader and depth test less-or-equal: a hair off and the test failed, leaving those pixels with old content (Cap Kingdom's ground in 32x32 blocks)
 # -O1: the front end's -O2 (CorrelatedValuePropagation, then SimplifyCFG) folds the translated shaders' repeated tests of one value into switches whose cases jump past their own join.
 # Apple's GPU backend then exceeds its control-flow ID budget ("Max Unstruct ID 758 ... exceeds supported limit", a note, not an error) and falls back to a slower lowering:
 # Odyssey's alRenderMaterialUber took 25 minutes and 17.3 MB of GPU code, 31 s and 1.3 MB at -O1. Ordinary shaders come out within a few percent either way (the backend optimizes again)

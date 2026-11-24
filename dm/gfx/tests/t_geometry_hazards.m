@@ -86,7 +86,7 @@ static void drain_contract(void) {
     pend_reset();
 }
 static int access_benchmark(void) {
-    // the shape of Donkey Kong Bananza's runs: shared reads, one private write each, no conflict
+    // the shape of another game's runs: shared reads, one private write each, no conflict
     static geo_access jobs[GEO_RUN];for(int i=0;i<GEO_RUN;i++) {
         for(int j=0;j<32;j++)geo_access_add(&jobs[i],0x1000+j*64,32,0);
         geo_access_add(&jobs[i],0x100000+i*4096,32,1);

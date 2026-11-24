@@ -49,7 +49,7 @@ static void check_utc_libc(void) {
     setenv("TZ", "Asia/Seoul", 1); tzset();
     int64_t (*mk)(struct tm *) = section_fn("swhle", "mktime", &n);
     struct tm *(*lt)(const int64_t *, struct tm *) = section_fn("swhle", "localtime_r", &n);
-    const int64_t save = 1794761043;   // Hades II's save header time, 2026-11-15 16:44:03 UTC
+    const int64_t save = 1794761043;   // Another game's save header time, 2026-11-15 16:44:03 UTC
     struct tm u; time_t sv = (time_t)save; gmtime_r(&sv, &u);
     CHECK(mk && mk(&u) == save, "mktime of a UTC struct tm gives the time back unchanged (TZ=Asia/Seoul)");
     struct tm l; CHECK(lt && lt(&save, &l) == &l && l.tm_hour == 16 && l.tm_min == 44 && l.tm_gmtoff == 0, "localtime_r is UTC (TZ=Asia/Seoul)");

@@ -1,5 +1,5 @@
 // The set of CPU-written textures (mtl_tex_cpu_written, tex_cpu_written, mtl_tex_release): membership, no duplicates, a released texture leaving it, and lookups of textures
-// not in it staying cheap with thousands of consecutive serials in it (a CFSet that hashed serials as numbers probed a whole bucket run per miss: half of Batman: Arkham Knight's
+// not in it staying cheap with thousands of consecutive serials in it (a CFSet that hashed serials as numbers probed a whole bucket run per miss: half of another game's
 // rendering thread with 6,442 CPU-written textures)
 #define nvn_game_fps nvn_game_fps_mtl_default
 #include "../nvn/nvn_mtl.m"
@@ -180,7 +180,7 @@ static void poll_asks_again(void) {
 }
 // Writes beside a registered texture (ft_written): storage 0x200 past a host page shares its first and last pages with other data. A write there leaves the texture registered and
 // not CPU-written, at the poll and at first use (nvn_ft_written); a write of the texture's own bytes in those pages, or of a page wholly inside it, is still taken as written.
-// The Great Ace Attorney Chronicles' window textures and render targets lie so beside textures it fills from the CPU, and were all made CPU-written
+// Another game' window textures and render targets lie so beside textures it fills from the CPU, and were all made CPU-written
 static void poll_beside(void) {
     const size_t len = 4 << 20, pg = (size_t)getpagesize(), off = 4 * pg + 0x200;
     uint8_t *mem = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);

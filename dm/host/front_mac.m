@@ -82,7 +82,7 @@ static void screen_refresh(NSScreen *screen) {   // main thread: refresh capabil
 }
 static _Atomic int g_fullscreen;   // the window is in fullscreen (set when it has entered and when it has left)
 // The software keyboard input box is up (front_text_input). The game window is not key then, which is not a focus change the game should see: on hardware the inline keyboard is drawn inside
-// the game, which keeps its focus, and ShowKeyboard's applet sends its own out-of-focus / in-focus pair (DM_APPLET). Monster Hunter Rise dropped the hunter's name after the round trip and asked again. Main thread only
+// the game, which keeps its focus, and ShowKeyboard's applet sends its own out-of-focus / in-focus pair (DM_APPLET). Another game dropped the hunter's name after the round trip and asked again. Main thread only
 static int g_text_box;
 int front_fullscreen(void) { return g_fullscreen; }   // nvn_mtl.m link_latency: frame latency 2 in variable-refresh fullscreen
 // Whether the screen is still settling at start, so the display link waits before starting (nvn_mtl.m link_sync): fullscreen was asked for at launch (DM_FULLSCREEN) and has not been
@@ -264,7 +264,7 @@ static void on_key(NSEvent *e, int down) {
     }
     switch (c) { case 13: g_w = down; break; case 0: g_a = down; break; case 1: g_s = down; break; case 2: g_d = down; break; }
     // An arrow key pressed with Shift held is the right stick until it is released; without Shift, the D-pad. The keyboard had no right stick: a 3D game's camera
-    // could be turned only with a controller (Donkey Kong Bananza)
+    // could be turned only with a controller (another game)
     int *rs = c == 123 ? &g_rl : c == 126 ? &g_ru : c == 124 ? &g_rr : c == 125 ? &g_rd : NULL;
     if (rs && (down ? (e.modifierFlags & NSEventModifierFlagShift) != 0 : *rs)) { *rs = down; push(); return; }
     int b = key_bit(c);
@@ -2040,7 +2040,7 @@ int front_text_input(const char *title, const char *sub, const char *guide, cons
     __block NSString *text = nil;
     dispatch_sync(dispatch_get_main_queue(), ^{
         // The box takes the keyboard and the mouse, so the game window never sees the key-up of the button or the touch-up of the click that opened it: nothing may stay pressed
-        // while it is up, or the game reads the stuck button / touch the moment the box closes (Stardew Valley's character creation re-opened the keyboard endlessly)
+        // while it is up, or the game reads the stuck button / touch the moment the box closes (another game's character creation re-opened the keyboard endlessly)
         g_btn = 0; g_w = g_a = g_s = g_d = 0; g_rl = g_ru = g_rr = g_rd = 0; push();
         dm_touch_set(NULL, 0);
         int min_chars = g_swkbd_min_chars > 0 ? g_swkbd_min_chars : 0;

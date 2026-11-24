@@ -8,7 +8,7 @@ import dmsh_abi as abi, dmsh_fetch, dmsh_geometry
 
 # The NVN driver's constant segments have one layout in every game, which dm/gfx/nvn/dmsh_abi.h holds for the host and this build (through dmsh_abi.py); nvn_mtl.m fills them the same way at run time.
 #   c2 C2_TEX + 8 r: handles bound with nvnCommandBufferBindTexture (combined texture and sampler), slot r. The driver has 32 such slots, but a game may bind higher ones, whose words lie in the
-#     image table (Hades II binds slot 34, and no image), so a texture instruction's handle anywhere below the separate texture table names a combined slot. In the image
+#     image table (another game binds slot 34, and no image), so a texture instruction's handle anywhere below the separate texture table names a combined slot. In the image
 #     table that slot reads the image when one is bound there (nvn_mtl.m tex_slot_h): a size query of the image a compute shader writes (Unreal's GetDimensions on a RWTexture3D),
 #     whose type the translator takes from the shader's surface instructions on that handle (dmsh_xlate ImageDims)
 #   c2 C2_IMG + 8 r: images (nvnCommandBufferBindImage), slot r < C2_IMG_SLOTS
@@ -136,8 +136,8 @@ def const_sampler(name):
 def decode_ubo_tex(name):
     """Bindless texture: the handle is written by the game into its own uniform buffer (fp_t_cb7_2A = c[7] word 0x2A). Returns (texture: (uniform slot, byte offset), sampler: (slot, offset));
     handle type 0 = combined handle (one 32-bit word: low 20 bits texture ID, high 12 bits sampler ID), 1 = the sampler handle is in another word (its slot is the high 16 bits of slots − 1). This game's whole library uses only type 0 (1850 shaders)
-    Type 3: the sampler is a constant ID (Monster Hunter Rise: a texture handle at c[5] word 0x28 with sampler 0x104); the sampler part is then ('id', ID).
-    Type 1 with the sampler word in the driver table: the texture handles are the game's, one separate sampler the shader's own (Kirby Air Riders: array<depth2d<float>, 32> fp_t2ds_cb196614_10570000, c[6] and the
+    Type 3: the sampler is a constant ID (another game: a texture handle at c[5] word 0x28 with sampler 0x104); the sampler part is then ('id', ID).
+    Type 1 with the sampler word in the driver table: the texture handles are the game's, one separate sampler the shader's own (another game: array<depth2d<float>, 32> fp_t2ds_cb196614_10570000, c[6] and the
     word at c2 byte 0x570, about 5,700 pixel and compute shaders, its shadows and lights); the sampler part is then ('c2', byte offset)"""
     m = re.match(r'[a-z]+_t\w*?_cb(\d+)_([0-9A-F]+)', name)
     if not m: return None
@@ -180,9 +180,9 @@ def buffer_bias_entries(res):
 
 def c2_array(name, ty):
     """An array of handles in the driver table c2 that the shader indexes at run time (Ryujinx's texture array from a buffer, here bank 2: <stage>_t<type>_cb<slots>_<handle>, declared
-    array<element, n>, one element per c2 handle word; the index is the handle's byte offset ÷ 8). Luigi's Mansion 3: 586 pixel shaders sample their shadow cascades from
+    array<element, n>, one element per c2 handle word; the index is the handle's byte offset ÷ 8). Another game: 586 pixel shaders sample their shadow cascades from
     array<texture2d_array<float>, n> fp_t2das_cb2_0, the index (0x80 + a cascade offset) ÷ 8. Handle type 1 ORs one fixed separate sampler word into every element's handle:
-    EA SPORTS FC 27's lights, fp_t2d_cb196610_10570000 (texture words from c2 byte 0, the sampler word at c2 byte 0x570), indexed by separate texture i at element 45 + i.
+    another game's lights, fp_t2d_cb196610_10570000 (texture words from c2 byte 0, the sampler word at c2 byte 0x570), indexed by separate texture i at element 45 + i.
     → (the c2 byte offset of element 0 (element k = the handle at that offset + 8k), the c2 byte offset of the sampler word or None), or None"""
     m = re.fullmatch(r'[a-z]+_t\w*?_cb(\d+)_([0-9A-F]+)', name[:-5] if name.endswith('Smplr') else name)
     if not m or not ty.startswith('array<'): return None
@@ -365,14 +365,14 @@ def pool_arrays(src):
     (Program.cs QueryTextureArrayLengthFromPool, 2^20 and 2^12) → a pointer to a pool the replay keeps per element type (nvn_mtl.m pool_gpu): struct spvPool_<name> { uint n; ulong seen;
     array<element, 1> e; }, read as (&e[0])[min(index, n)], n being the highest ID the host filled. A read of a texture pool also sets the ID's bit in the bitmap at seen (dm_pool_mark), as which IDs a
     shader reads is known only here: the host makes those textures instead of all of them. The word is read first, with a plain load: a bit is set once, so nearly every read costs a load, not an atomic. The struct declares one element: Metal's argument encoder walks every element
-    of a declared array (AGX IndirectArgumentLayoutGen2::parseArray), and for 2^20 textures that took 57 ms and 66 MB per encoder (9.7 GB in Mario Party Superstars' prewarm);
-    the elements are 8-byte resource IDs, so the pointer reaches the rest (checked on the GPU). Mario Party Superstars' characters read their light textures' handles from a
+    of a declared array (AGX IndirectArgumentLayoutGen2::parseArray), and for 2^20 textures that took 57 ms and 66 MB per encoder (9.7 GB in another game' prewarm);
+    the elements are 8-byte resource IDs, so the pointer reaches the rest (checked on the GPU). Another game' characters read their light textures' handles from a
     storage buffer (6,370 pixel shaders). The argument IDs are then renumbered in member order, a pointer taking one and any other array its length, as the host lays the buffer out.
     Buffer textures and images keep their 32-entry slot arrays (tex_dyn_slots). ValueError on a use of a pool array the rewrite does not cover.
     An array of the handles in one of the game's uniform buffers (Ryujinx's texture array from a buffer, as long as a 64 KB buffer's handles, Program.cs QueryTextureArrayLengthFromBuffer) takes
     the same form: the host keeps a table of that buffer's handles, as long as its last handle (nvn_mtl.m htab_gpu), so the element index is unchanged and only the textures the table names are made.
     A table's reads are not marked: its index is an element of the table, not a texture ID, and the host has made every texture the table names already (it leaves seen 0). Marked through that
-    null address, Fire Emblem Fortune's Weave's lighting pass took 197 ms a frame on an M1 Pro (PR #1738)"""
+    null address, another game's lighting pass took 197 ms a frame on an M1 Pro (PR #1738)"""
     body = re.search(r'struct spvDescriptorSetBuffer0\s*\{(.*?)\};', src, re.S)
     if not body: return src
     pools = {}
@@ -446,7 +446,7 @@ def reflect(key, stage, msl, res):
     body = re.search(r'struct spvDescriptorSetBuffer0\s*\{(.*?)\};', msl, re.S)
     binds = []
     # A member may carry attributes after its id: SPIRV-Cross marks the resources a fragment shader writes inside its interlock [[id(n), raster_order_group(0)]]
-    # (Mario Party Superstars' light_primitive_point_cluster.bnsh, a storage buffer and two images); a member the pattern skipped left the host's argument buffer longer than the reflection
+    # (another game' light_primitive_point_cluster.bnsh, a storage buffer and two images); a member the pattern skipped left the host's argument buffer longer than the reflection
     members = list(re.finditer(r'^\s*(.+?)\s+(\w+)\s*\[\[id\((\d+)\)(?:\s*,\s*\w+\(\d+\))*\]\];', body.group(1) if body else '', re.M))
     if body and len(members) != body.group(1).count('[[id('): raise ValueError(f'{key}: an argument buffer member the reflection cannot read')
     for m in members:
@@ -523,9 +523,9 @@ def reflect(key, stage, msl, res):
                 e.update(kind=abi.KIND_GMEM_MAP, rw=any(re.search(r'operation "(Store|Atomic\w*)" traced to no storage buffer', n) for n in res.get('notes', ())), pointers=gptr_sites(stage, res)); continue
             if stage == 'cs' and off is not None and abi.C0_CS_UBO <= off < abi.C0_CS_UBO + abi.C0_ROW * abi.C0_CS_UBO_SLOTS and (off - abi.C0_CS_UBO) % abi.C0_ROW == 0:
                 e.update(kind=abi.KIND_UBO_PTR, reg=(off - abi.C0_CS_UBO) // abi.C0_ROW)   # compute-stage uniform slot r: address at c0[C0_CS_UBO + 0x10 r], read through global memory (checked against cs_lut_combine_c reading cb10[66])
-            elif b and b['cb_slot'] == abi.PUSH_BANK:   # the address is one the game pushed (c[24]; PRAGMATA's compute buffer entries in push block 1): the host reads it from its push blocks
+            elif b and b['cb_slot'] == abi.PUSH_BANK:   # the address is one the game pushed (c[24]; another game's compute buffer entries in push block 1): the host reads it from its push blocks
                 e.update(kind=abi.KIND_SBUF_PUSH, off=b['cb_offset'] * 4)
-            elif b and b['cb_slot'] >= 3:   # the address is in the game's own uniform buffer c[n] = uniform slot n - 3 (Monster Hunter Rise's compute shaders: c3 + 0x38); the replay reads it there
+            elif b and b['cb_slot'] >= 3:   # the address is in the game's own uniform buffer c[n] = uniform slot n - 3 (another game's compute shaders: c3 + 0x38); the replay reads it there
                 e.update(kind=abi.KIND_SBUF_UBO, reg=b['cb_slot'] - 3, off=b['cb_offset'] * 4)
             else: e['reg'] = (off - base) // abi.C0_ROW if off is not None and base is not None and 0 <= off - base < abi.C0_ROW * abi.C0_SSBO_SLOTS and (off - base) % abi.C0_ROW == 0 else None
             e['rw'] = bool(b and b['flags'] & 1)   # BufferUsageFlags.Write; Program.cs serializes the translator enum unchanged (atomics count as writes too)
@@ -563,7 +563,7 @@ INDEX_SET = re.compile(r'^\s*(_\d+)\s*=', re.M)
 def index_range(src, expr):
     """The range [lo, hi] of a computed vector index in the MSL, or None: an integer expression of literals and bounded builtins (INDEX_BUILTINS), through SPIRV-Cross's
     single-assignment int / uint temporaries and bit-casts, with + - * & | ^ << >> on non-negative values. Anything else (a float operation, a uniform read, a temporary
-    assigned twice) gives None. PRAGMATA's 156 pixel shaders read the sample position table byte by byte at c0 0x620 + gl_SampleID (a689530d00090ebf: row 98)"""
+    assigned twice) gives None. Another game's 156 pixel shaders read the sample position table byte by byte at c0 0x620 + gl_SampleID (a689530d00090ebf: row 98)"""
     defs, sets = {}, set(INDEX_SET.findall(src))   # a temporary assigned again after its declaration (a loop's phi) has no single value
     for name, e in INDEX_DEF.findall(src): defs.setdefault(name, []).append(e)
     float_defs = dict(re.findall(r'^\s*float\s+(_\d+)\s*=\s*as_type<float>\(([\w.]+)\);', src, re.M))   # a bit-cast of a builtin into a float temporary keeps its bits
@@ -620,10 +620,10 @@ def unfillable(dr, stage):
     for bank, d in dr.items():
         fill = DRV_FILL[int(bank)] + (SAMPLE_ROWS if bank == '0' and stage == 'ps' else []) + ([(SSBO[stage], SSBO[stage] + abi.C0_ROW * abi.C0_SSBO_SLOTS)] if bank == '0' and stage in ('ts', 'ms') else [])
         if bank == '0' and stage == 'cs': fill = fill + [(abi.C0_CS_UBO, abi.C0_CS_UBO + abi.C0_ROW * abi.C0_CS_UBO_SLOTS)]   # compute's uniform address table, which the host fills
-        # a computed index into c2 reads one of its handle tables, which the replay layer fills whole (nvn_mtl.m DRV2: EA SPORTS FC 27's lights read the separate texture words
+        # a computed index into c2 reads one of its handle tables, which the replay layer fills whole (nvn_mtl.m DRV2: another game's lights read the separate texture words
         # at 0x168 + 8i to test each light's handle); c0 is filled only in its tables and words above, so a computed index there may read what the replay does not write.
         # The one computed c0 index known is GLSLC's sample position lookup in a pixel shader: a byte of the table at 0x620, at an index made of the sample index (PIXLD.MYINDEX)
-        # and the pixel's place in the location grid masked by the words of the 0x630 row, at most 15 (Metroid Prime Remastered: 30 of its 438 shaders that read the sample index)
+        # and the pixel's place in the location grid masked by the words of the 0x630 row, at most 15 (another game: 30 of its 438 shaders that read the sample index)
         if d['dynamic'] and bank == '0' and not (stage == 'ps' and abi.C0_SAMPLE_INFO in d['vec4_offsets']): bad.append(f'c{bank} dynamic index')
         for o in d['vec4_offsets']:
             # a read is a 16-byte row: overlapping any table is enough (Engage reads the c2+0x160 row for texture slot 0 at 0x168 in it)

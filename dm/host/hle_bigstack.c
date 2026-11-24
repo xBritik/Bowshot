@@ -1,5 +1,5 @@
 // Big-stack entry (hle.h HLE_FORCE, every take-over but HLE_FORCE_DIRECT's): a take-over function runs directly on the stack of the guest thread that calls it, and the stack a game gives a thread can be small --
-// the save thread of Super Mario 3D World + Bowser's Fury has only 8 KB (CreateThread stack top 0x…9fe0, crash 0x21a0 below it); when it calls fs::MountSaveData,
+// the save thread of another game has only 8 KB (CreateThread stack top 0x…9fe0, crash 0x21a0 below it); when it calls fs::MountSaveData,
 // the host's mount path (two 1 KB-class path buffers in h_fs_MountSave + two 1100-byte ones in mount_ex + snprintf) ran past the stack bottom, SIGBUS in __vfprintf.
 // On hardware this call is one IPC that needs a few hundred bytes of stack; the host's file system take-overs size their buffers by PATH_MAX, and one file open takes 6-7 KB (-fstack-usage: OpenFile 1.3 KB -> host_path_ex 1.9 KB -> path_component 3.2 KB).
 // How: what gets registered is a static stub (one per take-over function, which loads the implementation's address into x16 and jumps to dm_bigstack_enter). The entry looks at the current sp: inside the guest address block (a guest thread stack)

@@ -69,7 +69,7 @@ const dm_game_t *dm_game_cur(void) {
 }
 #endif
 // The modules to load when the command line names none: those of the profile's build row for main's build (its build ID from the rewriter's main.fixups.tsv), else all the profile's
-// modules. A game's versions may differ in modules: Mario Kart World's base game has main subsdk0 (a Mono runtime) sdk, its update 1.8.0 main subsdk0 (the movie player) subsdk1 sdk
+// modules. A game's versions may differ in modules: another game's base game has main subsdk0 (a Mono runtime) sdk, its update 1.8.0 main subsdk0 (the movie player) subsdk1 sdk
 static int profile_modules(const char *dir, const char **names) {
     const char *all[] = DM_GAME_MODULES;
     const struct { const char *build, *mods; } rows[] = {DM_GAME_BUILD_MODULES};

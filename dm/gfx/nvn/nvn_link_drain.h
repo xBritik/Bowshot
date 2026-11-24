@@ -72,7 +72,7 @@ static inline int nvn_link_latch_spare(double age, double lead, double gpu_lead,
 // link ticks the next acquire should wait more, with LINK_DRAIN_LATCH when the drain ends in the latch (0 = none).
 // The backoff: with no frame standing, a frame that comes late while the latch holds stays up 33 ms where the standing frame would have hidden it, and the frames fall back
 // to the queue's slack (one frame shown 33 ms more than without the latch per hitch). A game that hitches every few seconds paid that each time and kept little of the gain:
-// TUNIC with four 19 ms frames every 5 s, 17 frames shown 33 ms in 42 s against 12 without the latch, present to screen p50 40.8 against 41.0 ms. So a fallback within
+// Another game with four 19 ms frames every 5 s, 17 frames shown 33 ms in 42 s against 12 without the latch, present to screen p50 40.8 against 41.0 ms. So a fallback within
 // LINK_LATCH_KEEP latched frames of a drain into the latch, or such a drain that latched nothing, doubles the time the next one needs (up to LINK_LATCH_BACK_MAX doublings),
 // and LINK_LATCH_KEEP latched frames in a row reset it. Only these drains count: during a hitch the queue runs empty and the latch takes a late present or two on its own
 static inline int nvn_link_drain_next(nvn_link_drain *d, double now, double age, double tick, double blocked, int ok, double lead, double gpu_lead, double room) {

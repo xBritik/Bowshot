@@ -1,6 +1,6 @@
 // The game's own decoder, for the offline shader tools. Unreal Engine games compress each shader in their shader code archives with Oodle (Octopath Traveler 0: every entry of the
-// two .ushaderbytecode files in pakchunk0-Switch.pak, block header 8C 0A = Mermaid), Game Freak's Trinity engine every file of its packs (Pokémon Legends: Z-A: arc/data.trpfs, compression
-// type 3), PlatinumGames' engine the entries of its PKZ archives (Bayonetta 3: OodleKraken, block header 8C 06), and DRAGON QUEST XI S (Unreal Engine 4.18) the files of its paks with LZ5 2.0
+// two .ushaderbytecode files in pakchunk0-Switch.pak, block header 8C 0A = Mermaid), Game Freak's Trinity engine every file of its packs (another game: arc/data.trpfs, compression
+// type 3), PlatinumGames' engine the entries of its PKZ archives (another game: OodleKraken, block header 8C 06), and DRAGON QUEST XI S (Unreal Engine 4.18) the files of its paks with LZ5 2.0
 // (pak compression method 3; each block starts with the LZ5 level, 0x2d). Shaders are translated offline
 // only and Oodle's decoder is not open source, so they are decoded on the Mac with the copy statically linked into main (LZ5 the same way, so the tools need no decoder of their own), in one
 // of two modes:
@@ -74,7 +74,7 @@ static uint64_t oodle_find(const module_t *m) {   // 0: main has no "OodleLZ_Dec
     return nfn ? fns[0] : 0;
 }
 
-// Oodle's streaming decoder, for a main that has no "OodleLZ_Decompress" name (Bayonetta 3 1.2.0, PlatinumGames: it reads its PKZ archives only through the streaming API, main+0xcbc698 /
+// Oodle's streaming decoder, for a main that has no "OodleLZ_Decompress" name (another game 1.2.0, PlatinumGames: it reads its PKZ archives only through the streaming API, main+0xcbc698 /
 // +0xcbc7f8, so OodleLZ_Decompress was never linked in). The four functions come from Oodle's oodlelzcompressors.cpp, whose path two of them pass to its error handler with a line number:
 // OodleLZDecoder_MemorySizeNeeded, the one of the two that also takes the message "OODLE ERROR : OodleLZ_Decompress: asked to decode Legacy compressor", and OodleLZDecoder_DecodeSome,
 // the other; between them lie OodleLZDecoder_Create (right after the first) and OodleLZDecoder_Destroy (right before the second), in the library's own order (main+0x12fefd0, +0x12ff110,

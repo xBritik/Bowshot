@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Writes dm/gfx/gl/gl_aliases.h: the extension names of GL functions that are the same function as another name, which the GL layer's eglGetProcAddress answers with that
-other name's entry (hle_gl.m gl_lookup). A game's loader may ask only for an extension's name (Fate/hollow ataraxia REMASTERED: glGenFramebuffersEXT; DOOM 3: glBindBufferARB).
+other name's entry (hle_gl.m gl_lookup). A game's loader may ask only for an extension's name (another game: glGenFramebuffersEXT; another game: glBindBufferARB).
 
 The source is Khronos's registry, gl.xml: a command's <alias name="..."/> says that it is the same function as that one (same arguments, same behaviour). Stripping a vendor
 suffix is not the same thing: glVertexAttribPointerNV takes 5 arguments and glVertexAttribPointer 6, glGetProgramivARB queries an ARB assembly program by its target,

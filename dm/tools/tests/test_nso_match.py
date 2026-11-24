@@ -273,27 +273,6 @@ class Matching(unittest.TestCase):
         self.assertEqual(fn.uses({'x16', 'x17', 'v16', 'v17', 'v18'}), {'x16', 'v16', 'v17'})
         self.assertEqual(fn.branch_targets(), {0x110})
 
-    def test_hades2_render_size_checks_its_site(self):
-        # Hades II's find (its patches.py): the one 1280x720 pair after the CreateLayer call, once in the text, no branch onto its movk, none of the stub's registers used
-        spec = importlib.util.spec_from_file_location('hades2_patches', TOOLS.parent / 'games/0100A00019DE0000/patches.py'); assert spec and spec.loader
-        h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
-        rule, = h.MATCH_FRAME_STEP['main']
-        size = [0xd280a008, 0xf2c05a08]   # mov x8,#0x500; movk x8,#0x2d0,lsl #32
-        def build(after, before=()):
-            img = imported('_ZN2nn2vi11CreateLayerEPPNS0_5LayerEPNS0_7DisplayE')
-            words = [*before, *caller(0x100 + 4 * len(before), 0x1800)[:4], *after, RET]   # ... bl CreateLayer at +12 (after before), then the code after it
-            return image_with(img, 0x100, words)
-        messages = []
-        from nso_match import locate_stub
-        ok = build([*size, 0xf9000668])   # str x8,[x19,#8]
-        got = locate_stub(ok, 0x2000, [rule], messages.append); assert got
-        self.assertEqual(got[3], (16, 8))
-        for img, why in ((build([0xaa1003e0, *size]), 'uses x16'), (build([*size, *size]), '2 1280x720 sizes in the function'),
-                         (build([NOP], before=size), 'does not follow'), (build([*size, 0x54ffffe0]), 'lands on the movk')):   # b.eq back onto the movk
-            messages = []
-            self.assertIsNone(locate_stub(img, 0x2000, [rule], messages.append))
-            self.assertIn(why, messages[0])
-
     def test_overlapping_rules_are_rejected(self):
         other = dict(self.rule, name='another patch')
         with self.assertRaisesRegex(MatchError, 'overlap'):

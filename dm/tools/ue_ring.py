@@ -10,11 +10,11 @@ The chain, each link unique or nothing changes:
 - the variable's name (UTF-16) in ro: Unreal Engine 4.18 has its names in UTF-32 and another RHI, so a main without it has no such ring;
 - its registration, adrp + add x1 of the name, then adrp + add x2 of the int it refers to, whose value is 3 (Unreal Engine 5 has 2, and no such reader);
 - the lock's rotation: ldr wC, [xB, #0x5c]; cmp wC, #2; b.lo; ldr wI, [xB, #0x60]; add; udiv; msub; str wI, [xB, #0x60]; add xS, xB, wI, uxtw #3; ldr xT, [xS, #8], so +0x5c bounds the slots at +8;
-- the constructor's load of the count on the BUF_Dynamic path: tbz wU, #1; adrp xN; then ldr wM, [xN, #lo], or through the GOT ldr xN, [xN, #got]; ldr wM, [xN] (OCTOPATH TRAVELER II); then
-  str wM, [xK, #0x5c], or str wM, [xK] with xK made +0x5c by str xzr, [xK, #0x5c]! (Pikmin 4);
+- the constructor's load of the count on the BUF_Dynamic path: tbz wU, #1; adrp xN; then ldr wM, [xN, #lo], or through the GOT ldr xN, [xN, #got]; ldr wM, [xN] (another game); then
+  str wM, [xK, #0x5c], or str wM, [xK] with xK made +0x5c by str xzr, [xK, #0x5c]! (another game);
 - before it in the constructor, the slots' end and the location after them: stur q, [x0, #0x18] and a store to #0x28 that writes its base back.
-Checked on the mains of Unreal Engine 4.26 and 4.27 on the game drive: Pikmin 4, OCTOPATH TRAVELER II, DRAGON QUEST I & II HD-2D Remake, DRAGON QUEST VII Reimagined, Princess Peach: Showtime!,
-TRIANGLE STRATEGY.
+Checked on the mains of Unreal Engine 4.26 and 4.27 on the game drive: another game, another game, another game, another game, another game,
+another game.
 Usage on its own: ue_ring.py <module>... (what the chain finds in each)"""
 import re, struct, sys, os
 

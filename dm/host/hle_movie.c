@@ -45,7 +45,7 @@ HLE_FORCE("_ZN5movie9Extractor13SetDataSourceEPKc", "movie demuxer: the host doe
 // Decoding runs on each decoder's own host thread, and the guest thread that sends a packet or returns an output index waits for it: guest threads run on guest stacks given by the SDK, and libvpx's stack frames are large. Events are still signalled by guest threads (SignalEvent is guest code).
 // Buffer / MediaData / event operations call the SDK's own functions (guest_sym), so the host needs no knowledge of their layouts.
 // Native mutex waits use dm_host_mutex_lock: a callback can wake a higher-priority guest thread that then waits for the decoder lock held by its signaller. That thread is blocked,
-// not runnable guest work; counting it as runnable deadlocked Xenoblade Chronicles 3 at the first released output. Keep the locks across signalling for decoder/event lifetime safety.
+// not runnable guest work; counting it as runnable deadlocked another game at the first released output. Keep the locks across signalling for decoder/event lifetime safety.
 
 #define MD_NIN 4                 // input buffers
 #define MD_INCAP (4u << 20)      // 4 MB per input buffer (a 1080p VP9 packet is far smaller)
@@ -73,7 +73,7 @@ typedef struct {
     int type, fmt, mode, nout;                   // nout: output slots, MD_NOUT_VIDEO for video, MD_NOUT_AAC for AAC, MD_NOUT for Vorbis (see the constructor)
     int out_align;                               // SDK 3's GetOutputBufferSize puts an alignment in its second output where later SDKs put the mode; 0 = the mode (h_movie_Decoder3)
     void **evc;                                  // the client's DecoderEvents: {input, output, format, error} EventType*, read at signal time as the SDK does (md_event)
-    void *ev[4];                                 // the entries that were events at registration: used when the client's entry no longer is one (by Metroid Dread's second movie its struct had been overwritten and Start crashed signalling)
+    void *ev[4];                                 // the entries that were events at registration: used when the client's entry no longer is one (by another game's second movie its struct had been overwritten and Start crashed signalling)
     int w, h, fmt_sent, started, in_eos;          // in_eos: an end-of-stream packet was sent; no input until Flush / Stop (h_movie_AcqIn)
     uint8_t *in[MD_NIN]; int infree[MD_NIN], ninfree;                     // queue of free input indices
     int inown[MD_NIN]; uint64_t instale[MD_NIN];                          // inown: acquired by the client and not sent yet; instale: when a Flush / Stop found it held (the client may still send it), 0 if not
@@ -95,7 +95,7 @@ typedef struct {
     // Vorbis: the identification and setup headers from Configure's MediaData ("csd-0", "csd-1", as with Android's MediaCodec), the decoder (opened at the first packet), channels / rate, Ogg page sequence
     uint8_t *vhdr[2]; int vhdr_n[2]; stb_vorbis *vb; int ch, rate; uint32_t ogg_seq; int64_t ogg_gran; int red_vb;
     int16_t *hold; size_t hold_n, hold_cap; int vb_prev;   // decoded samples (interleaved values) not handed out yet, and the last packet's blocksize, 0 at a stream's start (md_vorbis)
-    // AAC (Monster Hunter Rise's movies): AudioToolbox's converter, opened at the first packet from the AudioSpecificConfig (Configure's csd-0, kept in vhdr[0]); the packet being fed
+    // AAC (another game's movies): AudioToolbox's converter, opened at the first packet from the AudioSpecificConfig (Configure's csd-0, kept in vhdr[0]); the packet being fed
     AudioConverterRef aac; const uint8_t *aac_pkt; UInt32 aac_pkt_n; AudioStreamPacketDescription aac_desc;
     uint64_t dec_n, dec_ns, dec_max;            // decode timing (on the host thread, per packet)
     unsigned long ncall[24];
@@ -237,12 +237,12 @@ static void md_event(mdec_t *d, int i) {   // 0 input 1 output 2 format 3 error
     if (p) G.signal(p);
     else if (live) { static _Atomic int red; if (red++ < 8) LOG("[RED] movie: decoder %p event %d not delivered: the client's entry %p is not an event", (void *)d, i, live); }
 }
-// Deferred events: "input available" after Start / Flush. The SDK's decoder signals it asynchronously from its own codec thread; Metroid Dread calls InitializeMultiWaitHolder before RegisterClientEvents
+// Deferred events: "input available" after Start / Flush. The SDK's decoder signals it asynchronously from its own codec thread; another game calls InitializeMultiWaitHolder before RegisterClientEvents
 // and only later links the holders into its MultiWait. Signalled synchronously inside Start, the holders were not linked yet and SignalEvent crashed in MultiWaitImpl::NotifyAndWakeupThread on a null MultiWait (0x20)
 // (it showed only when a decoder was built a second time in the same memory). A guest thread now signals it about 2 ms later (SignalEvent is guest code and must be called on a guest thread); the destructor drops that decoder's pending signals under the same lock.
 // The movie player's dispatcher and worker must also finish their requests before the posting thread continues; the shared SVC wake handoff supplies that ordering (hle_thread.c).
 // g_dfmu and each decoder's dmu are held while guest code signals events, so guest threads take them with dm_host_lock: a thread waiting for one counts as blocked, and the
-// signaller's handoff does not wait for it (Kirby and the Forgotten Land froze at its first guide movie: the handoff waited for the input thread, which waited for dmu)
+// signaller's handoff does not wait for it (another game froze at its first guide movie: the handoff waited for the input thread, which waited for dmu)
 void *dm_guest_thread_spawn(void (*fn)(void *), void *arg, int prio, size_t stack_size);
 static pthread_mutex_t g_dfmu = PTHREAD_MUTEX_INITIALIZER; static pthread_cond_t g_dfcv = PTHREAD_COND_INITIALIZER;
 static struct { void *d; int ev; uint64_t due; } g_dfq[64]; static int g_ndfq, g_dfthr;
@@ -507,7 +507,7 @@ static int md_aac(mdec_t *d, const uint8_t *p, int n, int slot) {
     return frames > 0;
 }
 // The H.264 decoder, made by Configure (when the stream's parameter sets come with it) or by the first packet; RGBA pictures in the native texture mode either way.
-// Absolum's movies bring csd-0 / csd-1 to Configure, and a decoder made there used to stay NV12: the frames' bytes went into the RGBA texture as they were
+// Another game's movies bring csd-0 / csd-1 to Configure, and a decoder made there used to stay NV12: the frames' bytes went into the RGBA texture as they were
 static void md_avc_open(mdec_t *d) { if (!d->avc) { d->avc = mavc_new(&d->vt); if (d->fmt == MD_FMT_ABGR) mavc_set_rgba(d->avc); } }
 // H.264: decode the packet (if any) and hand out the next picture in presentation order (with jflush every queued one in turn); 1 = a picture is in the slot, its time in jpts_out
 static int md_avc(mdec_t *d, const uint8_t *p, int n, int slot, int take_only) {
@@ -597,7 +597,7 @@ static void md_pump(mdec_t *d) {
             continue;
         }
         // H.264: a picture that became due without a packet (the next one in presentation order, mavc_ready) leaves in a free slot of its own: a player that never sends
-        // end of stream otherwise waits for a stream's last pictures for good (Cozy Land, docs/reference/movies.md)
+        // end of stream otherwise waits for a stream's last pictures for good (another game, docs/reference/movies.md)
         d->avc_due = 0;
         if (d->avc && !d->in_eos && mavc_ready(d->avc)) {
             int s = -1; for (int k = 0; k < d->nout; k++) if (!d->out[k].used) { s = k; break; }
@@ -619,9 +619,9 @@ static void md_pump(mdec_t *d) {
         pthread_mutex_unlock(&d->mu);
         int got = 0, avc = d->type == MD_TYPE_AVC;
         int eos = (pk.flags & 4) != 0;   // MediaCodec BUFFER_FLAG_END_OF_STREAM
-        if (eos && (pk.pts < 0 || (uint32_t)pk.size >= MD_INCAP)) pk.size = 0;   // Monster Hunter Rise ends a stream with time -1 and the whole input buffer (4 MB) as its length: no data (decoding it gave VideoToolbox -12909 and AudioToolbox -50); an end-of-stream packet as long as the whole buffer is the same, with a real time (from PR #36)
+        if (eos && (pk.pts < 0 || (uint32_t)pk.size >= MD_INCAP)) pk.size = 0;   // Another game ends a stream with time -1 and the whole input buffer (4 MB) as its length: no data (decoding it gave VideoToolbox -12909 and AudioToolbox -50); an end-of-stream packet as long as the whole buffer is the same, with a real time (from PR #36)
         // H.264 end of stream: this packet's output takes the first queued picture (jflush). Taking none put a black picture without the flag ahead of the last
-        // `depth` pictures, a black flash before the movie's last frames. No picture carries the flag: CRI Sofdec2 (Catherine: Full Body) drops a picture flagged end-of-stream and then
+        // `depth` pictures, a black flash before the movie's last frames. No picture carries the flag: CRI Sofdec2 (another game) drops a picture flagged end-of-stream and then
         // waits for it for good, so every picture leaves as a frame of the movie and an output without one ends it, as for VP9 and Baseline streams whose end-of-stream packet has no data
         if ((pk.size > 0 && (MD_VPX(d) || MD_AUDIO(d) || avc)) || (avc && eos)) {
             d->jp = d->in[pk.in] + pk.off; d->jn = pk.size; d->jslot = slot; d->jpts = pk.pts; d->jflush = avc && eos; md_job(d, MDJ_DECODE); got = d->jgot; }
@@ -645,9 +645,9 @@ HLE_FORCE("_ZN5movie7DecoderC1ENS_11DecoderTypeENS_19DecoderOutputFormatENS_11De
     static void *vt; if (!vt) { uint8_t *t = guest_sym("_ZTVN5movie7DecoderE"); if (!t) die("movie: missing the vtable of movie::Decoder"); vt = t + 0x10; }
     md_syms();
     self[0] = vt; self[1] = NULL;
-    // Only video (AVC / VP8 / VP9 = 1..3): NV12 output (Engage's Unity, CPU buffers), or RGBA output into the client's NVN texture (mode 2: Metroid Dread's VP9, Monster Hunter Rise's AVC);
+    // Only video (AVC / VP8 / VP9 = 1..3): NV12 output (Engage's Unity, CPU buffers), or RGBA output into the client's NVN texture (mode 2: another game's VP9, another game's AVC);
     // anything else (audio) keeps a null impl and every method returns the SDK's failure code. VP8 / VP9 use libvpx, AVC uses VideoToolbox (hle_movie_avc.c)
-    // Audio: Vorbis to PCM16 (Link's Awakening's movies carry a Vorbis track; without a decoder the SDK's player plays them silent), AAC to PCM16 with AudioToolbox (Monster Hunter Rise)
+    // Audio: Vorbis to PCM16 (Link's Awakening's movies carry a Vorbis track; without a decoder the SDK's player plays them silent), AAC to PCM16 with AudioToolbox (another game)
     int audio = (type == MD_TYPE_VORBIS || type == MD_TYPE_AAC) && fmt == MD_FMT_PCM16;
     if (!audio && (type < 1 || type > 3 || (fmt != MD_FMT_NV12 && !(fmt == MD_FMT_ABGR && mode == MD_MODE_TEX)))) { LOG("[RED] movie: decoder type %d output %d mode %d not supported by the host, every method returns failure", type, fmt, mode); return; }
     mdec_t *d = calloc(1, sizeof *d);
@@ -657,13 +657,13 @@ HLE_FORCE("_ZN5movie7DecoderC1ENS_11DecoderTypeENS_19DecoderOutputFormatENS_11De
     // stops at the first track with no free input. DRAGON QUEST XI S's player fills every track before it plays (IsPreDecodingCompleted: one output queued on each, polled once a frame),
     // while its render thread's first fetch takes every decoded picture and shows the newest. With 8 audio outputs, both audio tracks were full before 240 ms of video was decoded: the
     // extractor waited for an audio input, no picture followed the ones that fetch took, and the opening movie never started (in about half the boots on the Mac: whichever of the poll and the fetch came first).
-    // Unity 2022.3's movie player (Monster Train 2's intro, an MP4 of H.264 and AAC interleaved packet by packet) takes every output it is offered and starts playing once it holds about
+    // Unity 2022.3's movie player (another game's intro, an MP4 of H.264 and AAC interleaved packet by packet) takes every output it is offered and starts playing once it holds about
     // half a second of audio: measured with 64 audio and 8 video slots, it starts holding 27 audio and 8 video outputs and peaks at 30 audio, close to 32 (8 audio slots hang it on a black
     // screen whatever the video count: 32 video slots did not help). An audio slot is a PCM buffer allocated when first used (MD_PCM_CAP, 128 KB), so 64 cost at most 8 MB.
-    // AAC no more than 32: Mario vs. Donkey Kong's movie player (1.0.1) keeps the outputs it holds in a ring of 32 entries per track (main+0xe93d4c: 0x200 bytes) and pushes with no
+    // AAC no more than 32: another game's movie player (1.0.1) keeps the outputs it holds in a ring of 32 entries per track (main+0xe93d4c: 0x200 bytes) and pushes with no
     // bounds check (main+0xe94140), so with 64 the 33rd AAC output it took wrote its index and time over the next heap block, and the opening movie crashed in the heap's free a second in.
     // The console's AAC decoder cannot offer more than 32, or the game would overflow there too
-    // Video got 16 slots for Animal Crossing: New Horizons' in-flight movie (Movie/OpeningMovie.webm, VP9 1080p and Vorbis through movie::Extractor): its player also holds every output it is
+    // Video got 16 slots for another game' in-flight movie (Movie/OpeningMovie.webm, VP9 1080p and Vorbis through movie::Extractor): its player also holds every output it is
     // offered (16 of 16 video, 59 of 64 audio), so how far its extractor gets ahead of the picture on screen is the video slots plus the 4 queued packets. With 8 that was 0.4 s, and the
     // audio behind the next video packet, whose clock the player follows, ran dry: 86 pictures in 25 s, a black screen with a loading icon. With 16 (or 32) all 1,960 play at 30 fps.
     // A video slot is allocated when first used, so the 8 more cost a greedy player 24 MB of NV12 at 1080p (64 MB as RGBA)
@@ -681,7 +681,7 @@ HLE_FORCE("_ZN5movie7DecoderC1ENS_11DecoderTypeENS_19DecoderOutputFormatENS_11De
 // SDK 4's constructor has no priority argument (Dark Souls Remastered, NintendoSDK_movie 4.5.0). Without this take-over the SDK built its own decoder and the host's Configure read it as a host one (a call through a null pointer)
 HLE_FORCE("_ZN5movie7DecoderC1ENS_11DecoderTypeENS_19DecoderOutputFormatENS_11DecoderModeE", "movie decoder (SDK 4, no priority): host implementation", void, h_movie_Decoder4,
           void **self, int type, int fmt, int mode) { h_movie_Decoder(self, type, fmt, mode, 0); }
-// SDK 3's constructor has neither a mode nor a priority (NintendoSDK_movie 3.5.1, Hyrule Warriors: Definitive Edition: Decoder(type, format) builds DecoderImpl(type, format), subsdk1+0x2de630):
+// SDK 3's constructor has neither a mode nor a priority (NintendoSDK_movie 3.5.1, another game: Decoder(type, format) builds DecoderImpl(type, format), subsdk1+0x2de630):
 // its decoders are CPU-mode ones (mode 1), and its GetOutputBufferSize puts 0x20 in the second output (subsdk1+0x2dcde8: mov w8,#0x20; str w8,[x2]), where SDK 4 and later put the mode.
 // Its output formats are numbered one lower than later SDKs': ConvertDecoderOutputFormat (subsdk1+0x2dd16c) converts format 2 to ARGB and copies format 3 out as NV12 with stride = width
 // (the host's layout, md_nv12), and GetOutputBufferSize gives 3 width × height × 1.5 bytes; 1 is PCM16 as later
@@ -718,9 +718,9 @@ static void md_free(void **self) {
     pthread_mutex_destroy(&d->mu); pthread_mutex_destroy(&d->dmu); pthread_mutex_destroy(&d->wmu); pthread_cond_destroy(&d->wcv); free(d);
 }
 HLE_FORCE("_ZN5movie7DecoderD2Ev", "movie decoder destructor: frees the host object", void, h_movie_DecD2, void **self) { md_free(self); }
-// complete-object destructor (D1): Metroid Dread calls it directly (main+0x225a08); without the take-over the SDK destroys the host object as a DecoderImpl and crashes
+// complete-object destructor (D1): another game calls it directly (main+0x225a08); without the take-over the SDK destroys the host object as a DecoderImpl and crashes
 HLE_FORCE("_ZN5movie7DecoderD1Ev", "movie decoder destructor (complete object): frees the host object", void, h_movie_DecD1, void **self) { md_free(self); }
-// deleting destructor: Unity allocates the object with its own allocator, calls D2 and frees it itself. Monster Hunter Rise deletes its decoders (new / delete), so after the host object the
+// deleting destructor: Unity allocates the object with its own allocator, calls D2 and frees it itself. Another game deletes its decoders (new / delete), so after the host object the
 // object itself goes back through the game's operator delete (guest code, called on the calling guest thread)
 HLE_FORCE("_ZN5movie7DecoderD0Ev", "movie decoder deleting destructor: frees the host object, then the object with operator delete", void, h_movie_DecD0, void **self) {
     md_free(self);
@@ -738,7 +738,7 @@ HLE_FORCE("_ZN5movie7Decoder9ConfigureEPNS_9MediaDataE", "movie decoder configur
         MD_TRACE(d, 0, "Configure (%s): %d channels %d Hz, headers %d + %d bytes", d->type == MD_TYPE_AAC ? "AAC" : "Vorbis", ch, rate, d->vhdr_n[0], d->vhdr_n[1]);
         return 0;
     }
-    if (d->type == MD_TYPE_AVC && md) {   // SPS / PPS: csd-0 / csd-1 (Annex B, as Android's MediaCodec takes them) or, from this SDK's MP4 demuxer (Super Mario Odyssey), "avcc" = the avcC box
+    if (d->type == MD_TYPE_AVC && md) {   // SPS / PPS: csd-0 / csd-1 (Annex B, as Android's MediaCodec takes them) or, from this SDK's MP4 demuxer (another game), "avcc" = the avcC box
         md_avc_open(d);
         void *b = NULL;
         for (int k = 0; k < 2; k++) { char key[8]; snprintf(key, sizeof key, "csd-%d", k); if (G.find_buf(md, key, &b) && b && G.data(b) && G.size(b)) mavc_param_sets(d->avc, G.data(b), G.size(b)); }
@@ -786,7 +786,7 @@ static void md_reset(mdec_t *d, int close) {
     }
     if (d->avc) mavc_drop(d->avc);   // H.264 pictures waiting for their turn belong to the old position
     dm_host_mutex_lock(&d->mu);
-    // Every input goes back to the free list, as with MediaCodec, but one the client holds may still be sent: Big Brain Academy: Brain vs. Brain's event thread acquires inputs while its
+    // Every input goes back to the free list, as with MediaCodec, but one the client holds may still be sent: another game's event thread acquires inputs while its
     // control thread flushes to loop an activity preview, and sends them after the flush (SendInputBufferForDecode claims them back). Those are withheld for a while (h_movie_AcqIn)
     uint64_t now = now_ns();
     for (int i = 0; i < MD_NIN; i++) { d->infree[i] = i; d->instale[i] = d->inown[i] ? now : 0; d->inown[i] = 0; }
@@ -810,7 +810,7 @@ HLE_FORCE("_ZN5movie7Decoder5ResetEv", "movie decoder reset", int, h_movie_Reset
     MD_TRACE(d, 4, "Reset"); md_reset(d, 1); d->fmt_sent = 0; return 0;
 }
 // flush: inputs and outputs all go back; libvpx is kept (the next packet after a seek is a key frame). No "input available": as with MediaCodec, nothing is announced after a flush until the next Start.
-// Metroid Dread ends a movie with Flush, Flush, Stop, destroy; a signal raised at the flush let its "input available" handler post the wrapper object to the message queue, the object was destroyed right after, and the worker thread read the freed object; when looping it calls Start after the Flush
+// Another game ends a movie with Flush, Flush, Stop, destroy; a signal raised at the flush let its "input available" handler post the wrapper object to the message queue, the object was destroyed right after, and the worker thread read the freed object; when looping it calls Start after the Flush
 HLE_FORCE("_ZN5movie7Decoder5FlushEv", "movie decoder flush: all inputs and outputs returned", int, h_movie_Flush, void **self) {
     mdec_t *d = md_of(self); if (!d) return 0x1000;
     MD_TRACE(d, 5, "Flush"); md_defer_drop(d); md_reset(d, 0);
@@ -825,7 +825,7 @@ HLE_FORCE("_ZN5movie7Decoder5FlushEv", "movie decoder flush: all inputs and outp
 HLE_FORCE("_ZN5movie7Decoder23AcquireInputBufferIndexEPiS1_", "movie decoder: acquire a free input index", int, h_movie_AcqIn, void **self, int *idx, int *left) {
     mdec_t *d = md_of(self); if (!d) return 0x1000;
     if (!idx || !left) return 0x100b;
-    // No input indices after Stop (as with MediaCodec): Metroid Dread's "input available" handler (main+0x222f14) posts the decoder wrapper object to the player manager's message queue once it gets an index;
+    // No input indices after Stop (as with MediaCodec): another game's "input available" handler (main+0x222f14) posts the decoder wrapper object to the player manager's message queue once it gets an index;
     // after Stop returned every input index, a late input event could still get one, the wrapper was destroyed afterwards, and the worker thread (main+0x223bd4) read the freed object and crashed
     dm_host_mutex_lock(&d->mu);
     int r = MD_NO_INPUT; *idx = -1; *left = 0;
@@ -872,7 +872,7 @@ HLE_FORCE("_ZN5movie7Decoder24SendInputBufferForDecodeEiiilj", "movie decoder: s
         return 0;
     }
     if (d->npend == MD_NIN) { pthread_mutex_unlock(&d->mu); if (!d->red_dec++) LOG("[RED] movie: more packets pending than input buffers, one dropped (first case)"); return 0x100b; }
-    // An index the client acquired before a Flush and sends after it (Big Brain Academy: Brain vs. Brain loops its activity previews this way): the flush put it back in the free list,
+    // An index the client acquired before a Flush and sends after it (another game loops its activity previews this way): the flush put it back in the free list,
     // so it is claimed from there now. Before, it could be handed out a second time, two packets shared one buffer (VideoToolbox -12909 on the overwritten one) and the fifth pending
     // packet wrote past pend[] into npend and dmu (the process died destroying dmu, 2 runs in 5)
     for (int k = 0; k < d->ninfree; k++) if (d->infree[k] == i) {
@@ -921,8 +921,8 @@ static void md_format(mdec_t *d, void *md) {
     G.set_rect(md, "crop", 0, 0, w - 1, h - 1);
     G.set_i32(md, "stride", stride); G.set_i32(md, "slice-height", slice);
     G.set_i32(md, "nv12-y-stride", stride); G.set_i32(md, "nv12-y-offset", 0); G.set_i32(md, "nv12-uv-offset", stride * slice);
-    // The interleaved UV plane has the luma plane's byte stride. CRI Sofdec2's player (Catherine: Full Body, main+0x34e6bc) reads it with the other three and checks none of the results:
-    // without it the chroma stride was stack garbage and its NV12 → RGB conversion read far outside guest memory on the first picture (main+0x344f74); in DRAGON QUEST VII Reimagined
+    // The interleaved UV plane has the luma plane's byte stride. CRI Sofdec2's player (another game, main+0x34e6bc) reads it with the other three and checks none of the results:
+    // without it the chroma stride was stack garbage and its NV12 → RGB conversion read far outside guest memory on the first picture (main+0x344f74); in another game
     // every chroma row was read from the first one (a grey movie with vertical bands). The picture size again, as the SDK's DecoderImpl::GetOutputBufferFormatFromDecoder
     // (SDK 19 subsdk0+0x121f50) also sets it
     G.set_i32(md, "nv12-uv-stride", stride); G.set_i32(md, "nv12-width", w); G.set_i32(md, "nv12-height", h);
@@ -950,7 +950,7 @@ HLE_FORCE("_ZN5movie7Decoder21GetOutputBufferFormatEiPNS_9MediaDataE", "movie de
 HLE_FORCE("_ZN5movie7Decoder19GetOutputBufferSizeEPiS1_", "movie decoder: output buffer size (one NV12 frame)", int, h_movie_OutSize, void **self, int *size, int *mode) {
     mdec_t *d = md_of(self); if (!d) return 0x1000;
     if (!size || !mode) return 0x100b;
-    // AAC: one frame, 1024 samples per channel (2048 with SBR, object type 5 or 29 in the AudioSpecificConfig), which is what each output holds. Mario vs. Donkey Kong's player
+    // AAC: one frame, 1024 samples per channel (2048 with SBR, object type 5 or 29 in the AudioSpecificConfig), which is what each output holds. Another game's player
     // (1.0.1) makes its AudioOut buffers this size, decodes into them and appends each whole, advancing its audio clock by size / 4 samples (main+0xe92a74): with the 128 KB
     // of a Vorbis bound every 4 KB AAC frame was played as 0.68 s, the clock crawled, the player stopped taking audio and the opening movie froze on its first second.
     // Vorbis packets vary in length (a long block gives far more than a short one), so its outputs stay at the bound
@@ -965,16 +965,16 @@ HLE_FORCE("_ZN5movie7Decoder19GetOutputBufferSizeEPiS1_", "movie decoder: output
     return 0;
 }
 // Write one frame into the client buffer: the decoded picture, or a black frame (video range Y 16, UV 128) when there is none (an end-of-stream packet); a client texture keeps its last frame then
-// Native texture mode: the client Buffer's data pointer is the NVNtexture object itself (capacity is not a byte extent; Metroid Dread gives 8, MK11 gives 0; Metroid Dread main+0x226c98: the texture object embedded at +0x18 of a texture pool entry), plus the NVN device and a sync object (SetNvnDev / SetNvnSync).
+// Native texture mode: the client Buffer's data pointer is the NVNtexture object itself (capacity is not a byte extent; another game gives 8, MK11 gives 0; another game main+0x226c98: the texture object embedded at +0x18 of a texture pool entry), plus the NVN device and a sync object (SetNvnDev / SetNvnSync).
 // In the SDK, NnCodecConsumer draws the decoded frame into that texture on the GPU and signals the sync when done; the host writes the texture storage on the CPU (as WriteTexels; the replay layer re-uploads dirty pages), and the sync counts as done once written
 int nvn_host_write_texture(const void *nvntex, const void *src, int w, int h, size_t row, int *tw, int *th);
 int nvn_host_signal_sync(void *nvnsync);
 // The SDK returns a native-texture output to the decoder in GetOutputBuffer (below), and its hardware decoder fills it again later, so a client that also releases the index
-// (Metroid Dread; TSUKIHIME, GitHub issue #700) always does so first. The host decodes inside a release: returned in GetOutputBuffer, the slot was decoded into again and
+// (another game; TSUKIHIME, GitHub issue #700) always does so first. The host decodes inside a release: returned in GetOutputBuffer, the slot was decoded into again and
 // announced at once, the client's decoder thread acquired it before its output thread's own release came, and that release freed the new picture. The slot was filled once
 // more and the client showed a picture one slot cycle (16 frames) ahead, then went back: every 17 pictures in TSUKIHIME's prologue, the text burnt into it jumping.
-// So a rendered slot waits for the client: for its release once it has released one rendered slot itself, else until its next GetOutputBuffer (Super Mario Party Jamboree
-// and Metroid Prime 4: Beyond never release, and their decoders stopped with all 16 slots held when the slots waited for good). Called with mu held; → slots returned
+// So a rendered slot waits for the client: for its release once it has released one rendered slot itself, else until its next GetOutputBuffer (another game
+// and another game never release, and their decoders stopped with all 16 slots held when the slots waited for good). Called with mu held; → slots returned
 static int md_rendered(mdec_t *d, int i) {
     int n = 0;
     if (!d->tex_rel) for (int k = 0; k < d->nout; k++) if (k != i && d->out[k].rnd && d->out[k].cli) {
@@ -992,11 +992,11 @@ static int md_out_tex(mdec_t *d, int i, void *buf) {
     if (!p) { LOG("[RED] movie: client buffer in native-texture mode has no texture object"); return 0x100b; }
     void *tex = p; int tw = 0, th = 0, f = nvn_host_write_texture(tex, NULL, 0, 0, 0, &tw, &th);
     if (f < 0) { LOG("[RED] movie: buffer data %p in native-texture mode is not a texture object", tex); return 0x100b; }
-    int bgr = f >= 0x99 && f <= 0x9C;   // BGRX8, BGRA8 and their sRGB forms (TRIANGLE STRATEGY): the SDK's consumer draws into the texture on the GPU, so the bytes follow its format
-    if (f != 0x25 && f != 0x38 && f != 0x6d && f != 0x37 && !bgr && !d->red_img++) LOG("[RED] movie: client texture format %#x is not RGBA8 / RGBX8 / BGRA8 / BGRX8 (sRGB included), writing in RGBA byte order", f);   // Metroid Dread: RGBX8_SRGB
+    int bgr = f >= 0x99 && f <= 0x9C;   // BGRX8, BGRA8 and their sRGB forms (another game): the SDK's consumer draws into the texture on the GPU, so the bytes follow its format
+    if (f != 0x25 && f != 0x38 && f != 0x6d && f != 0x37 && !bgr && !d->red_img++) LOG("[RED] movie: client texture format %#x is not RGBA8 / RGBX8 / BGRA8 / BGRX8 (sRGB included), writing in RGBA byte order", f);   // Another game: RGBX8_SRGB
     int w = d->w < tw ? d->w : tw, h = d->h < th ? d->h : th;
     // No picture (an end-of-stream output): nothing is drawn and the texture keeps the last frame, as the SDK's consumer has no frame to draw. A black frame here flashed at the
-    // end of every loop of Big Brain Academy: Brain vs. Brain's activity previews, which read the end-of-stream output's buffer
+    // end of every loop of another game's activity previews, which read the end-of-stream output's buffer
     if (d->out[i].pic && d->out[i].frm) {
         const uint8_t *src = d->out[i].frm;
         if (bgr) {   // into a copy: the slot's picture stays RGBA for another GetOutputBuffer of the same slot
@@ -1010,8 +1010,8 @@ static int md_out_tex(mdec_t *d, int i, void *buf) {
     void *sy = G.nvn_sync ? G.nvn_sync(buf) : NULL; if (sy && nvn_host_signal_sync(sy) && !d->red_dec++) LOG("[RED] movie: the buffer's sync object %p is not an NVNsync", sy);
     MD_TRACE(d, 12, "GetOutputBuffer index %d → texture %p (%d×%d format %#x)%s", i, tex, tw, th, f, d->out[i].pic ? "" : " (no picture: the texture keeps its last frame)");
     // The SDK's texture mode returns the output index here: DecoderImpl::GetOutputBuffer calls CopyOutputBufferToClientTextureAndRelease (MediaCodec::renderOutputBufferAndRelease),
-    // so a client never has to release it. Super Mario Party Jamboree's player (SDK 17.5.9) never calls ReleaseOutputBufferIndex: holding all 16 video slots, the decoder stopped and
-    // the opening movie froze on its 16th picture. Metroid Dread (SDK 11.4.3, which does the same) still releases each index. The host returns the slot later (md_rendered)
+    // so a client never has to release it. Another game's player (SDK 17.5.9) never calls ReleaseOutputBufferIndex: holding all 16 video slots, the decoder stopped and
+    // the opening movie froze on its 16th picture. Another game (SDK 11.4.3, which does the same) still releases each index. The host returns the slot later (md_rendered)
     dm_host_mutex_lock(&d->mu);
     int n = md_rendered(d, i), queued = d->npend, drain = d->avc_drain || d->avc_due;
     pthread_mutex_unlock(&d->mu);
@@ -1023,7 +1023,7 @@ HLE_FORCE("_ZN5movie7Decoder15GetOutputBufferEiPNS_6BufferE", "movie decoder: ge
     mdec_t *d = md_of(self); if (!d) return 0x1000;
     if (!buf || i < 0 || i >= d->nout) return 0x100b;
     if (d->mode == MD_MODE_TEX) return md_out_tex(d, i, buf);
-    // The decoder writes from the start of the client's buffer. movie::Buffer::Data() is Base() + Offset() and Capacity() the whole buffer (STEINS;GATE RE:BOOT's subsdk0), so a buffer whose
+    // The decoder writes from the start of the client's buffer. movie::Buffer::Data() is Base() + Offset() and Capacity() the whole buffer (another game's subsdk0), so a buffer whose
     // read offset the client advanced was written past its end, over the guest heap (from PR #36): the range is reset first. Not in native-texture mode (md_out_tex),
     // where Data() is the texture object the client points it at and nothing is written through it
     G.set_range(buf, 0, 0);
@@ -1061,7 +1061,7 @@ static int md_rel(mdec_t *d, int i) {
     int queued = d->npend, drain = d->avc_drain || d->avc_due;
     pthread_mutex_unlock(&d->mu);
     MD_TRACE(d, 13, "release output index %d%s (%d packets queued%s)", i, held ? "" : ": not held by the client, nothing to release", queued, drain ? ", H.264 pictures draining" : "");
-    // An H.264 drain waits for a free slot too: AI: THE SOMNIUM FILES (Unity 2017.4) held all 16 video slots when its logo movie's end-of-stream packet came, the drain stopped
+    // An H.264 drain waits for a free slot too: another game (Unity 2017.4) held all 16 video slots when its logo movie's end-of-stream packet came, the drain stopped
     // with no packet queued, the last pictures and the end-of-stream flag never came out, and the game waited for the movie's end for good
     if (held && (queued || drain)) md_pump_async(d);
     return held;

@@ -139,7 +139,7 @@ static void web_return(void *rv) {   // the ended page's result into the return 
 }
 static void web_wait_end(void) { pthread_mutex_lock(&g_web_mu); while ((g_web_state == 1 || g_web_state == 2)) pthread_cond_wait(&g_web_cv, &g_web_mu); pthread_mutex_unlock(&g_web_mu); }
 
-// The page as a session the game drives while it runs (Super Mario 3D All-Stars' Sunshine: its launcher pause menu, launcher_pause_menu.htdocs, started hidden at boot and shown with
+// The page as a session the game drives while it runs (another game' Sunshine: its launcher pause menu, launcher_pause_menu.htdocs, started hidden at boot and shown with
 // Appear when the player suspends; Super Mario 64 imports the same). The SDK's own Start creates a library applet (null read in applet::StartLibraryAppletImmediately)
 HLE_FORCE("_ZN2nn3web17OfflineWebSessionC1Ev", "offline HTML session (host web view, no applet): nothing to construct", void, h_webs_Ctor, void *s) { (void)s; }
 HLE_FORCE("_ZN2nn3web17OfflineWebSessionD1Ev", "offline HTML session (host web view)", void, h_webs_Dtor, void *s) { (void)s; }

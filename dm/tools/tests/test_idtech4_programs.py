@@ -1,4 +1,4 @@
-"""idtech4_programs.py: id Tech 4's render program finders found from the renderer's code in a synthetic module laid out as DOOM 3's main is (the loader by its GLSL cache path,
+"""idtech4_programs.py: id Tech 4's render program finders found from the renderer's code in a synthetic module laid out as another game's main is (the loader by its GLSL cache path,
 the per-stage loaders by the stage they pass, the finders as the callers of one of them, the manager slot from the material parser's load), and the render programs of a .resources
 container. No game files."""
 from pathlib import Path

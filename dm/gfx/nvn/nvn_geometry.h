@@ -82,14 +82,14 @@ static size_t nvn_geo_assemble(int prim, const uint32_t *src, size_t count, int 
 // then geo_pack_write adds local and block offsets. A draw of up to 1024 groups
 // instead runs geo_pack_small, doing the ordered compaction in one workgroup.
 // A single thread used to
-// walk every group: with it, each frame that drew OCTOPATH TRAVELER II's 129,032-triangle cube shadow mesh
+// walk every group: with it, each frame that drew another game's 129,032-triangle cube shadow mesh
 // (drawn in runs, nvn_geometry.inc geo_split) took about 300 ms; now only the first one is long.
 // The kernels: dm/gfx/msl/geo_pack.metal (host_msl_lib "geo_pack")
 typedef struct { uint64_t raw, mask, map, dst, args; uint32_t groups, stride, first, first_instance, capacity, collapse; } nvn_geo_lean_job;
 // The capture's record description (dmsh_geometry.capture dm_geometry_capture), vertex buffer 13: where the records go,
 // {first vertex, vertices, first instance, instances}, the record's words, and each capture word's slot in it (-1: not stored)
 enum { GEO_CAPTURE_WORDS = 144 };
-// A compact capture: a draw's vertex IDs may be far apart (Kirby Air Riders' ribbons keep a side number in bit 16: 3 vertices, IDs 0..0x10000), and a record per ID in that range took 36 MB for 3 vertices, hundreds of
+// A compact capture: a draw's vertex IDs may be far apart (another game' ribbons keep a side number in bit 16: 3 vertices, IDs 0..0x10000), and a record per ID in that range took 36 MB for 3 vertices, hundreds of
 // such draws a scene, 15 GB. Records instead go side by side, in the order of the sorted unique IDs: each contiguous run of IDs is captured with a first vertex of its own (its first ID less its position), which is all
 // the capture shader's address needs, and the geometry stage reads through a map of positions. Lean kernels still take the real IDs: they draw the game's vertex shader with them.
 static size_t nvn_geo_capture_runs(const uint32_t *ids, size_t n) {   // contiguous runs in a sorted unique list

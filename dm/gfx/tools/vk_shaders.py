@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
-# Vulkan games' SPIR-V shaders → one Metal library + a resource table for the host's Vulkan layer (dm/gfx/vk/hle_vk.m). Hades ships its 74 shaders as SPIR-V files
+# Vulkan games' SPIR-V shaders → one Metal library + a resource table for the host's Vulkan layer (dm/gfx/vk/hle_vk.m). Another game ships its 74 shaders as SPIR-V files
 # (RomFS Content/EffectsForgeSwitch/*.vert / *.frag); the game hands the same words to vkCreateShaderModule, so a shader is found again by the hash of its SPIR-V.
 # Per shader:
 #   · key = sha256(SPIR-V words)[:16] (hex); the Metal function is vk_<key>
 #   · its descriptor bindings are renumbered per kind (uniform / storage buffers → [[buffer(n)]], images → [[texture(n)]], samplers → [[sampler(n)]], n from 0 in binding order)
 #     by rewriting the Binding decorations in a copy of the SPIR-V, then translated with spirv-cross --msl-decoration-binding: the slots stay below Metal's limits whatever the
-#     game's set / binding numbers are (Hades uses set 1 bindings up to 49), and the table records which (set, binding) each slot came from
+#     game's set / binding numbers are (another game uses set 1 bindings up to 49), and the table records which (set, binding) each slot came from
 #   · vertex shaders get --flip-vert-y: Vulkan's clip space has y pointing down, Metal's up, and the viewports stay as the game gives them
 #   · vertex buffers take the highest Metal buffer slots not used by the vertex shader's resource bindings
 #   · only resources the translated entry point takes are listed (a declared but unused one has no Metal slot to bind)
 #   · a push-constant block gets the buffer slot after the descriptor buffers (spirv-cross puts it at buffer(0), where the first uniform buffer goes), listed as p:0.0=slot;
-#     the host sets the pushed bytes there (Super Mario Galaxy: 54 of its 56 built-in shaders have one)
+#     the host sets the pushed bytes there (another game: 54 of its 56 built-in shaders have one)
 #   · compute shaders are translated as kernels; their local size is stored as comp:x,y,z, since Metal takes the threadgroup size at dispatch
 #     (Re:ZERO skins its characters and builds its light clusters in compute); specialization-constant local sizes are skipped
 #   · triangle pass-through geometry stages that only route an instance to a viewport are folded into the vertex stage; other geometry stages are skipped and counted
 #   · descriptor sets move to argument buffers only when combined per-stage bindings exceed Metal's limits; the table gives the Metal ID of each array's first element
-#   · a fragment shader with only outputs 0 and 1 of the same type gets a variant vk_<key>_d with [[color(0), index(1)]]: Super Mario Galaxy's GX shaders write
+#   · a fragment shader with only outputs 0 and 1 of the same type gets a variant vk_<key>_d with [[color(0), index(1)]]: another game's GX shaders write
 #     the second blend source at location 1 (no Index decoration), which NVIDIA's hardware feeds to dual-source blending; the host picks the variant for pipelines
 #     whose blend factors read source 1
-# Super Mario Galaxy generates its GX shaders at run time; they come from a capture folder (the Mac host's DM_VK_CAPTURE), read like a RomFS: every input folder is
+# Another game generates its GX shaders at run time; they come from a capture folder (the Mac host's DM_VK_CAPTURE), read like a RomFS: every input folder is
 # searched for SPIR-V files by their magic
 # Output: <out>/vk/vk_shaders.metallib and <out>/vk/vk_shaders.tsv; --ios <dir> also writes <dir>/vk/ with an iPhone library (same table)
 # Table rows: key <TAB> stage (vert / frag / comp:x,y,z / geomvp:location) <TAB> resources, space-separated kind:set.binding=slot[*count]; lower-case u/b/t/s/c/p bind discrete buffers, textures, samplers and push constants;
@@ -48,7 +48,7 @@ SLOT_CLASS = {'u': 'buffer', 'b': 'buffer', 't': 'texture', 's': 'sampler', 'c':
 # Metal Feature Set Tables, buffers 0–30, textures 0–30 (Apple2/3 minimum), samplers 0–15: https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
 METAL_BINDING_LIMITS = {'buffer': 31, 'texture': 31, 'sampler': 16}
 # GLSL's FMin / FMax / FClamp, which spirv-cross writes as fast::min / max / clamp, leave a NaN operand's result to the GPU; the Switch's GPU returns the other operand, as Metal's
-# precise:: functions (IEEE fmin / fmax) do on every GPU. Super Mario Galaxy 2's GX lighting normalizes light directions the game leaves at (0, 0, 0) (the key and fill lights of
+# precise:: functions (IEEE fmin / fmax) do on every GPU. Another game's GX lighting normalizes light directions the game leaves at (0, 0, 0) (the key and fill lights of
 # its characters) and takes max(0, dot(ldir, NaN)) as the spot term: 0 on the Switch and on the M4 Pro, so the attenuation is 1; on an A20 Pro (iPhone) the half of Mario
 # that the fill light (from the camera's left) faces came out white (GitHub issue 72)
 PRECISE = re.compile(r'\bfast::(min|max|clamp)\(')
@@ -135,7 +135,7 @@ def decorations(words):
     return out
 
 def fix_strides(words):
-    """Super Mario Galaxy's generated shaders put ArrayStride on the struct member (OpMemberDecorate) instead of on the array type: NVIDIA's driver accepts it, spirv-cross
+    """another game's generated shaders put ArrayStride on the struct member (OpMemberDecorate) instead of on the array type: NVIDIA's driver accepts it, spirv-cross
     stops with "Struct member does not have ArrayStride set". Copy each such stride onto its array type, inserted after the last of those member decorations"""
     arrays, have, member, members, at, i = set(), set(), [], {}, None, 5
     while i < len(words):
@@ -503,7 +503,7 @@ def one(source, tmp):
     if stage == 'vert': cmd.append('--flip-vert-y')
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode: red(f'{path}: spirv-cross failed: {r.stderr.strip()[:300]}')
-    # The reflection lists every declared resource; the Metal entry point only takes the ones the shader uses (Hades' ShadowMap.frag declares a buffer it never reads,
+    # The reflection lists every declared resource; the Metal entry point only takes the ones the shader uses (another game' ShadowMap.frag declares a buffer it never reads,
     # which the game's own pipeline layout leaves out): keep the rows whose slot is an argument of the entry point, so the host only binds, and only reports, real ones
     with open(msl) as f: src = f.read()
     m = entry_args(src, key, path)

@@ -100,7 +100,7 @@ static void run(int gpu, pool_t *virt, pool_t *phys, uint8_t *pmem, pool_t *cpoo
     h_nvnTextureFinalize(&tx);
 }
 // A texture over a physical pool nothing on the GPU writes into, uploaded: its gather reads the pool through a buffer the upload batch holds, and leaves the pool out of the
-// residency set. Through the pool's own buffer (mtl_gpu_addr) every pool behind a gathered texture was wired for good: Resident Evil 4 had 148 pools and 777 MB wired by the forest (#2350)
+// residency set. Through the pool's own buffer (mtl_gpu_addr) every pool behind a gathered texture was wired for good: another game had 148 pools and 777 MB wired by the forest (#2350)
 static void gather_only(int gpu, pool_t *virt, pool_t *gphys, uint8_t *gmem, uint64_t VO, uint64_t P) {
     const uint32_t D = 0xff99aabb;
     const char *how = gpu ? "GPU gather" : "CPU gather";

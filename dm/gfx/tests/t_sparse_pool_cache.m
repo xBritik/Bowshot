@@ -107,7 +107,7 @@ int main(void) { @autoreleasepool {
     CHECK(gpu_read(table, 1) == C, "so does the pool table");
 
     // Views of a sparse texture whose finest level is not mapped. Its host texture is the view of levels [1, 3) (sparse_view), and a texture view's levels count from NVN's level 0:
-    // Resident Evil 4 samples its streamed textures through views of levels 1 + 0 and 2 + 0. The level 2 view started past the host texture's two levels and was left out (the
+    // Another game samples its streamed textures through views of levels 1 + 0 and 2 + 0. The level 2 view started past the host texture's two levels and was left out (the
     // dummy); the level 1 view read level 2
     const uint32_t D = 0xff0a0b0c, E = 0xff0d0e0f; const uint64_t VO = 0x100000, PO = 0x80000;
     NVNtexture tm; h_nvnTextureBuilderSetDefaults(&tb);

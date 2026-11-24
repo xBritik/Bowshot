@@ -15,7 +15,7 @@ HLE_FORCE("_ZN2nn5prepo10PlayReport4SaveEv", "telemetry report save; nothing is 
 __attribute__((naked)) static void h_prepo_Send(void) { __asm__("str xzr, [x8]\n    ret"); }
 DM_REGISTER("swforce", hle_force_ent, hle_force_h_prepo_Send, {"_ZN2nn5prepo10PlayReport4SendERKNS_7account3UidE", (void *)h_prepo_Send, "telemetry report send; nothing is sent, a default context completes at once with success"});
 HLE_FORCE("_ZN2nn5prepo10InitializeEv", "telemetry init: the original connects to the prepo service (through sm), the host has no service process; no-op (Engage calls it explicitly)", Result, h_prepo_Init, void) { return RES_OK; }
-// Add the session ID / connection status to a report: on hardware these first connect to the prepo service for the session (Super Mario 3D World + Bowser's Fury calls them entering the save select); the host adds nothing and reports success
+// Add the session ID / connection status to a report: on hardware these first connect to the prepo service for the session (another game calls them entering the save select); the host adds nothing and reports success
 HLE_FORCE("_ZN2nn5prepo12AddSessionIdEPNS0_10PlayReportEPKc", "telemetry session ID: no service connection, nothing added, reports success", Result, h_prepo_AddSess, void *rep, const char *key) { (void)rep; (void)key; return RES_OK; }
 HLE_FORCE("_ZN2nn5prepo27AddInternetConnectionStatusEPNS0_10PlayReportEPKcS4_S4_", "telemetry internet connection status: no service connection, nothing added, reports success", Result, h_prepo_AddNet, void *rep, const char *a, const char *b, const char *c) { (void)rep; (void)a; (void)b; (void)c; return RES_OK; }
 HLE_FORCE("_ZN2nn5prepo28RequestImmediateTransmissionEv", "telemetry immediate upload; nothing is sent, reports success", Result, h_prepo_Tx, void) { return RES_OK; }
@@ -52,7 +52,7 @@ HLE_FORCE("_ZN2nn3ldn22SetStationAcceptPolicyENS0_12AcceptPolicyE", "local wirel
 HLE_FORCE("_ZN2nn3ldn6RejectENS0_11Ipv4AddressE", "local wireless (cut)", Result, h_ldn_Reject, uint32_t a) { (void)a; return RES_FAIL; }
 HLE_FORCE("_ZN2nn3ldn16GetNetworkConfigEPNS0_13NetworkConfigE", "local wireless (cut)", Result, h_ldn_NetCfg, void *o) { (void)o; return RES_FAIL; }
 
-// ---------- bluetooth: BLE (Pokémon Violet 3.0.1 at boot, likely its Pokémon GO Plus + support). InitializeBle connects to bt and btm:u (an SDK abort without them); the host has no radio:
+// ---------- bluetooth: BLE (another game 3.0.1 at boot, likely its Pokémon GO Plus + support). InitializeBle connects to bt and btm:u (an SDK abort without them); the host has no radio:
 // events never fire, scans find nothing, so the GATT calls after a connect are never reached ----------
 HLE_FORCE("_ZN2nn9bluetooth13InitializeBleEv", "BLE init (cut): no service connection", void, h_bt_InitBle, void) {}
 HLE_FORCE("_ZN2nn9bluetooth19AcquireBleScanEventEPNS_2os15SystemEventTypeE", "BLE scan event: bound, never fires", Result, h_bt_EvScan, void *ev) { hle_bind_system_event(ev, 0); return RES_OK; }
@@ -84,7 +84,7 @@ HLE_FORCE("_ZN2nn6socket8RecvFromEiPvmiP8sockaddrPj", "local UDP (offline BSD se
 HLE_FORCE("_ZN2nn6socket11GetAddrInfoEPKcS2_PK8addrinfoPPS3_", "name resolution (cut): EAI_FAIL", int, h_sk_Gai2, const char *h, const char *s, const void *hint, void **res) { (void)h; (void)s; (void)hint; if (res) *res = NULL; return SK_EAI_FAIL; }
 HLE_FORCE("_ZN2nn6socket12FreeAddrInfoEP8addrinfo", "pairs with GetAddrInfo (cut)", void, h_sk_FreeAi2, void *ai) { (void)ai; }
 HLE_FORCE("_ZN2nn6socket11GAIStrErrorENS0_7AiErrnoE", "resolver error text", const char *, h_sk_GaiStr, int e) { (void)e; return "network unavailable"; }
-// SDK 11's overloads with plain sockaddr / int arguments (Big Brain Academy: Brain vs. Brain, through Pia)
+// SDK 11's overloads with plain sockaddr / int arguments (another game, through Pia)
 HLE_FORCE("_ZN2nn6socket7ConnectEiPK8sockaddrj", "local UDP (offline BSD service)", int, h_sk_Connect2, int s, const void *a, unsigned n) { return dm_sk_connect(s, a, n); }
 HLE_FORCE("_ZN2nn6socket6AcceptEiP8sockaddrPj", "offline (cut)", int, h_sk_Accept2, int s, void *a, unsigned *n) { (void)s; (void)a; (void)n; return -1; }
 HLE_FORCE("_ZN2nn6socket11GetSockNameEiP8sockaddrPj", "local UDP (offline BSD service)", int, h_sk_GetSockName2, int s, void *a, unsigned *n) { return dm_sk_name(s, a, n, 0); }
@@ -94,7 +94,7 @@ HLE_FORCE("_ZN2nn6socket5FcntlEiiz", "local UDP (offline BSD service)", int, h_s
 HLE_FORCE("_ZN2nn6socket4RecvEiPvmi", "local UDP (offline BSD service)", long, h_sk_Recv2, int s, void *b, unsigned long n, int f) { return dm_sk_recvfrom(s, b, n, f, NULL, NULL); }
 HLE_FORCE("_ZN2nn6socket4SendEiPKvmi", "local UDP (offline BSD service)", long, h_sk_Send2, int s, const void *b, unsigned long n, int f) { return dm_sk_sendto(s, b, n, f, NULL, 0); }
 
-// ---------- irsensor: the Joy-Con IR camera (Big Brain Academy: Brain vs. Brain's input layer makes one per controller). The host has none: every camera is unconnected,
+// ---------- irsensor: the Joy-Con IR camera (another game's input layer makes one per controller). The host has none: every camera is unconnected,
 // processors cannot run and report no states. The default-config getters and MakeRect only fill the game's structs and keep running in the SDK ----------
 enum { IRS_UNCONNECTED = 2 };   // IrCameraStatus: 0 available, 1 unsupported, 2 unconnected (the game takes 0 as "available", main+0x497fd4)
 HLE_FORCE("_ZN2nn8irsensor17GetIrCameraHandleERKj", "IR camera handle of a controller (player number in the low byte)", uint32_t, h_irs_Handle, const uint32_t *npad) { return *npad & 0xff; }
@@ -133,12 +133,12 @@ HLE_FORCE("_ZN2nn4nifm27SubmitNetworkRequestAndWaitEv", "offline: the network re
 HLE_FORCE("_ZN2nn4nifm22GetCurrentIpConfigInfoEP7in_addrS2_S2_S2_S2_", "offline: no IP configuration", Result, h_nifm_IpCfg, uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d, uint32_t *e) {
     uint32_t *p[5] = {a, b, c, d, e}; for (int i = 0; i < 5; i++) if (p[i]) *p[i] = 0; return RES_FAIL;
 }
-// SDK 10's functions of the same name take socket::InAddr / in_addr, exactly the other way round from the generation above and in hle_net.c (Super Mario 3D World + Bowser's Fury)
+// SDK 10's functions of the same name take socket::InAddr / in_addr, exactly the other way round from the generation above and in hle_net.c (another game)
 HLE_FORCE("_ZN2nn4nifm22GetCurrentIpConfigInfoEPNS_6socket6InAddrES3_S3_S3_S3_", "offline: no IP configuration (SDK 10 overload)", Result, h_nifm_IpCfg10, uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d, uint32_t *e) {
     uint32_t *p[5] = {a, b, c, d, e}; for (int i = 0; i < 5; i++) if (p[i]) *p[i] = 0; return RES_FAIL;
 }
 HLE_FORCE("_ZN2nn4nifm26GetCurrentPrimaryIpAddressEP7in_addr", "offline: no IP (SDK 10 overload)", Result, h_nifm_GetIp10, uint32_t *a) { if (a) *a = 0; return RES_FAIL; }
-// SDK 21 (Star Fox): the IPv4 and IPv6 configurations at once, with their counts
+// SDK 21 (another game): the IPv4 and IPv6 configurations at once, with their counts
 HLE_FORCE("_ZN2nn4nifm18GetCurrentIpConfigEPNS0_10Ipv4ConfigEPiPNS0_10Ipv6ConfigES3_ii", "offline: no IP configuration (SDK 21 overload)", Result, h_nifm_IpCfg21,
           void *v4, int *n4, void *v6, int *n6, int c4, int c6) { (void)v4; (void)v6; (void)c4; (void)c6; if (n4) *n4 = 0; if (n6) *n6 = 0; return RES_FAIL; }
 // EnvironmentIdentifier = char[8]: retail environment "lp1"
@@ -177,15 +177,15 @@ HLE_FORCE("_ZN2nn3ngc46MaskProfanityWordsInTextForPlatformRegionChinaEPc", "Chin
 HLE_FORCE("_ZN2nn3err9ShowErrorENS0_9ErrorCodeE", "error display applet; the host only logs it", void, h_err_ShowCode, uint64_t code) { DM_APPLET("error"); LOG("game asks to show an error: %04u-%04u", (unsigned)(code & 0xffffffff), (unsigned)(code >> 32)); }
 HLE_FORCE("_ZN2nn3err9ShowErrorERKNS0_18ErrorResultVariantE", "error display applet; the host only logs it", void, h_err_ShowVar, const void *v) { DM_APPLET("error"); (void)v; LOG("game asks to show an error (ErrorResultVariant)"); }
 HLE_FORCE("_ZN2nn3err40ShowUnacceptableAddOnContentVersionErrorEv", "add-on content version mismatch error applet; the host only logs it", void, h_err_AocVer, void) { DM_APPLET("error"); LOG("game asks to show an error: add-on content version mismatch"); }
-// A Switch 2 Edition's program asks it when its upgrade add-on is older than it needs: Super Mario Bros. Wonder's Switch 2 program 1.2.1 reads aocup:/System/AocUpgradeVersion.txt and stops
+// A Switch 2 Edition's program asks it when its upgrade add-on is older than it needs: another game's Switch 2 program 1.2.1 reads aocup:/System/AocUpgradeVersion.txt and stops
 // below 3 (main+0x132b9b4); the console then asks the player to update the add-on. Unhooked, the SDK's applet call crashed on a null handle (sdk StartLibraryAppletImmediately)
 HLE_FORCE("_ZN2nn3err50ShowUnacceptableAddOnContentForUpgradeVersionErrorEv", "upgrade add-on too old error applet; the host only logs it", void, h_err_AocUpgVer, void) {
     DM_APPLET("error"); LOG("[RED] game asks to show an error: its upgrade add-on content is older than this program needs (pack the add-on of the same version as the game)");
 }
 HLE_FORCE("_ZN2nn3err39ShowUnacceptableApplicationVersionErrorEv", "game version mismatch error applet; the host only logs it", void, h_err_AppVer, void) { DM_APPLET("error"); LOG("game asks to show an error: game version mismatch"); }
-// Pokémon Legends: Z-A (SDK 19): the application's own error screen (an error code number and two messages in the argument) goes through the error applet as well
+// Another game (SDK 19): the application's own error screen (an error code number and two messages in the argument) goes through the error applet as well
 HLE_FORCE("_ZN2nn3err20ShowApplicationErrorERKNS0_19ApplicationErrorArgE", "application error applet; the host only logs it", void, h_err_ShowApp, const void *arg) { DM_APPLET("error"); (void)arg; LOG("game asks to show an application error (ApplicationErrorArg)"); }
-// Pokémon Sword (SDK 7.3.2): the error applet's network service form, after a failed online call
+// Another game (SDK 7.3.2): the error applet's network service form, after a failed online call
 HLE_FORCE("_ZN2nn3err23ShowNetworkServiceErrorENS0_9ErrorCodeE", "network service error applet; the host only logs it", void, h_err_ShowNet, uint64_t code) { DM_APPLET("error"); LOG("game asks to show a network service error: %04u-%04u", (unsigned)(code & 0xffffffff), (unsigned)(code >> 32)); }
 
 // SDK 7.4 also takes a Result here, not the separate ErrorCode pair. Keep the
@@ -195,7 +195,7 @@ HLE_FORCE("_ZN2nn3err23ShowNetworkServiceErrorENS_6ResultE", "network service er
 }
 
 // ---------- pdm: the system's play log ----------
-// Pokémon Sword asks at boot how often this user has launched two other games (main+0xc88074, one ID each call, 0x18 bytes {application ID, play time, launch count} per entry; the result is
+// Another game asks at boot how often this user has launched two other games (main+0xc88074, one ID each call, 0x18 bytes {application ID, play time, launch count} per entry; the result is
 // not read, a launch count of at least 1 is): the host keeps no play log, so every one was never played. The SDK's own call opens the pdm service (null read at sdk+0x336ccc)
 HLE_FORCE("_ZN2nn3pdm30QueryApplicationPlayStatisticsEPNS0_25ApplicationPlayStatisticsERKNS_7account3UidEPKNS_13ApplicationIdEi", "play statistics of other games: never played (the host keeps no play log)",
           Result, h_pdm_QueryStats, uint64_t *out, const void *uid, const uint64_t *ids, int n) {
@@ -203,7 +203,7 @@ HLE_FORCE("_ZN2nn3pdm30QueryApplicationPlayStatisticsEPNS0_25ApplicationPlayStat
     return RES_OK;
 }
 // The overload without a Uid returns the number of records written. In SDK 8 it gets that count through the applet proxy, which is null on the host.
-// With no system play log there are zero records (Persona 5 Strikers checks the count at main+0x10e78c before reading the array).
+// With no system play log there are zero records (another game checks the count at main+0x10e78c before reading the array).
 HLE_FORCE("_ZN2nn3pdm30QueryApplicationPlayStatisticsEPNS0_25ApplicationPlayStatisticsEPKNS_13ApplicationIdEi", "play statistics: empty system play log",
           int, h_pdm_QueryStatsAll, void *out, const uint64_t *ids, int n) {
     (void)out; (void)ids; (void)n;
@@ -227,7 +227,7 @@ HLE_FORCE("nnsocketGetAddrInfo", "name resolution (cut): EAI_FAIL", int, h_c_sk_
 HLE_FORCE("nnsocketFreeAddrInfo", "pairs with GetAddrInfo (cut)", void, h_c_sk_FreeAi, void *ai) { (void)ai; }
 HLE_FORCE("nnsocketGAIStrError", "resolver error text", const char *, h_c_sk_GaiStr, int e) { (void)e; return "network unavailable"; }
 
-// ---------- bcat: news / data delivered from the server (Super Mario Odyssey). Initialize talks to the bcat service (an SDK abort without it); mounting the delivery cache fails,
+// ---------- bcat: news / data delivered from the server (another game). Initialize talks to the bcat service (an SDK abort without it); mounting the delivery cache fails,
 // which the game treats as "nothing delivered" (main+0x6c9258: a failure skips the read unless the caller asked for an error dialog, which only logs here). Syncing needs the network, which nifm reports unavailable ----------
 HLE_FORCE("_ZN2nn4bcat10InitializeEv", "data delivery init (connects to the bcat service); the host has none, no-op", void, h_bcat_Init, void) {}
 HLE_FORCE("_ZN2nn4bcat25MountDeliveryCacheStorageEv", "mount delivery cache: no delivery data, fails", Result, h_bcat_Mount, void) { return RES_FAIL; }

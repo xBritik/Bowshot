@@ -1,7 +1,7 @@
 // The command header layout is taken from the first command list that walks in one, not from the first list generated.
-// Mario Kart 8 Deluxe (SDK 4.4.0): the render thread generated a list before the game's first RequestUpdate whose third command was zeroed; taking the layout from it
+// Another game (SDK 4.4.0): the render thread generated a list before the game's first RequestUpdate whose third command was zeroed; taking the layout from it
 // left the SDK 6 headers read in the newer layout, no DeviceSink was found and the game was silent. Also check recovery with the other supported headers and sinks.
-// Bastion (SDK 5.4.0): its first list, two commands with the SDK 6 header whose first has ID 0x14 and 0x14 bytes, walks in the SDK 8–20 layout too and must decide nothing.
+// Another game (SDK 5.4.0): its first list, two commands with the SDK 6 header whose first has ID 0x14 and 0x14 bytes, walks in the SDK 8–20 layout too and must decide nothing.
 #include "../hle.h"
 #include <assert.h>
 #include <errno.h>
@@ -171,14 +171,14 @@ static void test(int sdk, int incomplete) {
     *(uint32_t *)(list + 4) = 0;
     assert(capture(&g_ar[0], list, 0x20, out) == 0);
     if (incomplete) {
-        // The third command is zeroed, as Mario Kart 8 Deluxe's first list was. Several such frames must leave detection open.
+        // The third command is zeroed, as another game's first list was. Several such frames must leave detection open.
         n = build(sdk, NCMD);
         memset(list + 0x20 + 2 * 0x40, 0, 0x40);
         for (int i = 0; i < 3; i++) assert(capture(&g_ar[0], list, n, out) == 0);
         assert(!g_hdr6 && !g_hdr21 && !g_sink4);
     }
     if (sdk == 5) {
-        // Bastion's first list: a 0x14-byte command of ID 0x14, then a 0x28-byte one of ID 0xa: in the SDK 8–20 layout the IDs read as sizes, and both still walk
+        // Another game's first list: a 0x14-byte command of ID 0x14, then a 0x28-byte one of ID 0xa: in the SDK 8–20 layout the IDs read as sizes, and both still walk
         memset(list, 0, sizeof list);
         *(uint32_t *)(list + 4) = 2; *(const int32_t **)(list + 8) = mix; *(uint32_t *)(list + 0x14) = SAMPLES; *(uint32_t *)(list + 0x18) = 48000;
         uint8_t *q = put(list + 0x20, 5, 0x14, 0x14); q = put(q, 5, 0xa, 0x28);

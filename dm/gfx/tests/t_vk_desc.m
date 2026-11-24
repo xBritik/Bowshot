@@ -1,5 +1,5 @@
 // Vulkan descriptors outlive the objects written into them (GitHub issue 68): a set names an image view, a sampler and a uniform buffer in element 1 of an 8-texture
-// array and a buffer binding, as Super Mario Galaxy 2's shaders take them; the objects are destroyed and their host structs freed and overwritten, and the set bound
+// array and a buffer binding, as another game's shaders take them; the objects are destroyed and their host structs freed and overwritten, and the set bound
 // for a draw still binds the texture, sampler state and buffer it was written with. Resetting the pool releases them
 #include "../vk/hle_vk.m"
 int dm_guest_as_contains(uintptr_t address) { (void)address; return 0; }

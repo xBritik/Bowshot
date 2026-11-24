@@ -1,4 +1,4 @@
-"""L.A. Noire's split GLSLC arrays inside out.wad.nx, without game data."""
+"""another game's split GLSLC arrays inside out.wad.nx, without game data."""
 from pathlib import Path
 import struct
 import sys

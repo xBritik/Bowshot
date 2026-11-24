@@ -97,7 +97,7 @@ int main(void) { @autoreleasepool {
     const float enc[2] = {0.0031308f, 1 / 2.4f}, dec[2] = {0.04045f, 2.4f}, both[4] = {0.0031308f, 1 / 2.4f, 0.04045f, 2.4f}, dec16[3] = {0.040435791015625f, 2.3984375f, 0.07745361328125f}, enc16[1] = {0.41650390625f};
     float once[1] = {2.4f}; uint8_t rare[256] = {0}; memcpy(rare, once, 4);
     CHECK(color_of(both, 4, NULL, 0) == UP_COLOR_LINEAR, "an encode and a decode in floats: linear input and output (Bananza)");
-    CHECK(color_of(NULL, 0, dec16, 3) == UP_COLOR_SRGB, "only a decode, in half floats: sRGB input, linear output (Splatoon Raiders)");
+    CHECK(color_of(NULL, 0, dec16, 3) == UP_COLOR_SRGB, "only a decode, in half floats: sRGB input, linear output (another game)");
     CHECK(color_of(enc, 2, NULL, 0) == UP_COLOR_KEEP, "an encode with no decode: the output stays encoded, the shader runs");
     CHECK(color_of(NULL, 0, NULL, 0) == UP_COLOR_KEEP, "no curve: the output stays encoded, the shader runs");
     CHECK(color_of(dec, 2, NULL, 0) == UP_COLOR_KEEP, "a shape no pack has shown (a decode in floats, no encode): the shader runs");
@@ -174,7 +174,7 @@ int main(void) { @autoreleasepool {
             CHECK(mtl_wait(mtl_sub_commit(), 5000000000ull) && !mtl_last_commit_error(), "packed output submission completes");
         }
         CHECK(tex_mtl(&packed_out) == backing && g_pfv_upgrades == upgrades, "repeated scales reuse the original image backing");
-        // sRGB input and linear output (Splatoon Raiders): the same sizes as above, so a scaler of their own, and the image holds the colour decoded
+        // sRGB input and linear output (another game): the same sizes as above, so a scaler of their own, and the image holds the colour decoded
         S.img[5][1] = 702; S.tex[5][0] = 701; { const uint32_t rects[8] = {0, 0, 959, 539, 0, 0, 1919, 1079}; memcpy(S.push[1], rects, sizeof rects); }
         named->up_color = UP_COLOR_SRGB;
         const float decoded[4] = {0.2140f, 0.0509f, 0.5225f, 1.0f};   // sRGB 0.5, 0.25, 0.75

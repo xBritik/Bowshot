@@ -1,4 +1,4 @@
-// The OpenGL layer's fixed pipeline (hle_gl.m, "Fixed function"): what OpenGL 1.x draws with when no program is current (UnMetal: client arrays, the matrix stack and
+// The OpenGL layer's fixed pipeline (hle_gl.m, "Fixed function"): what OpenGL 1.x draws with when no program is current (another game: client arrays, the matrix stack and
 // glTexEnv, no shader at all). The arrays are read at NVIDIA's aliased attribute numbers: 0 the vertex, 3 the colour, 8 texture unit 0's coordinates.
 // One texture unit; its environment follows the GL 1.5 table (section 3.8.13) by the texture's base format: has_c / has_a say whether it gives colour / alpha
 #include <metal_stdlib>

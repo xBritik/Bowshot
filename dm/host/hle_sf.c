@@ -1,4 +1,4 @@
-// Services whose client a game links into its own main (nn::sf::hipc), and sessions the SDK gets from another service (the Switch 2's camera, below): Animal Crossing: New Horizons 3.0.3 carries the clients of olsc:u (cloud save data backup settings,
+// Services whose client a game links into its own main (nn::sf::hipc), and sessions the SDK gets from another service (the Switch 2's camera, below): another game 3.0.3 carries the clients of olsc:u (cloud save data backup settings,
 // main+0x404bc6c) and npns (push notifications). The SDK's client code connects through sm (an abort in sm::Initialize under InitializeHipcServiceResolution, from main+0x5b8198) and talks
 // HIPC through svcSendSyncRequest; the host has neither. It hands out sessions of its own instead and answers each request in the message buffer, for the services listed in sf_served:
 // success, the output data zeroed, no objects or handles. For olsc that reads as "backup off for every user", so the game leaves the settings alone (main+0x2809c8c asks per user and
@@ -50,14 +50,14 @@ uint32_t sf_session(const char *name, sf_answer answer, void *ctx, void (*close)
 
 // The Switch 2's camera (a USB camera, for GameChat's video). nn::camera::sdk::CreateCameraContext asks the graphics system's user session (gsv) for a session to the camera service and
 // gives it to the caller as a UniqueNativeHandle (a 32-bit handle; SDK 22.2.0 sdk+0x2c42c0 writes it), with 0x3af3 when the SDK has no gsv session, which the host never opens. The game then
-// talks to the camera through that session with the SDK's HIPC client. The host has no camera, so the session answers as a console with none: by Mario Kart World 1.8.0 (pull request #1116,
+// talks to the camera through that session with the SDK's HIPC client. The host has no camera, so the session answers as a console with none: by another game 1.8.0 (pull request #1116,
 // not checked here: the build is not on this Mac) the game opens the camera with command 3 and takes 0xdc4 as "no camera" (any other error aborts), then asks for the camera's event with
 // command 21 (a copied handle it attaches to a SystemEvent; an error aborts). So 0xdc4 for every command, and an event that never fires for 21
-// Star Fox (SDK 21.4.4, its own camera module subsdk3): nn::camera::Initialize sends command 3 with the device name "Default" and takes success or 0xdc4 (any other result aborts, subsdk3+0x1ef4).
+// Another game (SDK 21.4.4, its own camera module subsdk3): nn::camera::Initialize sends command 3 with the device name "Default" and takes success or 0xdc4 (any other result aborts, subsdk3+0x1ef4).
 // With 0xdc4 it returns that to the game, which reads it as "This platform does not support the camera function." (vwebcam.switch2.cpp:997) and then dereferences a null on a path a console
 // never takes (main+0xba54e4c): a Switch 2 supports the camera whether or not one is plugged in. So command 3 succeeds here, and so does 4 from Finalize (the module aborts on any failure there,
 // subsdk3+0x200c); QueryDeviceConnection's 29 and any other command answer 0x7c4, which the module and the game read as "No camera device detected.", and the first unknown command logs its number.
-// Mario Kart World 1.8.0 is the game that took 0xdc4 for "no camera" above; that build is not on this Mac, so it has not been run with these answers
+// Another game 1.8.0 is the game that took 0xdc4 for "no camera" above; that build is not on this Mac, so it has not been run with these answers
 static Result camera_answer(sf_req *r) {
     unsigned cmd = r->cmd;
     if (cmd == 3 || cmd == 4) return RES_OK;
@@ -150,7 +150,7 @@ HLE_FORCE("_ZN2nn2sf4hipc15SendSyncRequestENS_3svc6HandleEPvm", "send a request 
     uint32_t magic = *(uint32_t *)(base + hin), ver = *(uint32_t *)(base + hin + 4), cmd = *(uint32_t *)(base + hin + 8);
     static int trace = -1; if (trace < 0) trace = getenv("DM_SF_TRACE") && atoi(getenv("DM_SF_TRACE"));
     if (trace) { char hx[3 * 0x80 + 1] = ""; for (unsigned k = 0; k < 0x80 && k < size; k++) snprintf(hx + 3 * k, 4, "%02x ", base[k]); LOG("sf: %s request: %s", g_sf[i].name, hx); }
-    if (type == 2) return 0xf601u;   // HIPC Close: the session ends, and the kernel answers the closed-session result (SDK 21's client sends one for a session it is done with: Star Fox's camera session)
+    if (type == 2) return 0xf601u;   // HIPC Close: the session ends, and the kernel answers the closed-session result (SDK 21's client sends one for a session it is done with: another game's camera session)
     if (type != 4 && type != 6) { LOG("[RED] sf: %s: HIPC message type %u not served", g_sf[i].name, type); return 0xe401u; }
     if (dtype == 2) { memset(base, 0, 16); return RES_OK; }   // a domain object closed: nothing to answer
     if (magic != 0x49434653) { LOG("[RED] sf: %s: request without SFCI (%#x)", g_sf[i].name, magic); return 0xe401u; }

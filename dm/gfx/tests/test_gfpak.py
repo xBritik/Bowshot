@@ -34,7 +34,7 @@ class GfpakTests(unittest.TestCase):
         shader_split.oodle = self.real_oodle
 
     def test_entries_by_compression(self):
-        # Sword's entries are LZ4; Pokémon Legends: Arceus's are Oodle Kraken (compression 3)
+        # Sword's entries are LZ4; another game's are Oodle Kraken (compression 3)
         raw = b'BNSH' + bytes(60)
         d = gfpak([(0, len(raw), raw), (1, len(raw), zlib.compress(raw)), (2, len(raw), lz4.block.compress(raw, store_size=False)),
                    (3, 0x40, b'kraken stream')])

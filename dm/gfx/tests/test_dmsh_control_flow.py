@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Control flow through the offline translator (dmsh_xlate, arch sm86): forward jumps must not come out as loops, and a jump table must stop where the next one starts.
-A loop the program does not have costs Metal's compilers dearly: Splatoon Raiders' uber shaders, with neither fix, took hours in the front end and crashed the GPU compiler.
+A loop the program does not have costs Metal's compilers dearly: another game' uber shaders, with neither fix, took hours in the front end and crashed the GPU compiler.
 Needs DMSH_TEST_XLATE (the translator) like the other translator tests."""
 import json, os, re, struct, subprocess, sys, tempfile, unittest
 from pathlib import Path
@@ -108,7 +108,7 @@ class ControlFlow(unittest.TestCase):
         self.assertEqual(len(re.findall(r'== (?:\w+\()?\d+', msl)), 1, msl)
 
     def test_word_past_the_code_ends_the_table(self):
-        # What follows a table in c1 is data, and may lead past the code's end: the translator took that as a failure (ArgumentOutOfRangeException, two compute shaders of Yoshi and the Mysterious Book)
+        # What follows a table in c1 is data, and may lead past the code's end: the translator took that as a failure (ArgumentOutOfRangeException, two compute shaders of another game)
         anchor = 2 * SIZE
         program = [ldc(1, 2, 0), branch(0x949, 0, ra=1), bra(2, 4), WORK, EXIT]
         words = [t * SIZE - anchor for t in (2, 3)] + [0x100000]
@@ -123,7 +123,7 @@ class ControlFlow(unittest.TestCase):
 
 
     def loop_exit(self, target):
-        # A warp-aggregated atomic, as PRAGMATA's 607ceeefb9478700 does it with SURED.MIN in BSSY B3: in a loop, the lanes whose key matches the leader's branch out
+        # A warp-aggregated atomic, as another game's 607ceeefb9478700 does it with SURED.MIN in BSSY B3: in a loop, the lanes whose key matches the leader's branch out
         # (@!P0 BRA) to a block that reduces with subgroup operations, as one cohort, then join the others. GotoElimination.MoveOutward made it `if (f) break;` and ran
         # the block after the loop as `if (false || f)`, where the lanes of every iteration vote together: the ballot mixed keys and only one leader's atomic landed
         # (found by an offline differential check against a SASS reference model). LoopExitCohort moves the block into the loop, before the break.

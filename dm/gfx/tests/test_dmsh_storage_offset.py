@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """A storage buffer access at a buffer address plus a uniform word << 4, through the offline translator: the shifted word is the offset, not a bindless constant buffer handle
-(GlobalToStorage.cs TryUnwrapHandle). EA SPORTS FC 27's vertex shaders (Maxwell) index their bone matrices so; with the word itself as the offset they read the wrong element and players
+(GlobalToStorage.cs TryUnwrapHandle). Another game's vertex shaders (Maxwell) index their bone matrices so; with the word itself as the offset they read the wrong element and players
 lost their heads. Maxwell code has no bindless constant buffers, so there a word << 4 is never a handle; Ampere code takes it for one only as the base, and LEA adds an index << 4 to a
 buffer address the same way. Needs DMSH_TEST_XLATE (the translator) like the other translator tests."""
 import json, os, struct, subprocess, sys, tempfile, unittest

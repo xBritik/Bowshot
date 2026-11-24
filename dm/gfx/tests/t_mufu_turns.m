@@ -1,6 +1,6 @@
 // Ampere MUFU.SIN / COS take their argument in turns and use only its fraction. The translator lowers them as sin / cos((t - rint(t)) * 2pi) (InstEmitAmpereAlu.cs ATurnsToRadians);
 // this test runs that lowering on the GPU, compiled with Metal's default fast math as the Mac libraries are, against a double-precision reference cos / sin(2pi * fract(t)).
-// The angles are those of Donkey Kong Bananza's SSAO (a6f04605183d9915): its kernel turns by (10 (3 (x mod y) + x y) + 5.652) / 2pi turns for the pixel (x, y), computed in float
+// The angles are those of another game's SSAO (a6f04605183d9915): its kernel turns by (10 (3 (x mod y) + x y) + 5.652) / 2pi turns for the pixel (x, y), computed in float
 // as the shader does (one fma, one multiply), over the whole target at half the scene's size (838x471 for a 1676x943 scene, 1152x648 at the docked top of dynamic resolution), at its full-size effects (1676x943) and at 2560x1440. The earlier lowering,
 // cos / sin(t * 2pi), returned (0, 0) past 2^20 turns, x y > 659,000: the lower right of a 1152x648 or larger target, where the kernel collapsed onto its pixel and the picture had no ambient
 // occlusion; its count is printed for comparison, not checked (it is Metal's behaviour outside the range its fast sin / cos promise).

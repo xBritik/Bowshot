@@ -1,4 +1,4 @@
-"""Warp-synchronous shared memory: Ampere compilers drop the barrier in small scans whose lanes run in lockstep (Unreal's GPU radix sort downsweep, Orbitals' d032ce5090303e01:
+"""Warp-synchronous shared memory: Ampere compilers drop the barrier in small scans whose lanes run in lockstep (Unreal's GPU radix sort downsweep, another game' d032ce5090303e01:
 STS, then LDS of the neighbouring lane's word, then STS). For one thread such a load and its own earlier store do not alias, so Metal may move the load above the store.
 The translator (SharedMemoryFence.cs) calls dmsh_tg_fence() before each shared memory load that some path reaches from a store with no barrier between, and dmsh_rewrite.py
 tg_fence makes the helper's body a simdgroup-scope memory fence (not an execution barrier). The rewrite is tested on its own; the placement needs DMSH_TEST_XLATE (the translator)
@@ -125,7 +125,7 @@ class Placement(unittest.TestCase):
         body = msl[msl.index('kernel void main0'):]
         return body.count('dmsh_tg_fence();'), body
 
-    def test_the_downsweep_gets_a_fence_before_each_load(self):   # STS / LDS / STS / LDS, Orbitals' shape: both loads read what the lanes stored just before
+    def test_the_downsweep_gets_a_fence_before_each_load(self):   # STS / LDS / STS / LDS, another game' shape: both loads read what the lanes stored just before
         n, body = self.fences([STS, LDS, WORK, STS, LDS, WORK, EXIT])
         self.assertEqual(n, 2)
         for at in [m.start() for m in re.finditer(r'dmsh_tg_fence\(\);', body)]:

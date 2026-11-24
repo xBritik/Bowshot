@@ -5,11 +5,11 @@
 // Nor do Unity's Application.targetFrameRate and QualitySettings.vSyncCount: the rewriter finds them through the engine's internal-call table (dm/tools/unity_fps.py, main's fixups UNITY_*).
 // Monolith's native interval controls both the wait and simulation's elapsed-time step; monolith_fps.py recognizes reviewed engine implementations and derives its global.
 // Unreal Engine needs no row: the rewriter finds its console variables by their registered names in any build (dm/tools/ue_cvar.py, main's fixups UE_CVAR:<name>), and the host writes
-// the frame limit, the profile's ue_fps_cvar (t.MaxFPS, or a game's own variable its settings apply to t.MaxFPS: SHIN MEGAMI TENSEI V: Vengeance's Project.FrameRateLimit), and the
+// the frame limit, the profile's ue_fps_cvar (t.MaxFPS, or a game's own variable its settings apply to t.MaxFPS: another game's Project.FrameRateLimit), and the
 // present interval, rhi.SyncInterval (nvn.SyncInterval in UE 4.18's Switch RHI: DRAGON QUEST XI S). Each is a TAutoConsoleVariable whose +0x10 points to its value, the game thread's
 // copy then the render thread's. The games' configs set the limit to 30 and the interval to 2 (their notes name the .ini files). An engine with a fixed frame rate (bUseFixedFrameRate) steps
 // by and holds to UEngine::FixedFrameRate instead, which the rewriter finds through its reflection entry and GEngine where the engine is made (dm/tools/ue_fixed_rate.py, main's fixups
-// UE_FIXED_RATE_PTR / _FIELD / _FLAG): DRAGON BALL: Sparking! ZERO's battles and Pikmin 4. It is written only while the object's bUseFixedFrameRate is set (_FLAG), so an engine stepping by
+// UE_FIXED_RATE_PTR / _FIELD / _FLAG): another game's battles and another game. It is written only while the object's bUseFixedFrameRate is set (_FLAG), so an engine stepping by
 // the time that passed is left as it is
 #include "hle.h"
 #include <mach/mach.h>
@@ -19,7 +19,7 @@
 // leaves writable (the image's data block on iOS too, loader.c map_image).
 // At 60 a frame time gets MS_MARGIN less than the vsync: such a limiter counts from the frame's start, and the work after it (the GPU fence wait, the next frame's start) adds to the
 // period, so frames at exactly 16.667 ms came 0.11 ms late each on the Mac (59.6 fps, every 150th frame shown two vsyncs). Slightly shorter, the host's present pacing sets the pace
-// (the acquire waits): Luigi's Mansion 3's display interval p99 18.69 → 16.67 ms, 60.0 fps. Not at 30: with present_interval display the presents follow every vsync and hold no
+// (the acquire waits): another game's display interval p99 18.69 → 16.67 ms, 60.0 fps. Not at 30: with present_interval display the presents follow every vsync and hold no
 // frame for two, so a shorter time showed some frames for one (30.4 fps); 30 writes the game's own 33.333 ms
 // Also: a frame time in ticks as a uint32 (scale / frame rate: 19,200,000 for the Switch's 19.2 MHz system tick), a frame step in seconds as a float (1 / frame rate), and a mode
 // switch an engine reads before it takes those fields at all (written 1 at any target)
@@ -28,24 +28,7 @@ enum { FPS_F32, VSYNCS_I32, MS_F32, FPS_I32, TICKS_U32, SECS_F32, MODE_U32, FPS_
 static float ms_want(int fps) { return 1000.0f / (float)fps - (fps == 60 ? MS_MARGIN : 0); }
 typedef struct { const char *build, *what; uint64_t ptr_off; uint32_t field; uint8_t kind, copies; uint32_t scale; uint32_t flag; } lock_t;   // flag: byte offset << 8 | bit mask the object must have set for the write (0: none)
 static const lock_t k_locks[] = {
-    // Monster Hunter Rise 16.0.2: RE Engine's frame limit, a float at [main+0x1295b3f0]+0x434 (the pointer is a global in main's bss). The frame loop (main+0x6b106c8) sleeps until
-    // [+0x430] / [+0x434] sixtieths of a second have passed ([+0x430] = 60) and steps the game by the time that really passed (+0x41c), so a higher limit runs the game faster in frames
-    // at the same speed. The game sets 30 after boot; it also asks for present interval 2, which the profile's present_interval display ignores.
-    // From masagrator's FPSLocker config for this build (FPSLocker-Warehouse, patches/0100B04011742000/C9A3DD7702075ECD.yaml)
-    { "c9a3dd7702075ecd90101f4555389582", "RE Engine frame limit", 0x1295b3f0, 0x434, FPS_F32, 1 },
-    // Luigi's Mansion 3 1.4.0: Next Level Games' frame limiter. At the end of each frame the main thread calls the frame callbacks (main+0xb7c308) with the milliseconds since the frame
-    // started; the limiter (main+0x7a3e70) runs jobs or sleeps until 33.333 ms have passed, the float at main+0x13c94dc (read only there, at main+0x7a3ea8 and main+0x7a3f18), and the game
-    // steps by the time that really passed. The game asks for present interval 2 too, which the profile's present_interval display ignores; both are needed
-    { "79e5950ffa85acf63e28c9aec051eac2", "NLG frame limiter target", 0, 0x13c94dc, MS_F32, 1 },
-    // Need for Speed: Hot Pursuit Remastered 1.0.3: Criterion's frame timing. A uint32 in main's bss (main+0xf0043c) selects the engine's 60 fps mode, in which it takes its frame time from
-    // the timer object at [main+0xed96a8]: +0x30 the frame in system ticks (19.2 MHz, 640,000 at 30 fps) and +0x28 a tenth of it; the game's own step, at [main+0xeffc60] +0x30 (2D) and +0x50
-    // (3D), is a float of seconds per frame. Its limiter, a spin on the system tick at main+0x483588..+0x4835a4, is cut by the rewriter (patches.py). From masagrator's FPSLocker config for this
-    // build (FPSLocker-Warehouse, patches/010029B0118E8000/799D1061182C1302.yaml; the frame-time instruction found by theboy181)
-    { "799d1061182c1302e08e706b84ce76e5", "Criterion 60 fps mode", 0, 0xf0043c, MODE_U32, 1, 0 },
-    { "799d1061182c1302e08e706b84ce76e5", "Criterion frame ticks", 0xed96a8, 0x30, TICKS_U32, 1, 19200000 },
-    { "799d1061182c1302e08e706b84ce76e5", "Criterion frame ticks / 10", 0xed96a8, 0x28, TICKS_U32, 1, 1920000 },
-    { "799d1061182c1302e08e706b84ce76e5", "Criterion 2D game step", 0xeffc60, 0x30, SECS_F32, 1, 0 },
-    { "799d1061182c1302e08e706b84ce76e5", "Criterion 3D game step", 0xeffc60, 0x50, SECS_F32, 1, 0 },
+    // none: a game with no frame limiter of its own to find takes the rewriter's frame step (patches.py FRAME_STEP) or a profile key
 };
 #define NLOCKS ((int)(sizeof k_locks / sizeof k_locks[0]))
 #define MAX_LOCKS (NLOCKS + 8)   // target, Monolith, four Unreal rows, Unity targetFrameRate, Frostbite frame regulator
@@ -56,14 +39,12 @@ static int rd(uint64_t a, void *out, size_t n) { vm_size_t got = 0; return a >= 
 // Keep the native current-scale and UV controller intact; only select its
 // verified lower bound. This is independent of the FPS choice.
 // The 1.0.3 builds the rewrite cuts (patches.py): the scale clamp and the publish branch that are checked, the two fallback floors the cuts
-// replace, and the preset minimum. The Asian release (0100B8E016F76000) shifts the function by 0x13c0; its preset minimum is the target of the
+// replace, and the preset minimum. The Asian release (<title ID>) shifts the function by 0x13c0; its preset minimum is the target of the
 // relocation of the slot the function loads it through (main+0x12c8500).
 // display is the game's display object: its first word points to the NVN device (the present interval at +0x9c160), and +0x504 is the frame-interval
 // mode (0: 60 fps, 1: 30 fps) the setter main+0x9c0590 (Asian release; the global's 0x13c0 before) writes; in the Asian release it is the target of the
 // relocation of the slot that setter reads (main+0x12c2d18).
 static const struct { const char *build; uint32_t clamp, publish, floor0, floor1, minimum, display; } k_nier_dr[] = {
-    {"3c10ec35c5ef4c3686b4053afb0e58e7", 0x9bf568, 0x9bf578, 0x9bf528, 0x9bf534, 0x128e068, 0x192be00},
-    {"98397a10419894652f372d4dc1b6fc2c", 0x9c0928, 0x9c0938, 0x9c08e8, 0x9c08f4, 0x128f130, 0x192d600},
 };
 static void dynamic_resolution_tick(void) {
     static int state = -1, dynamic, row;
@@ -109,11 +90,11 @@ static void dynamic_resolution_tick(void) {
 
 // Frostbite's simulation rate and frame regulator, found by name (no fixed addresses, so both hold across a game's updates). Frostbite reflects its settings classes: a class
 // record (its name, then at +0x40 its field list) and per field a record of 0x20 bytes (name, hash, offset at +0x10, type). SimulationTimeSettings' ForceSimRate (int32) and
-// MaxSimFps (float) cap the simulation's ticks a second: 30 in EA SPORTS FC 27, whose frames then cannot go faster than 30 whatever paces them. A static constructor registers the
+// MaxSimFps (float) cap the simulation's ticks a second: 30 in another game, whose frames then cannot go faster than 30 whatever paces them. A static constructor registers the
 // class: it stores the record's address into its type info (adrp / add of the record, then str into the type info just made by adrp / add), and the code that reads the settings
 // asks the settings registry for the instance with that type info in x1 and a cache word in x2 (adrp / add each, then bl), which keeps the instance's address. The instance holds
 // its type info at +8, which checks the cache. Both fields are written each frame they differ (the game may load its settings again), like the frame limits above.
-// EA SPORTS FC 27's Switch builds also hold a frame regulator object whose tick waits 1 / [+0x8] s (+0x10 is the rate it reports); under GameRenderSettings.Enable (offset from
+// Another game's Switch builds also hold a frame regulator object whose tick waits 1 / [+0x8] s (+0x10 is the rate it reports); under GameRenderSettings.Enable (offset from
 // reflection), one function stores {30.0, 30.0} into [+0x8] (fmov vD.2d, #30.0; adrp / ldr xR, [main+ptr]; stur qD, [xR, #8]). Finding that unique site yields the global pointer
 // for any build (verified on v0, 1.8d.310c and 1.8e.50bc); ambiguous matches fail closed with [RED].
 static struct { int n; uint8_t *base; uint64_t ti, cache[8], reg_ptr; int ncache; uint32_t off_rate, off_max; } fb;
@@ -236,7 +217,7 @@ static void fb_tick(int target, const char *src) {
 }
 
 // The row of a target frame rate the game steps by, at the place the rewriter found (dm/tools/fps_target.py; main's fixups FPS_TARGET_PTR, FPS_TARGET_FIELD): an int32 frame rate in the
-// object a global points to, which the game's readers divide 60.0 by to step it, and which the game sets to 30 or 60 itself. Fire Emblem Fortune's Weave's gxc graphics object holds it
+// object a global points to, which the game's readers divide 60.0 by to step it, and which the game sets to 30 or 60 itself. Another game's gxc graphics object holds it
 // (+0x1dc; its present asks for interval 60 / target), so at 60 the game asks for interval 1 and steps by 1.0 a frame. 0 rows: not found in this main
 static int target_row(const module_t *m, lock_t *out) {
     if (!m->fps_target_ptr) return 0;
@@ -262,7 +243,7 @@ static int ue_rows(const module_t *m, lock_t *out, int *missing) {
 // Unity's frame rate, at the places the rewriter found through the engine's internal-call table (dm/tools/unity_fps.py; main's fixups UNITY_*), in any Unity build it reads:
 // Application.targetFrameRate, an int32 in main's bss (-1 until a game sets it: left so), and the current quality level's vSyncCount. On the Switch, Unity presents at
 // vSyncCount vsyncs a frame: QualitySettings.vSyncCount's setter hands the count to the graphics device, which calls nvnWindowSetPresentInterval when it changes, and Unity steps
-// the game by the time that really passed (The Rogue Prince of Persia: vSyncCount 2, targetFrameRate -1; the same walk covers the same ground at 30 and 60 fps). The device
+// the game by the time that really passed (another game: vSyncCount 2, targetFrameRate -1; the same walk covers the same ground at 30 and 60 fps). The device
 // takes the count only through the setter, so writing the level's count does not change the interval the game asks for: the host's present cap does (hle_nvn.c), as for
 // every engine limit here; the write keeps what the game reads back (QualitySettings.vSyncCount) the same as what it shows
 static struct { uint8_t *base; uint64_t ptr; uint32_t idx, arr, size, vsync; } uq;

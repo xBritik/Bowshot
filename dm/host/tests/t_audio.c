@@ -65,12 +65,12 @@ static int test_surround_output(void) {
     puts("surround callback: all six channels audible, saturation and split-buffer release verified");
     return 0;
 }
-// What the sdk's SetAudioOutBufferInfo does (Hades's sdk+0x142ab0, Metro 2033 Redux's sdk+0x80f80, the same in SDK 8 to Switch 2's): the host leaves it and the other descriptor
+// What the sdk's SetAudioOutBufferInfo does (another game's sdk+0x142ab0, another game's sdk+0x80f80, the same in SDK 8 to Switch 2's): the host leaves it and the other descriptor
 // functions to the sdk and reads the guest's AudioOutBuffer itself
 static void set_buf(aout_buf *b, void *p, uint64_t cap, uint64_t size) { b->ptr = p; b->cap = cap; b->size = size; }
 // The host plays a buffer as the SDK describes it: the object spelled out as the SDK has it (not as aout_buf has it, so the check is about the ABI and not about our own names),
 // next linked as AudioBufferList links it, the data size 4 bytes short of the capacity. The callback must play exactly the data size from the data pointer and release the buffer.
-// The host's old private layout (data +0x00, capacity +0x08, data size +0x10) read next as the data and the capacity as the data size (Metro 2033 Redux)
+// The host's old private layout (data +0x00, capacity +0x08, data size +0x10) read next as the data and the capacity as the data size (another game)
 static int test_buffer_layout(void) {
     enum { FRAMES = 64 };
     static int16_t pcm[FRAMES * 2 + 2], other[4];
@@ -119,7 +119,7 @@ static int test_output_lifetime(void) {
     printf("AudioOut fields and lifetime (%s): %d guarded open / close / unmap / resume cycles, no consumer left\n", real_audio() ? "real output" : "silent sink", CYCLES);
     return 0;
 }
-// audout takes 0 or 48000 and refuses any other rate with 0x699 (ResultInvalidSampleRate). Mega Man Legacy Collection (SDK 3.7) asks for 44.1 kHz first and opens again with the
+// audout takes 0 or 48000 and refuses any other rate with 0x699 (ResultInvalidSampleRate). Another game (SDK 3.7) asks for 44.1 kHz first and opens again with the
 // defaults when refused: the refused open leaves no output and the guest AudioOut as it was, and the second one opens at 48 kHz
 static int test_rate_refused(void) {
     uint32_t out[16] = {0}; uint8_t prm[16];

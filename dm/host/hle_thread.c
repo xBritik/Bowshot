@@ -195,7 +195,7 @@ static void hand_leave(thr_t *t) { hand_signal(t); t->nhand = 0; t->start_by = N
 // the priority-44 main thread set the flag long before the worker ends. Held until the worker exited, main set the flag afterwards, for good, and every later slot read was refused.
 // The first request of a started thread also waits until its starter is back in guest code, then for about a service round trip; only that time gives this order on Horizon
 // too. The wait is bounded: the starter may itself wait for a peer that needs this thread, and it is no error for this thread to go first
-// Connecting to a service takes the caller a few round trips, and threads it started on other cores run meanwhile. Mario Tennis Fever's boot stub builds its last decoder thread's arguments on its stack
+// Connecting to a service takes the caller a few round trips, and threads it started on other cores run meanwhile. Another game's boot stub builds its last decoder thread's arguments on its stack
 // (main+0x97c), starts that thread and calls nn::ro::Initialize, then reuses the same stack slots for a string (main+0xa04): on Horizon the thread has read them long before. The host's Initialize
 // returns at once, and the pthread started too late and read null (main+0x1dc0, once in a dozen boots). So this waits until the threads started so far have been dispatched
 // into guest code, then for a round trip. As in dm_thread_service_request, it models a time; the bound is for a thread the host cannot run
@@ -250,10 +250,10 @@ void dm_thread_native_wait(int entering) {
 // The peers a handoff waits for are the ones it made runnable, not every runnable higher-priority thread of the core. The host runs a
 // lower-priority thread beside busy higher-priority threads of its core all the time (it has no per-core scheduler; core_preempt aside),
 // and waiting for those threads at a wake had no bound: Tears of the Kingdom's BootupBackgroundWorkThread (priority 58) waited at each
-// wake for its core's busy loaders and workers (issue #247: black screen, no texture loaded), and Donkey Kong Country: Tropical Freeze's
+// wake for its core's busy loaders and workers (issue #247: black screen, no texture loaded), and another game's
 // priority-58 job thread for threads that poll with short sleeps (issue #259). all = 1 (core_preempt): every runnable higher-priority peer
 // A caller whose affinity mask allows another core does not wait: Horizon's scheduler moves a preempted thread to another core of its mask that runs nothing of higher
-// priority (Mesosphere's KScheduler migrates suggested threads), and the host never counts peers the wake did not make runnable as busy. Batman: Arkham Knight's job workers
+// priority (Mesosphere's KScheduler migrates suggested threads), and the host never counts peers the wake did not make runnable as busy. Another game's job workers
 // (priority 43, mask 0x5) finish a job and signal the main thread (priority 29, core 0), which then spin-waits for the next two jobs it hands them; waiting for it to block
 // left both workers in this loop for good, and the game stopped presenting as New Story loaded
 // A block, exit or pause signals the waiter. The 50 µs timeout keeps the recheck for changes that don't signal:
@@ -295,7 +295,7 @@ int dm_yield_to_core_peers(int all) {
     return waited;
 }
 // Take a host lock that an HLE call holds while it runs guest code. A guest thread waiting for it is in a native HLE wait (dm_thread_native_wait), blocked as it would be
-// on the guest-visible lock the SDK's own code uses there, so it does not hold a same-core handoff: Kirby and the Forgotten Land's guide movies froze the game when the movie decoder's decode lock was held across the
+// on the guest-visible lock the SDK's own code uses there, so it does not hold a same-core handoff: another game's guide movies froze the game when the movie decoder's decode lock was held across the
 // "input available" SignalEvent, the signal woke the priority-44 movie threads of core 0, and the signaller (a priority-46 job worker) waited for its woken input thread,
 // which was itself waiting for that lock (hle_movie.c md_pump)
 void dm_host_lock(pthread_mutex_t *m) {
@@ -322,7 +322,7 @@ static thr_t *pick(int kind, uint64_t a) {
 }
 // Holding G. Starting a thread makes it runnable just as waking a waiter does;
 // neither operation promises that an equal-priority or other-core peer has run.
-// t joins the waker's current handoff and those the waker is part of: Metroid Dread's main thread (priority 44) waits for its movie dispatcher (30),
+// t joins the waker's current handoff and those the waker is part of: another game's main thread (priority 44) waits for its movie dispatcher (30),
 // and for the worker (30) the dispatcher wakes in turn, though the dispatcher's wake of an equal-priority thread is no handoff of its own
 static void note_runnable(thr_t *t) {
     thr_t *self = pthread_getspecific(g_keythr);
@@ -798,7 +798,7 @@ void svc_thread_dump(void) {
                 m ? m->name : "?", m ? t->last_lr - (uint64_t)m->base : t->last_lr);
         if (have_raw) { char hx[200]; int q = 0; for (int i = 0; i < 64; i += 4) q += snprintf(hx + q, sizeof hx - q, "%08x ", *(uint32_t *)(raw + i));
                         fprintf(stderr, "[dm]   %#x waited-for object, 64 bytes from %#llx: %s\n", t->handle, t->waddr & ~0xfull, hx); }
-        // A thread in an SVC: the guest code that called it, from its stack. Engines built without frame pointers (Batman: Arkham Knight's Unreal Engine 3) leave the frame-pointer backtrace
+        // A thread in an SVC: the guest code that called it, from its stack. Engines built without frame pointers (another game's Unreal Engine 3) leave the frame-pointer backtrace
         // at the SVC wrapper, so the words of its stack that point into a module are listed, nearest first, with x19-x28. The gate block's sp (regs[99]) holds the x29 / x30 the block
         // pushed (x30 = the return address into the wrapper's caller, which the backtrace skips: the wrappers are leaf functions), the guest stack at the SVC follows at +16.
         // Read page by page up to the first unreadable one: a thread waiting near its stack top (a shallow worker) has PROT_NONE stack region above it, and one read would fail whole
@@ -888,12 +888,12 @@ static void yield_for(thr_t *me, uint64_t run_ns, int clock) {
 // YieldThread reaches the SVC through tail branches only (SDK 20: nn::os::YieldThread → ThreadManagerImplByHorizon::YieldThread, mov x0,#-1 → the svc stub), so they are the loop's own:
 // a poll keeps its pointers and deadline there (Three Houses' limiter: x19 points at the last frame end, x23 is the target, the time passed is in x8; Galaxy 2's Hagi sleep poll keeps
 // its state behind x19), while a loop that yields between steps of work moves its counters, and such a yield returns at once, with no host call, as one with no other thread of its
-// priority to run does on the Switch. Animal Crossing: New Horizons' SaveProc builds a new island in grid walks that yield once per cell (main+0x157d020, cell x and y in w21 / w20):
+// priority to run does on the Switch. Another game' SaveProc builds a new island in grid walks that yield once per cell (main+0x157d020, cell x and y in w21 / w20):
 // with the back-off each yield slept 250 µs, about 2,600 cells a second, and the screen stayed black with the loading icon for 77 s after the opening movie (now about 10 s).
 // Breath of the Wild's PlacementMgr and RadarMgr yield once per item of their batches too (a list pointer and a count move; RadarMgr's batch is 94,263 items, which the back-off
 // stretched to about 30 s): standing outdoors on the Mac, CPU energy 0.35–0.74 → 0.21–0.34 W at 60 fps, CPU 76–83% → 96–106% of a core, frame interval p99 19 → 20–21 ms.
 // With sched_yield on each such yield (about 200,000 a second) it was 108–121% of a core and 0.38–0.70 W.
-// A loop that waits at two yields comes back to the registers of the yield before last: Hades' NetworkPollThread (main+0x27aaa0) yields between its passes (w23 = 0) and once
+// A loop that waits at two yields comes back to the registers of the yield before last: another game' NetworkPollThread (main+0x27aaa0) yields between its passes (w23 = 0) and once
 // in each pass's wait for the nifm request (w23 = 2,000, its retry count), and spun a host core as one that moved on at every yield.
 // A wait whose pass reads the system clock (dm_clock_reads moved since the last yield of the run) waits for a time, not for another thread's handoff: a clock wait (clock_wait).
 static void clock_wait(thr_t *me, uint64_t sig, uint64_t now, int predict);
@@ -985,7 +985,7 @@ void dm_spin_wait(uint64_t gate, uint64_t site) {
     me->spin_ret = now_ns();
 }
 // Short timed waits as polls. A wait with a timeout under 20 µs (a condition variable, WaitSynchronization or WaitForAddress) that times out is a poll, as a SleepThread that short is
-// (case 0x0B): Hyrule Warriors: Definitive Edition (KTGL, SDK 3.5.1) waits out its frames in two such loops, its main thread with TimedWaitEvent(30 ns) and SleepThread(1 µs) in turn
+// (case 0x0B): another game (KTGL, SDK 3.5.1) waits out its frames in two such loops, its main thread with TimedWaitEvent(30 ns) and SleepThread(1 µs) in turn
 // (main+0x2acdc0; 3,400 passes a frame at 60 fps), its update thread with TimedWaitEvent(500 ns) alone (main+0x2ad224). The waits were SVCs between the yields, so every yield began a new run
 // and the back-off never started: 4.6 W of CPU on the Mac in its first battle. Such a wait is now a step of the run of yields: it continues the run when the SVC before it was one of the
 // run's steps and under SPIN_GAP_NS of guest work came after it (as for spin waits; a loop that works between its waits starts a new run each time), and once the run has lasted the
@@ -1009,7 +1009,7 @@ static void poll_wait_end(int64_t ns, int64_t r) {
     if (r == R_TIMEOUT) me->poll_ret = now_ns(); else me->yrun_svc = 0;
 }
 // Short sleeps as polls. A loop that sleeps a few tens of microseconds between checks of a flag polls: on the Switch such a sleep costs little, here each one wakes a host
-// core. Unity 6's job workers do it while idle (Hollow Knight: Silksong, main+0xbd99e0: SleepThread of a global 25 µs between looks at the job queue, or a yield, by another global),
+// core. Unity 6's job workers do it while idle (another game, main+0xbd99e0: SleepThread of a global 25 µs between looks at the job queue, or a yield, by another global),
 // about 25,000 times a second from one worker, which kept a performance core awake (CPU 22% of a core, 29,000 wakeups a second on the Mac). A sleep shorter than the back-off's
 // longest sleep (yield_backoff_cap, 250 µs; DM_YIELD_BACKOFF sets both) is a step of the run of yields, as a short timed wait is (poll_wait_begin): it continues the run when the SVC
 // before it was one of the run's steps and under SPIN_GAP_NS of guest work came after it, and once the run has lasted the back-off's start (2 ms) it sleeps the back-off's length
@@ -1067,7 +1067,7 @@ void dm_thread_cpu(char *out, size_t n, double secs) {
     g_unlock();
 }
 // Sleep until dl (host monotonic ns) on time: macOS nanosleep / mach_wait_until carry timer slack; measured, 33 ms sleeps take about 36.4 ms, 5 ms take 6.1 ms, 1 ms take 1.26 ms (the same at any QoS).
-// Metroid Dread's sound thread sleeps "33 ms minus this round's work" (main+0xf95b0), and on the host its period became 36.9 ms; cutscenes render a frame whenever the audio play position that thread updates moves, so they ran at about 27 fps (30 on the Switch).
+// Another game's sound thread sleeps "33 ms minus this round's work" (main+0xf95b0), and on the host its period became 36.9 ms; cutscenes render a frame whenever the audio play position that thread updates moves, so they ran at about 27 fps (30 on the Switch).
 // Each step sleeps only 3/4 of the remaining time (the slack is at most about 25%, so it never oversleeps), looping until within 20 µs: a 33 ms sleep takes about 4 system calls with an error of tens of microseconds, and nothing spins
 static void sleep_precise(uint64_t dl) {
     for (int i = 0; i < 16; i++) {
@@ -1146,7 +1146,7 @@ static int svc_thread_impl(int num, uint64_t *regs) {
         if ((ns > 0 || ns == -2) && me && me->nhand) { g_lock(); hand_leave(me); g_unlock(); }
         if (me && ns >= 20000 && (uint64_t)ns < yield_backoff_cap()) poll_sleep(me, ns);   // a short sleep: a poll
         else if (ns >= 20000) dm_guest_sleep_ns(ns);
-        // Yield (0 / -1 / -2), and sleeps shorter than 20 µs, which sleep_precise would return from at once: Super Mario Galaxy's Hagi polls with SleepThread(100 ns) (main+0x517c),
+        // Yield (0 / -1 / -2), and sleeps shorter than 20 µs, which sleep_precise would return from at once: another game's Hagi polls with SleepThread(100 ns) (main+0x517c),
         // which kept a core at 100% (1.4 billion calls in 200 s); as yields they get the back-off below.
         // Count and time of the main thread's yields are recorded: a render task graph's "wait for everything to finish" is often pure polling + yield; measure how much of a frame it takes
         else thr_yield(me, regs);
@@ -1174,7 +1174,7 @@ static int svc_thread_impl(int num, uint64_t *regs) {
         regs[0] = t ? 0 : R_BAD_HANDLE; return 1;
     }
     case 0x10: { thr_t *t = cur(); int c = __atomic_load_n(&t->core, __ATOMIC_RELAXED); uint64_t m = __atomic_load_n(&t->mask, __ATOMIC_RELAXED);   // The current core number is always 0..2 (never negative); a thread with no ideal core reports the lowest core its mask allows, not core 0 outside it
-                 // Without G: games ask often (Pokémon Scarlet ~7,400 times a second), and SetThreadCoreMask from another thread stores each field once (relaxed atomics, no torn or intermediate value)
+                 // Without G: games ask often (another game ~7,400 times a second), and SetThreadCoreMask from another thread stores each field once (relaxed atomics, no torn or intermediate value)
                  regs[0] = (uint64_t)(uint32_t)(c >= 0 ? c : m ? __builtin_ctzll(m) : 0); return 1; }
     case 0x32: {  // SetThreadActivity(w0 thread, w1 0 runnable / 1 paused): see "Pausing threads" above
         thr_t *me = cur(); int act = (int)regs[1];

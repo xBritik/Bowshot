@@ -159,7 +159,7 @@ static void *acquire_thread(void *arg) { @autoreleasepool {
 // A snapshot present keeps its ticket (LNPANDY/NX2Apple#1117): acquiring that texture again waits until its copy, and with it the frame drawn into it, has run on the GPU,
 // though not for the screen. Before, the ticket was 0 and only the next ring slot paced the acquire; with more ring slots than window textures, or a game that
 // acquires its next texture before presenting the current frame, the game ran frames further ahead of the GPU and rewrote per-frame data queued draws still read
-// (Xenoblade Chronicles 3: the scene one flat colour in a third to a half of the frames)
+// (another game: the scene one flat colour in a third to a half of the frames)
 static void ticket_case(void) {
     state_reset(); memset(&R, 0, sizeof R); mtl_sub_begin();
     CHECK("prior submission completed", mtl_wait(mtl_sub_commit(), 2000000000ull));

@@ -1,8 +1,8 @@
 // Initial ASTC image data exists before registration in a CPU_UNCACHED or CPU_CACHED pool, with no flush.
 // Every mip must sample its literal color at first use. The storage stays the content: a later CPU write is
 // re-uploaded, and a new texture object over rewritten storage samples the new data, not the earlier upload.
-// An uncompressed 3D texture with no IMAGE / COMPRESSIBLE flag is taken from its storage the same way (Xenoblade Chronicles 3's 10x10x10
-// particle steering fields, GitHub issue #1011); with IMAGE it stays a GPU texture. IMAGE does not keep a block-compressed texture out (Pokemon Pokopia's icons).
+// An uncompressed 3D texture with no IMAGE / COMPRESSIBLE flag is taken from its storage the same way (another game's 10x10x10
+// particle steering fields, GitHub issue #1011); with IMAGE it stays a GPU texture. IMAGE does not keep a block-compressed texture out (another game's icons).
 #include "../nvn/nvn_mtl.m"
 void *front_metal_layer(void) { return NULL; }
 module_t *module_of(const void *p) { (void)p; return NULL; }
@@ -104,7 +104,7 @@ static void run3d(uint64_t serial, uint32_t tex_flags, int want) {
 int main(void){@autoreleasepool{mtl_init();
     const uint32_t uncached=NVN_MEMORY_POOL_FLAGS_CPU_UNCACHED|NVN_MEMORY_POOL_FLAGS_GPU_CACHED,cached=NVN_MEMORY_POOL_FLAGS_CPU_CACHED|NVN_MEMORY_POOL_FLAGS_GPU_CACHED;
     run(NVN_FORMAT_RGBA_ASTC_6x6,9750,uncached,0,0);run(NVN_FORMAT_RGBA_ASTC_6x6_SRGB,9751,uncached,0,0);run(NVN_FORMAT_RGBA_ASTC_6x6,9752,cached,3,0);
-    run(NVN_FORMAT_RGBA_ASTC_6x6,9753,uncached,1,NVN_TEXTURE_FLAGS_IMAGE);   // IMAGE on a block-compressed format: shaders cannot write it (Pokemon Pokopia's icons)
+    run(NVN_FORMAT_RGBA_ASTC_6x6,9753,uncached,1,NVN_TEXTURE_FLAGS_IMAGE);   // IMAGE on a block-compressed format: shaders cannot write it (another game's icons)
     run(NVN_FORMAT_RGBA_ASTC_6x6_SRGB,9754,uncached,2,NVN_TEXTURE_FLAGS_SPARSE);
     run3d(9760,0,1);run3d(9761,NVN_TEXTURE_FLAGS_IMAGE,0);
     printf("t_initial_uncached: %d checks, %d failed\n",checks,failed);return failed!=0;}}

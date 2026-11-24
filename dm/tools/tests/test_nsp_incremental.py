@@ -128,7 +128,7 @@ class DeriveProfile(Base):
         self.assertEqual(game.Game(self.pdir).builds()['v65536']['main'], BID2)
         self.assertEqual(self.derive(), '1.1.0'); self.assert_kept()   # still kept on a third run
 
-    def test_a_module_the_version_does_not_ship_is_left_out(self):   # Mario Kart World 1.0.0 has no subsdk1, which the 1.8.0 profile loads
+    def test_a_module_the_version_does_not_ship_is_left_out(self):   # Another game 1.0.0 has no subsdk1, which the 1.8.0 profile loads
         (self.src / 'game.tsv').write_text((self.src / 'game.tsv').read_text().replace('modules\tmain\n', 'modules\tmain subsdk1 sdk\n'))
         nso(self.ex / 'ExeFS/sdk', BID)
         self.derive(mods=('main', 'subsdk1', 'sdk'))
@@ -139,7 +139,7 @@ class DeriveProfile(Base):
         nso(self.ex / 'ExeFS/subsdk1', BID2); self.derive(mods=('main', 'subsdk1', 'sdk'))   # a version that ships it keeps the profile's list
         self.assertEqual(game.Game(self.pdir).words('modules'), ['main', 'subsdk1', 'sdk'])
 
-    def test_a_module_main_imports_that_the_list_leaves_out_is_added(self):   # Absolum: subsdk2 was the movie module in 1.1.2; 1.2.1 ships it as subsdk0, and no subsdk2 (issue #1211)
+    def test_a_module_main_imports_that_the_list_leaves_out_is_added(self):   # Another game: subsdk2 was the movie module in 1.1.2; 1.2.1 ships it as subsdk0, and no subsdk2 (issue #1211)
         (self.src / 'game.tsv').write_text((self.src / 'game.tsv').read_text().replace('modules\tmain\n', 'modules\tmain subsdk2 sdk\n'))
         nso(self.ex / 'ExeFS/sdk', BID); nso(self.ex / 'ExeFS/subsdk0', 'ee' * 16); nso(self.ex / 'ExeFS/subsdk1', 'ff' * 16)
         self.imported = {'subsdk0': 'NintendoSDK_movie'}
@@ -169,7 +169,7 @@ class DeriveProfile(Base):
     def test_a_profile_is_never_derived_onto_its_own_folder(self):
         own = self.tmp / 'profile' / f'{TID:016X}'; shutil.copytree(self.src, own)   # this script's own profile, where its derived copy would go
         before = {p.name: p.read_bytes() for p in own.iterdir()}
-        with self.assertRaises(nsp.BuildError):   # before: the folder's files were deleted, then copied from themselves (Chained Echoes: FileNotFoundError, its tables gone)
+        with self.assertRaises(nsp.BuildError):   # before: the folder's files were deleted, then copied from themselves (another game: FileNotFoundError, its tables gone)
             nsp.derive_profile(game.Game(own), own, 'v65536', self.ex, ['main'], shader_only=True)
         self.assertEqual({p.name: p.read_bytes() for p in own.iterdir()}, before)
 
@@ -332,7 +332,7 @@ class DeriveProfile(Base):
             if name == 'heap': return nsp.heap_check(REPO, self.ex, patched, self.tmp / 'work', {}, logs, game.Game(self.pdir))
             return nsp.region_check(REPO, self.ex, patched, self.tmp / 'work', {}, logs, game.Game(self.pdir))
 
-    def test_a_check_boot_sets_the_depth_mode_the_game_calls(self):   # before the prebuild reads it (Super Mario RPG: 0 of 34 lookups hit an archive made at the default mode)
+    def test_a_check_boot_sets_the_depth_mode_the_game_calls(self):   # before the prebuild reads it (another game: 0 of 34 lookups hit an archive made at the default mode)
         with (self.src / 'game.tsv').open('a') as f: f.write('mem_alias\t0x80000000\nmem_reserve\t0x140000000\nmem_stack\t0x10000000\napp_pool\t0x40000000\n')
         for name in ('heap', 'region'):
             with self.subTest(check=name):
@@ -351,7 +351,7 @@ class DeriveProfile(Base):
         g = nsp.set_keys(game.Game(self.pdir), {'depth_mode': ('zero', 'seen')}, 'Address region check')
         self.assertEqual(dmsh_chain.inputs(g), before)
 
-    def test_a_provisional_profile_moves_to_dm_games_with_its_shader_inputs(self):   # Super Mario RPG: "(provisional profile)" in the note scheduled all 82,032 libraries again for identical shaders
+    def test_a_provisional_profile_moves_to_dm_games_with_its_shader_inputs(self):   # Another game: "(provisional profile)" in the note scheduled all 82,032 libraries again for identical shaders
         F = {'romfs': {'dirs': collections.Counter(), 'extb': {}, 'exts': {}, 'extc': {}, 'biggest': (0, 'big.bin')}, 'sdk': '14', 'program': None, 'mods': {'main': {'bid': BID}}}
         pdir = self.tmp / 'provisional' / f'{TID:016X}'
         with mock.patch.object(nsp.pg, 'guess', return_value={'modules': ('main', '')}):
@@ -440,7 +440,7 @@ class DeriveProfile(Base):
 
 class ProvisionalModules(Base):
     """provisional_modules: the subsdks the NROs import from go into modules, and the build row of this ExeFS's main names every module of modules the ExeFS has, which the host loads
-    (game.py build_modules). Mario Golf: Super Rush's movie module went into modules alone and stayed unloaded (PR #2215)"""
+    (game.py build_modules). Another game's movie module went into modules alone and stayed unloaded (PR #2215)"""
     SUB = 'ee' * 16
 
     def setUp(self):

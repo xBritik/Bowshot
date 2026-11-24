@@ -12,7 +12,7 @@
 
 // ---------- oe ----------
 HLE_FORCE("_ZN2nn2oe15SetCpuBoostModeENS0_12CpuBoostModeE", "CPU boost mode; the host does not scale clocks", void, h_oe_CpuBoost, int m) { (void)m; }
-// DisplayVersion = char[16] (the application's display version): the 16-byte string from control.nacp (+0x3060), as Horizon serves it (Fate/hollow ataraxia REMASTERED 1.0.2 ships
+// DisplayVersion = char[16] (the application's display version): the 16-byte string from control.nacp (+0x3060), as Horizon serves it (another game 1.0.2 ships
 // "1.0.2 b723" and parses the trailing build number 723 for its savedata version check); without control data (dumps / NUPs), falls back to the profile's build rows by main's build ID, else 1.0.0
 HLE_FORCE("_ZN2nn2oe17GetDisplayVersionEPNS0_14DisplayVersionE", "display version (from control.nacp, else the main build ID)", void, h_oe_DispVer, char *v) {
     char nacp[16];
@@ -57,7 +57,7 @@ HLE_FORCE("_ZN2nn4time39AsyncEnsureNetworkClockAvailabilityTask9GetResultEv", "n
 // The host has none of the original system shared fonts (0 standard / 1 Simplified Chinese / 2 Simplified Chinese extension / 3 Traditional Chinese / 4 Korean / 5 Nintendo extension) and uses stand-ins,
 //   one file per type in $DM_FONT_DIR (font_file), all made by dm/tools/make_shared_fonts.py: types 0-4 are unhinted cuts of one source font (macOS's Arial Unicode), each with its type's characters,
 //   type 5 holds button icons at the original private-use code points (make_ext_font.py; U+E0E0 = A button). A game sizes each nn::fontll engine's work memory for Nintendo's font of the type it loads,
-//   and Arial Unicode as it is needs more than that (Mario Tennis Fever's 50 KB engine: 56-60 KB, LoadFont 201, then nro0+0xaef8a8 crashed on a null pointer); the cuts fit, on the game's own buffers
+//   and Arial Unicode as it is needs more than that (another game's 50 KB engine: 56-60 KB, LoadFont 201, then nro0+0xaef8a8 crashed on a null pointer); the cuts fit, on the game's own buffers
 //   (docs/reference/services.md, "Shared font stand-ins sized for the game's font engines"). DM_SHARED_FONT (one font for types 0-4) and DM_SHARED_FONT_EXT (type 5) override the folder.
 //   A type with no file takes the standard font, and that one macOS's Arial Unicode as it is, with a yellow line: some games' engines cannot load it (that path does not exist on iOS; the app ships dm/font/).
 //   Without the extension font button icons draw as "?", everything else works.
@@ -117,7 +117,7 @@ static font_t font_get(int type) {
     return f;
 }
 // ScalableFontEngine::LoadFont takes the TTF itself, so a game that imports Decode (and gets the header, font_skip below) but hands the address straight to LoadFont gets it past the header:
-//   The Legend of Zelda: Echoes of Wisdom (1.1.0, SDK 20.5.1) records shared fonts as type 0, calls no Decode for them, and with the header LoadFont failed with 403 and SetFont with 301 on every font,
+//   Another game (1.1.0, SDK 20.5.1) records shared fonts as type 0, calls no Decode for them, and with the header LoadFont failed with 403 and SetFont with 301 on every font,
 //   every glyph lookup then returned null and main+0x8b37c crashed at address 0x38 (GitHub PR #55). Only the host's own BFTTF bases qualify; Decode's result (base + 8), game-owned font data and NULL pass as is.
 static const void *font_payload(const void *p) {
     const void *r = p;
@@ -137,12 +137,12 @@ HLE_FORCE("_ZN2nn6fontll18ScalableFontEngine8LoadFontEPcPKvjj", "shared font BFT
     return font_load(self, name, font_payload(data), index, capacity);
 }
 // The address points straight at the TTF (past the 8-byte header) and the size excludes the header, except for a game on SDK 11 or later whose main imports ScalableFontEngineHelper::Decode
-//   (dm_sdk_major, dm_game_imports; the profile's shared_font overrides). Super Mario 3D World + Bowser's Fury (SDK 10) records shared fonts as type 0 (main+0x975658), calls no Decode and hands the address
+//   (dm_sdk_major, dm_game_imports; the profile's shared_font overrides). Another game (SDK 10) records shared fonts as type 0 (main+0x975658), calls no Decode and hands the address
 //   as is to ScalableFontEngine::LoadFont; with the header LoadFont fails with error 403 and SetFont with 301, every lookup of the "?" glyph then misses, and main+0x6c73c0 crashes on a null pointer.
 //   Odyssey (7), Link's Awakening (8), Age of Calamity (9) and Three Houses (6) take it the same way. Unity's player hands the address and size of every type straight to FreeType's FT_New_Memory_Face
-//   (Patrick's Parabox, SDK 13, Unity 2020.3: main+0x2390b0 maps its OS font names Switch_Font_STD … Switch_Font_NIN_Extended to types 0-5, then main+0x23b2e0), as libnx homebrew does with the same pl offsets;
+//   (another game, SDK 13, Unity 2020.3: main+0x2390b0 maps its OS font names Switch_Font_STD … Switch_Font_NIN_Extended to types 0-5, then main+0x23b2e0), as libnx homebrew does with the same pl offsets;
 //   with the header every face failed, so text the game's own font lacks (the Japanese, Korean and Chinese names in its language menu) drew nothing. Its main imports no Decode, as none of the Unity games'
-//   does (Engage, Ace Attorney Investigations Collection, Brain Memory Training Academy); Wonder, Breath of the Wild, Tears of the Kingdom and Pokémon Legends: Z-A import it and pass the header to it
+//   does (Engage, another game, another game); Wonder, Breath of the Wild, Tears of the Kingdom and another game import it and pass the header to it
 static size_t font_skip(void) {
     static int skip = -1;
     if (skip < 0) {
@@ -160,7 +160,7 @@ HLE_FORCE("_ZN2nn2pl20GetSharedFontAddressENS0_14SharedFontTypeE", "shared font 
 // SDK 22's request to load the Switch 1 fonts into a buffer of the game's goes through the pl service, which the host does not serve, and any failure aborts (PR 1434): the stand-in fonts come from host memory, so the buffer is left as it is
 HLE_FORCE("_ZN2nn2pl17RequestLoadNxFontEPvm", "load the shared fonts into the game's buffer; the stand-in fonts need none of it", void, h_pl_ReqNxFont, void *buf, size_t size) { (void)buf; (void)size; }
 HLE_FORCE("_ZN2nn2pl17GetSharedFontSizeENS0_14SharedFontTypeE", "shared font size → 8-byte header + stand-in font file size (archive shared_font ttf: without the header)", size_t, h_pl_Size, int type) { font_t f = font_get(type); return f.p ? f.n - font_skip() : 0; }
-// Every shared font at once (Rhythm Heaven Groove, SDK 21): the SDK asks the pl service for GetSharedFontInOrderOfPriority and, when the fonts are loaded, fills min(count, max) SharedFontData {u32 type; const void *address; size_t size}
+// Every shared font at once (another game, SDK 21): the SDK asks the pl service for GetSharedFontInOrderOfPriority and, when the fonts are loaded, fills min(count, max) SharedFontData {u32 type; const void *address; size_t size}
 //   (0x18 bytes) with the shared memory base + each font's offset (sdk+0x40f270), then returns whether they are loaded; the game retries every 10 ms until they are (main+0x501f04). The service's offsets point past each font's 8-byte
 //   BFTTF header, and the game hands each address straight to ScalableFontEngine::LoadFont (main+0x501ff0), so this always gives the TTF itself, whatever the profile's shared_font. Unhooked, the SDK opens the pl service and aborts
 //   in nn::sm::Initialize. All six types in their numeric order, whatever the language, as the pl service reimplementations do; a type with no stand-in of its own gives the standard font
@@ -174,7 +174,7 @@ HLE_FORCE("_ZN2nn2pl13GetSharedFontEPiPNS0_14SharedFontDataEiNS_8settings12Langu
     }
     *count = n; return n > 0;
 }
-// One built-in font (SDK 21's pl, Switch 2 and Switch 1 overloads; Splatoon Raiders, sdk+0x59a2b0 and sdk+0x59a670): fills {u8, u8, pad, const void *address, u64 size} from the service's reply and returns whether
+// One built-in font (SDK 21's pl, Switch 2 and Switch 1 overloads; another game, sdk+0x59a2b0 and sdk+0x59a670): fills {u8, u8, pad, const void *address, u64 size} from the service's reply and returns whether
 //   it is loaded. Unhooked, the SDK connects to pl:u and aborts. The two bytes are the low bits of the reply's first word, which the game does not read (main+0x36c8518). Types 0-5 are the shared font types, by the
 //   file names main maps to them (main+0x36c8020: nintendo_udsg-r_std, _org_zh-cn, _ext_zh-cn, udjxh-db_zh-tw, udsg-r_ko, nintendo_ext). The address is the same form as GetSharedFontAddress
 typedef struct { uint8_t type, flag, pad[6]; const void *address; uint64_t size; } pl_builtin_font_t;
@@ -185,8 +185,8 @@ static unsigned pl_builtin_font(pl_builtin_font_t *out, int type) {
 }
 HLE_FORCE("_ZN2nn2pl18GetBuiltInFontDataEPNS0_17BuiltInFontDataNxENS0_17BuiltInFontTypeNxEb", "one built-in font (Switch 1 type): the stand-in TTFs", unsigned, h_pl_BuiltInNx, pl_builtin_font_t *out, int type, unsigned b) { (void)b; return pl_builtin_font(out, type); }
 HLE_FORCE("_ZN2nn2pl18GetBuiltInFontDataEPNS0_20BuiltInFontDataOunceENS0_20BuiltInFontTypeOunceEb", "one built-in font (Switch 2 type): the stand-in TTFs", unsigned, h_pl_BuiltInOunce, pl_builtin_font_t *out, int type, unsigned b) { (void)b; return pl_builtin_font(out, type); }
-// Several built-in fonts by a list of types (SDK 21's pl; Kirby and the Forgotten Land's Nintendo Switch 2 Edition, 04004D300C5AE001, calls the Switch 2 overload at boot, sdk+0x4fc780 in its v65536;
-//   Splatoon Raiders' sdk+0x59a3c0 and, for Switch 1 types, sdk+0x59a720): the SDK takes at most 6 Switch 2 or 7 Switch 1 types, sends them to pl:u as one byte each, fills *count entries of
+// Several built-in fonts by a list of types (SDK 21's pl; another game's Nintendo Switch 2 Edition, 04004D300C5AE001, calls the Switch 2 overload at boot, sdk+0x4fc780 in its v65536;
+//   Another game' sdk+0x59a3c0 and, for Switch 1 types, sdk+0x59a720): the SDK takes at most 6 Switch 2 or 7 Switch 1 types, sends them to pl:u as one byte each, fills *count entries of
 //   0x18 bytes in order, each as GetBuiltInFontData fills one, and returns whether the fonts are loaded; a failed request aborts. The Switch 2 overload has the service write *count whatever
 //   the answer, the Switch 1 overload writes it only when the fonts are loaded. Unhooked, both abort on pl:u as GetBuiltInFontData does. Each type is filled as the takeover above fills it,
 //   in the order asked; a type with no stand-in font is left out of the count
@@ -204,8 +204,8 @@ HLE_FORCE("_ZN2nn2pl21GetBuiltInFontDataSetEPiPNS0_17BuiltInFontDataNxEPKNS0_17B
 }
 // Whether running on a Switch 2 (codename Ounce) (returns bool): the host reports false, as a Switch 1. Mario 1.2.1 uses it to decide whether to count add-on content (the upgrade pack) and suggest the Switch 2 Edition
 HLE_FORCE("_ZN2nn2pl16IsRunningOnOunceEv", "running on Switch 2: no", unsigned, h_pl_IsOunce, void) { return 0; }
-// The Legend of Zelda: Breath of the Wild (SDK 20): asks for the shared fonts to be loaded before querying their state; the host's stand-in fonts are there on demand. VR mode (the Labo VR goggles): the host never enters VR; the query is always false,
-// and BeginVrMode returns what the SDK's own returns when pctl::CheckStereoVisionPermission refuses (hle_misc.c), 0xd08e (BotW's sdk+0x412970; Super Smash Bros. Ultimate tests it with cbz); EndVrMode is a no-op
+// Another game (SDK 20): asks for the shared fonts to be loaded before querying their state; the host's stand-in fonts are there on demand. VR mode (the Labo VR goggles): the host never enters VR; the query is always false,
+// and BeginVrMode returns what the SDK's own returns when pctl::CheckStereoVisionPermission refuses (hle_misc.c), 0xd08e (BotW's sdk+0x412970; another game tests it with cbz); EndVrMode is a no-op
 HLE_FORCE("_ZN2nn2pl21RequestSharedFontLoadENS0_14SharedFontTypeE", "request shared font load; the stand-in font is always available, no-op", void, h_pl_ReqLoad, int type) { (void)type; }
 HLE_FORCE("_ZN2nn2pl8IsVrModeEv", "VR mode: no", unsigned, h_pl_IsVr, void) { return 0; }
 HLE_FORCE("_ZN2nn2pl11BeginVrModeEv", "enter VR mode (through am); the host does not: stereo vision not permitted", Result, h_pl_BeginVr, void) { LOG("pl::BeginVrMode (the host does not enter VR)"); return 0xd08e; }
@@ -217,7 +217,7 @@ HLE_FORCE("_ZN2nn2ec40ShowShopApplicationInformationForUpgradeENS0_14UpgradeEdit
 HLE_FORCE("_ZN2nn2ec40ShowShopApplicationInformationForUpgradeENS0_14UpgradeEditionERKNS_7account10UserHandleE", "shop upgrade page (given user), out of scope; no-op", void, h_ec_ShowUpgU, int ed, const void *user) { DM_APPLET("shop"); (void)user; LOG("ec::ShowShopApplicationInformationForUpgrade(%d, user) (cut)", ed); }
 
 // ---------- nfc: the NFC library beside nfp ----------
-// A game can call nn::nfc itself next to nn::nfp (Hyrule Warriors: Definitive Edition, on entering amiibo); left in the SDK, nfc::Initialize connects to nfc:user, which the host lacks → abort.
+// A game can call nn::nfc itself next to nn::nfp (another game, on entering amiibo); left in the SDK, nfc::Initialize connects to nfc:user, which the host lacks → abort.
 // The host answers as a console whose NFC is switched off: the game shows its own "NFC is disabled" message. Open: nfp below answers as a console with NFC on and no amiibo,
 // so a game that asks both gets two different consoles; answering IsNfcEnabled true would match nfp, but the game's amiibo path after it is untested (docs/reference/services.md).
 static _Atomic int g_nfc_state;   // 0 uninitialized, 1 initialized
@@ -247,7 +247,7 @@ static Result nfp_no_tag(const char *what) {
     return NFP_RES_TAG_NOT_FOUND;
 }
 HLE_FORCE("_ZN2nn3nfp10InitializeEv", "amiibo library init; the host has one NFC device that never finds a tag", void, h_nfp_Init, void) { atomic_store(&g_nfp_lib, 1); LOG("nfp::Initialize: the host has one NFC device and finds no amiibo tag"); }
-// Kirby Air Riders initializes it with this one instead; on the host the extended application area is no different, as no tag ever has one
+// Another game initializes it with this one instead; on the host the extended application area is no different, as no tag ever has one
 HLE_FORCE("_ZN2nn3nfp37InitializeWithExtendedApplicationAreaEv", "amiibo library init with the extended application area; the same device that never finds a tag", void, h_nfp_InitExt, void) { atomic_store(&g_nfp_lib, 1); LOG("nfp::InitializeWithExtendedApplicationArea: the host has one NFC device that never finds a tag"); }
 HLE_FORCE("_ZN2nn3nfp29AttachAvailabilityChangeEventEPNS_2os15SystemEventTypeE", "NFC availability change event; bound to a kernel event, never signalled", void, h_nfp_AttachAvail, void *ev) { hle_bind_system_event(ev, 0); }
 HLE_FORCE("_ZN2nn3nfp11ListDevicesEPNS0_12DeviceHandleEPii", "NFC device list: one device", Result, h_nfp_List, NfpDeviceHandle *out, int *n, int max) {
@@ -261,7 +261,7 @@ HLE_FORCE("_ZN2nn3nfp14GetDeviceStateERKNS0_12DeviceHandleE", "device state: ini
 HLE_FORCE("_ZN2nn3nfp10GetTagInfoEPNS0_7TagInfoERKNS0_12DeviceHandleE", "tag info: no tag", Result, h_nfp_TagInfo, void *out, const NfpDeviceHandle *h) { (void)out; (void)h; return nfp_no_tag("GetTagInfo"); }
 HLE_FORCE("_ZN2nn3nfp12GetModelInfoEPNS0_9ModelInfoERKNS0_12DeviceHandleE", "model info: no tag", Result, h_nfp_ModelInfo, void *out, const NfpDeviceHandle *h) { (void)out; (void)h; return nfp_no_tag("GetModelInfo"); }
 HLE_FORCE("_ZN2nn3nfp5MountERKNS0_12DeviceHandleENS0_9ModelTypeENS0_11MountTargetE", "mount tag: no tag", Result, h_nfp_Mount, const NfpDeviceHandle *h, int model, int target) { (void)h; (void)model; (void)target; return nfp_no_tag("Mount"); }
-// Another group The Legend of Zelda: Breath of the Wild (SDK 20) uses: tag activate / deactivate events (bound to a kernel event that never fires; without the take-over the SDK's code reads a null pointer at sdk+0x3f2a78), the two-argument Mount,
+// Another group another game (SDK 20) uses: tag activate / deactivate events (bound to a kernel event that never fires; without the take-over the SDK's code reads a null pointer at sdk+0x3f2a78), the two-argument Mount,
 //   Unmount, reading common / register info (all answered as no tag), the library state (1 = initialized) and Finalize
 HLE_FORCE("_ZN2nn3nfp19AttachActivateEventEPNS_2os15SystemEventTypeERKNS0_12DeviceHandleE", "tag placed event; bound to a kernel event, never signalled", Result, h_nfp_AttachAct, void *ev, const NfpDeviceHandle *h) { (void)h; hle_bind_system_event(ev, 0); return RES_OK; }
 HLE_FORCE("_ZN2nn3nfp21AttachDeactivateEventEPNS_2os15SystemEventTypeERKNS0_12DeviceHandleE", "tag removed event; bound to a kernel event, never signalled", Result, h_nfp_AttachDeact, void *ev, const NfpDeviceHandle *h) { (void)h; hle_bind_system_event(ev, 0); return RES_OK; }
@@ -288,7 +288,7 @@ HLE_FORCE("_ZN2nn3nfp29StartNicknameAndOwnerSettingsEPNS0_12DeviceHandleEPbPNS0_
 
 // ---------- vi: vsync event ----------
 // The game passes a SystemEventType; after binding, a host thread fires it at 60 Hz, at 120 while 120 fps holds one tick of 1/120 s (nvn_vsync_hz; DM_VSYNC_HZ fixes another rate). While the display link presents, the event follows its ticks, as a
-// Switch's follows its display: Super Mario Galaxy 2 runs the Wii's VI retrace (and with it each emulated frame) on this event, and on a clock of the host's own the frames drifted
+// Switch's follows its display: another game runs the Wii's VI retrace (and with it each emulated frame) on this event, and on a clock of the host's own the frames drifted
 // against the screen's vsyncs, two in some display-link ticks and none in others (iPhone: about one tick in seven, a stutter the frame-rate counter showed as 50 to 60).
 // One thread per binding lifetime: repeated requests must not double its rate.
 // A destroyed binding retires its worker even if another service reuses the same
@@ -322,7 +322,7 @@ static void *vsync_thread(void *arg) {
     }
     free(v); return NULL;
 }
-// Image memory needed for an indirect layer (an applet's picture handed to the game to draw, such as the inline keyboard): on hardware it asks the vi service. Computed as linear RGBA8, 4 KB aligned (Super Mario 3D World + Bowser's Fury's inline keyboard asks for 1280x720)
+// Image memory needed for an indirect layer (an applet's picture handed to the game to draw, such as the inline keyboard): on hardware it asks the vi service. Computed as linear RGBA8, 4 KB aligned (another game's inline keyboard asks for 1280x720)
 HLE_FORCE("_ZN2nn2vi33GetIndirectImageMemoryRequirementEPmS1_ii", "indirect layer image memory: RGBA8 linear, 4 KB aligned", Result, h_vi_IndirectReq, size_t *size, size_t *align, int w, int h) {
     *size = ((size_t)(w > 0 ? w : 0) * (size_t)(h > 0 ? h : 0) * 4 + 0xfff) & ~(size_t)0xfff; *align = 0x1000; return RES_OK;
 }
@@ -356,7 +356,7 @@ HLE_FORCE("_ZN2nn4diag6detail9AbortImplEv", "game aborted", void, h_diag_Abort0,
 HLE_FORCE("_ZN2nn4diag6detail9AbortImplEPKNS_6ResultE", "game aborted (with Result)", void, h_diag_AbortR, const uint32_t *r) { diag_abort(r ? *r : 0, dm_bigstack_caller(__builtin_return_address(0))); }
 HLE_FORCE("_ZN2nn4diag12GetBacktraceEPmi", "backtrace; the host provides none (0 frames)", int, h_diag_Bt, uint64_t *out, int n) { (void)out; (void)n; return 0; }
 // An assert, a C++ exception that nothing caught (std::terminate) or an SDK check reached VAbortImpl: print where it came from and the message's FORMAT, which
-// names the failure on its own ("libc++abi: terminating due to uncaught exception of type ...", Well Dweller's first boot). The arguments the format would fill
+// names the failure on its own ("libc++abi: terminating due to uncaught exception of type ...", another game's first boot). The arguments the format would fill
 // are not expanded: the host cannot read a __va_list the guest built (its register save area holds the guest's general-purpose registers, and the pointers in
 // it are the ones libc++abi passed by value, so the host's vsnprintf prints rubbish where %s is).
 HLE_FORCE("_ZN2nn4diag6detail10VAbortImplEPKcS3_S3_iPKNS_6ResultEPKNS_2os17UserExceptionInfoES3_RSt9__va_list", "SDK abort message", void, h_diag_VAbort,
@@ -372,7 +372,7 @@ HLE_FORCE("_ZN2nn4diag13GetSymbolNameEPcmm", "symbol name; the host provides non
 // The settings-service fallback lists the first 18 codes. Make and the comparisons also know Polish (18) and Thai (19).
 enum { LANG_FALLBACK_COUNT = 18 };
 static const char *const k_lang_code[] = {"ja", "en-US", "fr", "de", "it", "es", "zh-CN", "ko", "nl", "pt", "ru", "zh-TW", "en-GB", "fr-CA", "es-419", "zh-Hans", "zh-Hant", "pt-BR", "pl", "th"};
-// The real operators compare bytes with MakeLanguageCode(lang). Older games (Super Mario Odyssey, SDK 7.3.2) compare
+// The real operators compare bytes with MakeLanguageCode(lang). Older games (another game, SDK 7.3.2) compare
 // GetDesiredLanguage's code for Chinese only with Language::Chinese (6) and Taiwanese (11), so the system must hand
 // them zh-CN / zh-TW, while DM_LANG carries zh-Hans / zh-Hant (the NSP script's spelling for the control data's
 // Simplified and Traditional Chinese). Which spelling the system picks for a title is not known: both spellings of
@@ -392,7 +392,7 @@ static unsigned language_code_matches(int32_t lang, const char *code) {
 HLE_FORCE("_ZN2nn8settingseqERKNS0_8LanguageERKNS0_12LanguageCodeE", "language enum vs. language code comparison (returns bool)", unsigned, h_set_LangEq, const int32_t *lang, const char *code) {
     return language_code_matches(*lang, code);
 }
-// The reversed comparison and making a code from the enum (Super Mario 3D World + Bowser's Fury, SDK 10: its first comparison in nnMain connected to the settings service)
+// The reversed comparison and making a code from the enum (another game, SDK 10: its first comparison in nnMain connected to the settings service)
 HLE_FORCE("_ZN2nn8settingseqERKNS0_12LanguageCodeERKNS0_8LanguageE", "language code vs. language enum comparison (returns bool)", unsigned, h_set_LangEq2, const char *code, const int32_t *lang) {
     return language_code_matches(*lang, code);
 }
@@ -408,14 +408,14 @@ static int settings_language_count(void) {
     return major > 0 && major < 4 ? 15 : LANG_FALLBACK_COUNT;
 }
 // The legacy settings-service list in nn::settings::Language order. The loader leaves verified self-contained SDK implementations bound to their guest exports.
-// Returns how many were written (Paper Mario: The Thousand-Year Door, SDK 15:
+// Returns how many were written (another game, SDK 15:
 // nnMain asks for 32 and takes the index of GetDesiredLanguage's code in the list as its language, main+0x327888; the SDK's own version aborted in sm::Initialize)
 HLE_FORCE("_ZN2nn8settings25GetAvailableLanguageCodesEPNS0_12LanguageCodeEi", "available language codes (settings-service fallback)", int, h_set_AvailLang, char *out, int count) {
     int n = 0, limit = settings_language_count();
     for (; n < count && n < limit; n++) { memset(out + 8 * n, 0, 8); strncpy(out + 8 * n, k_lang_code[n], 8); }
     return n;
 }
-// How many codes that list holds (Catherine: Full Body, SDK 8.2.1: nnMain compares LanguageCode::Make(0 … count − 1) with GetDesiredLanguage's code and keeps the matching index,
+// How many codes that list holds (another game, SDK 8.2.1: nnMain compares LanguageCode::Make(0 … count − 1) with GetDesiredLanguage's code and keeps the matching index,
 // main+0x117590; the SDK's own version aborted in sm::Initialize)
 HLE_FORCE("_ZN2nn8settings29GetAvailableLanguageCodeCountEv", "number of available language codes (settings-service fallback)", int, h_set_AvailLangN, void) {
     return settings_language_count();

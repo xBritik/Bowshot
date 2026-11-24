@@ -1,6 +1,6 @@
 // The per-thread address → pool cache (pc_get / pc_put, behind mtl_addr and mtl_gpu_addr) has a table direct-mapped by 64 KB region beside the one by 4 KB page: an address in
 // another page of a region already seen is found there, with no lock and no walk of the pool index, when the page table has not seen the page and the last pools found are others
-// (Donkey Kong Bananza binds from about 3,500 pools). An entry answers only for addresses its pool holds, and neither table outlives a change of the pools (g_pool_gen): a pool
+// (another game binds from about 3,500 pools). An entry answers only for addresses its pool holds, and neither table outlives a change of the pools (g_pool_gen): a pool
 // removed or replaced is never found through a region it used to cover
 #include "../nvn/nvn_mtl.m"
 uint64_t g_t0_ns;

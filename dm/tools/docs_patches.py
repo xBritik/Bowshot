@@ -78,9 +78,9 @@ HOST_BINDING = [
     ('k_ue', '', 'feae83dc9e9fb34c77d0a62f1fa9ae9f', {'what': "UE3's GMalloc setup skipped, the host allocator in (hle_uemalloc.c)", 'now': 'build', 'goal': 'game', 'purpose': 'address space',
      'why': "UE3 inlines the allocator's constructor into the GMalloc setup and has its own vtable layout (25 slots, 32-bit sizes), so the Unreal 4/5 discovery does not apply"}),
     ('k_nier_dr', '', '', {'what': "NieR's frame interval and dynamic-resolution floor at fixed addresses", 'now': 'build', 'goal': 'game', 'purpose': 'frame rate',
-     'checked': "both releases' mains, where these rows were found; the global main's sites mapped into ASTRAL CHAIN and Bayonetta 1-3 (2026-11-09)",
+     'checked': "both releases' mains, where these rows were found; the global main's sites mapped into another game and another game 1-3 (2026-11-09)",
      'why': "the game's own display object; the Asian release's function is the global one's 0x13c0 further on, so the rewriter's function match could give the host both releases' "
-            "addresses. No PlatinumGames sibling shares the code: none of its sites has an exact match in ASTRAL CHAIN or Bayonetta 1-3 (nso_fnmap, 2026-11-09)",
+            "addresses. No PlatinumGames sibling shares the code: none of its sites has an exact match in another game or another game 1-3 (nso_fnmap, 2026-11-09)",
      'kept': "1.0.3 (v131072) is the newest update of both releases and likely their last: a function match would serve no other build; the rewriter would also need matched rules that write fixups and declare capabilities, a new mechanism (2026-11-09)"}),
 ]
 # Translator rules keyed by one shader's code hash: (the start of the rule's comment, entry)
@@ -97,7 +97,7 @@ DEFAULT_SOON = 'a default for every game after `regress.py check` on the games'
 SWITCH_BINDING = [
     ('draw_barriers', '', {'what': 'draw passes ordered by the game\'s own barriers', 'now': 'game', 'goal': 'host', 'purpose': 'frame rate', 'why': f'what NVN specifies: {DEFAULT_SOON}'}),
     ('mem_map_limit', '', {'what': 'MapPhysicalMemory limited to the application pool', 'now': 'game', 'goal': 'host', 'purpose': 'memory',
-     'why': "Horizon's limit; off by default because Ace Attorney Investigations Collection maps a little more than its profile's 1 GB pool, which is the thing to fix"}),
+     'why': "Horizon's limit; off by default because another game maps a little more than its profile's 1 GB pool, which is the thing to fix"}),
     ('alloc_big_align', '', {'what': "StandardAllocator blocks of 64 KB and more aligned to 64 KB", 'now': 'game', 'goal': 'host', 'purpose': 'memory',
      'why': "the cause is a memory pool's GPU address, big-page aligned on hardware and the CPU address here: pool GPU addresses aligned as hardware does, or this alignment for every game"}),
     ('vconv_range', '', {'what': 'CPU vertex conversion over the vertices a draw reads', 'now': 'game', 'goal': 'host', 'purpose': 'power',
@@ -304,7 +304,7 @@ def page():
             for off, gate, word, why in obs.get(bid, []): lines.append(f'  - gate {gate} at `+{off:#x}`: {why}')
             if bid in fs:
                 sites, scale, _, fs_caps = frame_step_sites(fs[bid]); n_fs += len(sites)
-                fold = len(sites) > 12   # a long list (ASTRAL CHAIN's) folds
+                fold = len(sites) > 12   # a long list (another game's) folds
                 if fold: lines += [f'  <details><summary>{len(sites)} frame-step sites</summary>', '']
                 for off, why in sites: lines.append(f'  - frame step `+{off:#x}`: {why}')
                 if fold: lines += ['', '  </details>', '']

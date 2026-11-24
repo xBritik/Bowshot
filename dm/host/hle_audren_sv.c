@@ -1,4 +1,4 @@
-// audren:u, the audio renderer service, for an SDK whose renderer is only its client. SDK 1.3.1 (Rayman Legends: Definitive Edition 1.2) has no renderer in the process: no
+// audren:u, the audio renderer service, for an SDK whose renderer is only its client. SDK 1.3.1 (another game 1.2) has no renderer in the process: no
 // ExecuteAudioRendererRendering and no DFC manager, and nn::audio connects to audren:u (CreateAudioRendererManagerByHipc, sdk+0x1641dc) as on Horizon. hle_sf.c hands out the session and
 // this file answers it the way the service does, so the SDK's own client keeps its own state: it builds each update, reads the answer back and checks it (RequestUpdateAudioRenderer,
 // sdk+0x1617d0). Every layout below was read off that client.

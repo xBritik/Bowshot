@@ -405,7 +405,7 @@ def ps_libraries(key, msl, full, bindings):
     """A pixel shader's libraries, cut from one compile through the MSL-keyed Metal cache (dmsh_side.cut): <key>_b with its own entry points, <key>_bx with its alpha test and logic
     operation ones (dmsh_side.unit) and its typed-output entry point main0_u (dmsh_entry.fs_uint, which every pixel shader of a known shape has and few pipelines take, with its own alpha
     test and logic operation), <key>_bf with its readable-tile version main0_f (dmsh_fetch.fold; a shader without a rewritable sample only when bf_want.tsv lists it). The readable-tile
-    version was a source and a Metal compile of its own (13,666 of Mario Kart 8 Deluxe's 29,651 shaders). msl: the file of its plain source, full; bindings: its reflection's.
+    version was a source and a Metal compile of its own (13,666 of another game's 29,651 shaders). msl: the file of its plain source, full; bindings: its reflection's.
     What does not build is left out, and only that: a unit whose readable-tile version does not build is compiled again without it, one that does not build at all gives <key>_b from the
     plain source, each with a red line. A library a shader does not get is removed (a stale one of an earlier build), and the host draws without it. → what the reflection says of them.
     Raises CalledProcessError when the plain source does not compile"""
@@ -508,7 +508,7 @@ def ps_omap(code):
     NaN above Ocarina of Time's horizon to the missing per-component mask (their commit 79c1516; Ocarina's agl_common depth pass has map 0x10f: output 0 RGBA, output 2 R only)"""
     return struct.unpack_from('<I', code, 18 * 4)[0] if len(code) >= 0x50 else None
 
-NVN2_STAGE_INDEX = {'vs': 0, 'hs': 1, 'ms': 1, 'ds': 2, 'gs': 3, 'ps': 4}   # NVN2 graphics stage indices (PRAGMATA's banks: vertex c[25], hull and mesh c[26], domain c[27], geometry c[28], pixel c[29])
+NVN2_STAGE_INDEX = {'vs': 0, 'hs': 1, 'ms': 1, 'ds': 2, 'gs': 3, 'ps': 4}   # NVN2 graphics stage indices (another game's banks: vertex c[25], hull and mesh c[26], domain c[27], geometry c[28], pixel c[29])
 
 def job_for(key, name, rec, w):
     ci = rec.find(bytes.fromhex('34127698'), 0x38); code = rec[0x38:ci]; stage = name[:2]
@@ -526,9 +526,9 @@ def job_for(key, name, rec, w):
         # compute lays out its driver constants in c[0] per shader: the control section gives its push constants' words (+0xa9), counts its uniform buffer, storage
         # buffer, texture, separate texture and separate sampler entries (+0xb1, +0xb2, +0xb3, +0xb4, +0xb5; images, +0xb6, come last) and gives the size (+0xba);
         # the translator maps them to c[24] and NVN's fixed tables (InstEmitAmpere.cs AMapC0). Graphics keeps NVN's tables.
-        # +0xaa counts the words of push block 1 (NVN2's own accessor reads +0xa9 + block): what the game pushes there (PRAGMATA: {address, size} buffer entries, or 8-byte handles),
+        # +0xaa counts the words of push block 1 (NVN2's own accessor reads +0xa9 + block): what the game pushes there (another game: {address, size} buffer entries, or 8-byte handles),
         # laid out right after push block 0, before the uniform entries; the translator maps it to c[24] + DMSH_PUSH_SIZE (dmsh_abi.h DMSH_PUSH_BLOCKS). With it every one of
-        # PRAGMATA's 6,856 compute shaders adds up to its size (+0xba); Donkey Kong Bananza's and Star Fox's sizes add up without it, as +0xaa is 0 there
+        # Another game's 6,856 compute shaders adds up to its size (+0xba); another game's and another game's sizes add up without it, as +0xaa is 0 there
         if stage == 'cs': extra['nvn2_cs'] = [rec[ci + 0xb1], rec[ci + 0xb2], rec[ci + 0xb3], struct.unpack_from('<H', rec, ci + 0xba)[0], rec[ci + 0xa9] * 4, rec[ci + 0xb4], rec[ci + 0xb5], rec[ci + 0xaa] * 4]
         # a graphics stage reads the buffer entries the game pushes into its push block 1 + stage index from a bank of its own, c[25 + stage index]; the translator maps
         # that bank onto the block in c[24] (dmsh_abi.h DMSH_NVN2_STAGE_BANK). A task shader's bank has not been seen
@@ -570,7 +570,7 @@ def tf_layout(key, ctl):
     Each stream has up to 128 output-location bytes and matching component-count
     bytes, captured from x on and interleaved in that order. Pokémon Legends:
     Z-A uses one output per stream, Tropical Freeze two in one stream, and
-    Xenoblade Chronicles 3 uses up to eleven.
+    another game uses up to eleven.
     Unknown layouts are reported and left without a capture entry."""
     strides = struct.unpack_from('<4H', ctl, 0x6dc)
     if not any(strides): return None
@@ -714,7 +714,7 @@ def gs_slice(spv):
 SG_OPS = {333: 'true', 334: 'pred', 335: 'pred', 336: 'true', 337: 'value', 338: 'value', 339: 'ballot', 345: 'value', 346: 'value', 347: 'value', 348: 'value'}   # OpGroupNonUniform* → its one-lane value
 SG_BUILTINS = {36: 'one', 41: 'zero', 4416: 'one4', 4417: 'one4', 4418: 'zero4', 4419: 'one4', 4420: 'zero4'}   # SubgroupSize, SubgroupLocalInvocationId, Eq / Ge / Gt / Le / Lt masks
 def spv_single_lane(path):
-    """Metal has no SIMD-group functions in vertex functions, and SPIRV-Cross's subgroup emulation covers only Elect. Monster Hunter Rise's vertex shaders (about 4%) scalarize uniform loads:
+    """Metal has no SIMD-group functions in vertex functions, and SPIRV-Cross's subgroup emulation covers only Elect. Another game's vertex shaders (about 4%) scalarize uniform loads:
     ballot the active lanes, shuffle the first lane's value to all, and take a fast path when all agree. With a subgroup of one lane that is exact: the ballot is the lane's own bit, shuffles and
     broadcasts return the lane's own value, all / any are the predicate, all-equal and elect are true, the lane ID is 0, the size 1 and the masks follow. The SPIR-V is rewritten that way
     (the builtin variables, their decorations and the subgroup capabilities removed). → True when rewritten, False when there is nothing to do or an operation it does not cover"""
@@ -725,7 +725,7 @@ def spv_single_lane(path):
     if not any(op(x) in SG_OPS or (op(x) == 71 and len(x) > 3 and x[2] == 11 and x[3] in SG_BUILTINS) for x in ins): return False
     if any(340 <= op(x) <= 366 and op(x) not in SG_OPS for x in ins): return False   # other subgroup operations (bit counts, arithmetic): not covered
     bvar = {x[1]: SG_BUILTINS[x[3]] for x in ins if op(x) == 71 and len(x) > 3 and x[2] == 11 and x[3] in SG_BUILTINS}
-    # A mask component can be loaded through an input pointer (Xenoblade Chronicles 3's prefix ballot), rather than loading the whole vector first. Keep its index and extract
+    # A mask component can be loaded through an input pointer (another game's prefix ballot), rather than loading the whole vector first. Keep its index and extract
     # from the constant vector at the load; removing only the builtin variable would leave a dangling pointer. Other access-chain forms remain unsupported.
     bptr = {}
     for x in ins:
@@ -735,7 +735,7 @@ def spv_single_lane(path):
     if any(op(x) in (65, 66) and len(x) > 3 and x[3] in bptr for x in ins): return False
     uint = next((x[1] for x in ins if op(x) == 21 and x[2:4] == [32, 0]), None); boolt = next((x[1] for x in ins if op(x) == 20), None)
     uvec4 = next((x[1] for x in ins if op(x) == 23 and x[2] == uint and x[3] == 4), None)
-    # A type the module lacks is declared with the constants (PRAGMATA's domain shaders 859225c91a5fe2b2 and f1ad8f78c6c1551e read only the lane ID and have no uvec4)
+    # A type the module lacks is declared with the constants (another game's domain shaders 859225c91a5fe2b2 and f1ad8f78c6c1551e read only the lane ID and have no uvec4)
     bound = hdr[3]; c = {}; types = []
     if uint is None: uint = bound; bound += 1; types.append([21 | 4 << 16, uint, 32, 0])
     if boolt is None: boolt = bound; bound += 1; types.append([20 | 2 << 16, boolt])
@@ -1009,7 +1009,7 @@ keys = [key for key in keys if key not in RT_KEYS]   # one universal RT library 
 NJ = int(os.environ.get('J', '8'))
 PROCS = 0 if SOURCE_ONLY else int(os.environ.get('DMSH_PROCS', NJ))   # processes that finish shaders (fin_worker); 0: NJ threads of this one
 BATCH = 4 * NJ   # shaders translated and finished together: the next batch is translated while this one is finished, and a shader's working files go when it is (fin).
-# Minecraft Dungeons II, 15,826 shaders: at most 3,279 files under the build folder with batches of 256 removed whole, 68,230 before batches (Octopath Traveler 0's stopped build)
+# Another game, 15,826 shaders: at most 3,279 files under the build folder with batches of 256 removed whole, 68,230 before batches (Octopath Traveler 0's stopped build)
 # A full build starts from no shader outputs, a partial one from none of the keys it builds, so what a run leaves is what it built: every output is restored from the cache anyway.
 # The chain version is the same whatever the profile's tables, so a key that left the map, a shader that no longer builds or a variant no longer made would keep an old library.
 # The stamp goes too, and a full build writes it at the end; a partial build keeps it only while it names the profile's current inputs.

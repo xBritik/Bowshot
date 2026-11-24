@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Camelot's archive (Mario Tennis Fever; Mario Golf: Super Rush has an older layout of it, see "The 2021 layout" below): the whole game in one RomFS file, rom:/42, magic 'CRA.', its index built into the game's code.
+"""Camelot's archive (another game; another game has an older layout of it, see "The 2021 layout" below): the whole game in one RomFS file, rom:/42, magic 'CRA.', its index built into the game's code.
 The file starts with its own table of chunks (u32 'CRA.', u16 0x200, u16 0x100, u32 0x2a0, u32 length, then 16-byte rows); nothing here needs it, as the game's NRO lists the files itself:
   · a file table in read-only data, found by the code that reads it (index_of): one i16 per file, then records at table + i16[i] + i × 18 + 2 × count, each:
     +0 u16 how far back the record holding the path's prefix is, +2 u8 the prefix's length, +3 i8 a suffix's index (-1 none), +4 u32 size ^ 0xff00ff00, +8 u40 offset ^ 0xff00ff00ff, +0xd the rest of the
@@ -115,7 +115,7 @@ def index_of(nro):
     return table, count, sums, names
 
 
-# ---- The 2021 layout (Mario Golf: Super Rush 4.0.0) ----
+# ---- The 2021 layout (another game 4.0.0) ----
 # The same archive two engine generations earlier: rom:/42 starts with the same 'CRA.' header and tables nothing needs, and its file table is again in the NRO's read-only data, found by the code
 # that reads it (index_2021): one i32 per file, then records at table - i32[i], each:
 #   +0 u16 how far back the record holding the path's prefix is, +2 u8 the prefix's length, +4 u32 size ^ 0xce462eca, +8 u32 checksum, +0xc u40 offset ^ 0x46f636762a, +0x11 the rest of the path

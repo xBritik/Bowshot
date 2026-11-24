@@ -181,7 +181,7 @@ static void probe_add(module_t *m, uint64_t off, long dump, probe_fn fn) {
 // and every store that faults on it is carried out by the fault handler through a writable alias of the page (STR / STUR / STP of general and SIMD registers in their immediate, pre- and
 // post-index forms, register-offset STR, DC ZVA), so a burst of stores to a busy page cannot slip past. A store reaching the watched bytes prints the thread, pc, lr, the store address,
 // the old and new values and a backtrace. Any other instruction (atomics, exclusives) is logged once per pc and the page is unprotected for it, then protected again a millisecond later
-// (a store in that millisecond goes unseen). STEINS;GATE RE:BOOT: the engine object's page takes bursts of stores every frame, and a watch that unprotected the page for each fault missed
+// (a store in that millisecond goes unseen). Another game: the engine object's page takes bursts of stores every frame, and a watch that unprotected the page for each fault missed
 // the one that matters; this one found it at once (main+0x389e90, a setter its start-up code calls with 0: the game renders 1280x720 docked by its own choice)
 static uint64_t g_wat, g_wlen, g_wpg, g_wpsz; static uint8_t *g_walias; static _Atomic int g_warmed;
 static void watch_where(const char *tag, uint64_t a) {
@@ -306,7 +306,7 @@ static void *watch_arm(void *p) {
 // DM_PROBE_POLL=<address>[+<length>] (hex guest address, up to 8 bytes, 4 by default): when even the watch above misses a write (a page that atomics keep unprotected), a host thread spins on
 // the bytes and, on each change, prints old → new and dumps every guest thread with its backtrace (svc_thread_dump, the first 8 changes): the writer is still inside the code that wrote.
 // Tears of the Kingdom's memory-shortage flag (a word its frame check compares with 1 and clears) lies on such a page. A suffix =<value> (hex) snapshots and dumps only the changes to that value,
-// for a word that changes thousands of times before the bad store (Mario vs. Donkey Kong: a heap block's list link, rewritten by every allocation beside it, until 0x3f landed in it)
+// for a word that changes thousands of times before the bad store (another game: a heap block's list link, rewritten by every allocation beside it, until 0x3f landed in it)
 static uint64_t g_poll, g_plen, g_pval; static int g_pwant, g_pheap, g_palias;
 // All threads but this one stopped at once, then their pc, lr and 8 frame-pointer frames read and printed after they run again: the writer is caught a few microseconds after its store
 static void poll_snap(void) {
@@ -338,7 +338,7 @@ static void *poll_run(void *p) {
     (void)p; void svc_thread_dump(void); extern uint64_t g_t0_ns; uint64_t now_ns(void); vm_size_t got;
     uint64_t old = 0;   // read through the kernel: the address is not readable until the game maps it (the heap before SetHeapSize)
     if (g_pheap) { uint64_t hb = 0; while (dm_guest_heap_range(&hb, NULL), !hb) usleep(1000); g_poll += hb; }   // heap+<offset>
-    if (g_palias) { void svc_alias_range(uint8_t **base, size_t *size); uint8_t *ab = NULL; size_t as = 0; while (svc_alias_range(&ab, &as), !ab) usleep(1000); g_poll += (uint64_t)(uintptr_t)ab; }   // alias+<offset>: memory the game maps in its alias region (PRAGMATA's physical pools)
+    if (g_palias) { void svc_alias_range(uint8_t **base, size_t *size); uint8_t *ab = NULL; size_t as = 0; while (svc_alias_range(&ab, &as), !ab) usleep(1000); g_poll += (uint64_t)(uintptr_t)ab; }   // alias+<offset>: memory the game maps in its alias region (another game's physical pools)
     while (vm_read_overwrite(mach_task_self(), g_poll, g_plen, (vm_address_t)&old, &got) || got != g_plen) usleep(1000);
     LOG("POLL %#llx + %llu armed, value %#llx", (unsigned long long)g_poll, (unsigned long long)g_plen, (unsigned long long)old);
     for (int n = 0;;) {
@@ -374,7 +374,7 @@ static void watch_install(void) {
 #endif
 
 // DM_CTL atrace <hex address> <bytes> (hle_hid.c): the range made inaccessible; the first access to each page after that logs who made it (pc / lr as module offsets, read or write)
-// and opens the page again. Tells which code reads memory the GPU writes (PRAGMATA: the culling chain's results, read back by the game). Up to 64 ranges, 64 lines in all.
+// and opens the page again. Tells which code reads memory the GPU writes (another game: the culling chain's results, read back by the game). Up to 64 ranges, 64 lines in all.
 // Mac and iOS: only mprotect and the page fault hooks (crash.c), as nvn_dirty.c's write tracking; hle_hid.c's DM_CTL reader calls it on both
 static struct { uint64_t lo, hi; } g_at[64]; static _Atomic int g_atn, g_atlog;
 static int atrace_fault(void *addr, int is_write, void *uc_) {

@@ -28,14 +28,14 @@ HLE_FORCE("_ZN2nn4time19StandardSteadyClock19GetCurrentTimePointEPNS0_20SteadyCl
 }
 HLE_FORCE("_ZN2nn4time38GetStandardSteadyClockCurrentTimePointEPNS0_20SteadyClockTimePointE", "steady clock (the free function form, SDK 20) → host monotonic clock", Result, h_time_SteadyNowFn, uint8_t *out) { return h_time_SteadyNow(out); }
 // The C++ clock form, a time_point of seconds in x0: the SDK asks the time service's steady-clock session (a global that time::Initialize fills) for GetCurrentTimePoint and returns 0
-// without one (SDK 3.7, sdk+0x16edf4 in Mega Man Legacy Collection). Initialize is taken over and makes no session, so the clock never moved: the same seconds as GetCurrentTimePoint
+// without one (SDK 3.7, sdk+0x16edf4 in another game). Initialize is taken over and makes no session, so the clock never moved: the same seconds as GetCurrentTimePoint
 HLE_FORCE("_ZN2nn4time19StandardSteadyClock3nowEv", "steady clock (std::chrono form) → host monotonic clock (seconds)", int64_t, h_time_SteadyClockNow, void) {
     uint8_t tp[24]; h_time_SteadyNow(tp); int64_t s; memcpy(&s, tp, 8); return s;
 }
 HLE_FORCE("_ZN2nn4time23StandardUserSystemClock14GetCurrentTimeEPNS0_9PosixTimeE", "user clock → host time()", Result, h_time_GetCurrentTime, int64_t *out) {
     int64_t ft = fixed_time(); *out = ft >= 0 ? ft : time(NULL); return RES_OK;
 }
-// The adjustable user clock (Animal Crossing: New Horizons 3.0.3, whose days follow it): the SDK keeps it in a MonotonicSystemClock that Adjust sets from the user clock's context, and its
+// The adjustable user clock (another game 3.0.3, whose days follow it): the SDK keeps it in a MonotonicSystemClock that Adjust sets from the user clock's context, and its
 // GetCurrentTime reads the time service's shared memory, which the host never maps (an abort in MonotonicSystemClock::GetCurrentTime, sdk+0x4421cc on that build). On the host the user clock
 // is the host's own clock, so it is this one too; Adjust runs natively (it reads the user clock context, a host take-over) and only sets the SDK's copy. Its other readers and the
 // adjustable network clock's follow the user clock context below
@@ -59,7 +59,7 @@ static int h_time_timespec(int64_t *ts) {
 HLE_FORCE("_ZN2nn4time41GetStandardUserSystemClockCurrentTimespecEP8timespec", "C library real-time clock from the user clock → host real time", int, h_time_StdTimespec, int64_t *ts) { return h_time_timespec(ts); }
 HLE_FORCE("_ZN2nn4time43GetAdjustableUserSystemClockCurrentTimespecEP8timespec", "C library real-time clock from the adjustable user clock → host real time", int, h_time_AdjTimespec, int64_t *ts) { return h_time_timespec(ts); }
 // The C library's monotonic clock (SDK 22): musl's clock_gettime dispatches CLOCK_MONOTONIC to the steady clock through an ifunc over this symbol, whose SDK implementation asks the time service's
-// shared memory, which the host never maps. Unbound, the call fails and std::chrono::steady_clock::now() throws std::system_error: Well Dweller reached that at its first frame timer read (sdk+0x5f2e58
+// shared memory, which the host never maps. Unbound, the call fails and std::chrono::steady_clock::now() throws std::system_error: another game reached that at its first frame timer read (sdk+0x5f2e58
 // → std::terminate). The host's monotonic clock is the steady clock here, so clock_gettime and the steadiness agree
 static int h_time_mono_timespec(int64_t *ts) {
     struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); ts[0] = t.tv_sec; ts[1] = t.tv_nsec; return 0;
@@ -113,7 +113,7 @@ HLE_FORCE("_ZN2nn4time23StandardUserSystemClock9to_time_tERKNSt3__16chrono10time
 // take-over never sets, and returns 0 (1970) otherwise (Ocarina of Time's sdk+0x5d8490; its main imports it). Its to_time_t only reads the time point and needs nothing
 HLE_FORCE("_ZN2nn4time26StandardNetworkSystemClock3nowEv", "network clock → host time(), as the user clock", int64_t, h_time_net_now, void) { return h_time_now(); }
 // The network clock's context, as the user clock's (the snapshot's +0x20 carries the same). The SDK asks the time service, which the host never opens, and gets 0x74;
-// AdjustableNetworkSystemClock::Adjust aborts on that (METAL GEAR SOLID: Peace Walker - Master Collection Version 1.3.1, SDK 19, sdk+0x42c514, PR #1875)
+// AdjustableNetworkSystemClock::Adjust aborts on that (another game 1.3.1, SDK 19, sdk+0x42c514, PR #1875)
 HLE_FORCE("_ZN2nn4time26StandardNetworkSystemClock21GetSystemClockContextEPNS0_18SystemClockContextE", "network clock context, as the user clock's (the host's clock is network-set)",
           Result, h_time_NetContext, uint8_t *out) { return h_time_GetContext(out); }
 // The adjustable clocks (user and network) keep a copy of their standard clock's context in the SDK's detail::MonotonicSystemClock, which Adjust sets and the readers turn into a
@@ -139,7 +139,7 @@ HLE_FORCE("_ZN2nn4time14ToCalendarTimeEPNS0_12CalendarTimeEPNS0_22CalendarAdditi
               ai->dst = tm.tm_isdst > 0; ai->offset = (int32_t)tm.tm_gmtoff; }
     return RES_OK;
 }
-// Explicit time zone rules (Monster Hunter Rise, SDK 11): LoadTimeZoneRule reads the rule from the time service; the host keeps the game's rule buffer untouched and converts with localtime_r as above
+// Explicit time zone rules (another game, SDK 11): LoadTimeZoneRule reads the rule from the time service; the host keeps the game's rule buffer untouched and converts with localtime_r as above
 HLE_FORCE("_ZN2nn4time16LoadTimeZoneRuleEPNS0_12TimeZoneRuleERKNS0_12LocationNameE", "time zone rule from the time service; the host converts with its own zone, the rule stays unused", Result, h_time_LoadRule,
           void *rule, const char *name) { (void)rule; LOG("time::LoadTimeZoneRule %.36s (host time zone used instead)", name ? name : "?"); return RES_OK; }
 HLE_FORCE("_ZN2nn4time14ToCalendarTimeEPNS0_12CalendarTimeEPNS0_22CalendarAdditionalInfoERKNS0_9PosixTimeERKNS0_12TimeZoneRuleE", "conversion with an explicit time zone rule; same as the device zone (host localtime_r)",
@@ -173,10 +173,10 @@ HLE_FORCE("_ZN2nn4time13ClockSnapshot31CreateWithAdjustableSystemClockEPS1_", "a
     s[0xcd] = 2;
     return RES_OK;
 }
-// Arithmetic on two snapshots: the SDK hands both to the time service (a call through its session, AbortImpl when there is none: STEINS;GATE RE:BOOT's and Tears of the Kingdom's SDK;
+// Arithmetic on two snapshots: the SDK hands both to the time service (a call through its session, AbortImpl when there is none: another game's and Tears of the Kingdom's SDK;
 // Tears of the Kingdom imports both); the host computes what the service does (as Ryujinx's time service). TimeSpan is nanoseconds. CalculateSpanBetween returns bool, not a Result:
-// true when the span was stored (SDK 12 to 20 end it with `cset w0, eq` on the service's result, Metroid Dread's sdk+0x3ab540, Tears of the Kingdom's sdk+0x440f60); a Result 0 read as false
-// (Super Smash Bros. Ultimate's Spirit Board refilled at every visit, found by MacNativeGames)
+// true when the span was stored (SDK 12 to 20 end it with `cset w0, eq` on the service's result, another game's sdk+0x3ab540, Tears of the Kingdom's sdk+0x440f60); a Result 0 read as false
+// (another game's Spirit Board refilled at every visit, found by MacNativeGames)
 static int64_t snap64(const uint8_t *s, int off) { int64_t v; memcpy(&v, s + off, 8); return v; }
 static int same_source(const uint8_t *a, const uint8_t *b, int tp) { return !memcmp(a + tp + 8, b + tp + 8, 16); }   // the source IDs of the steady time points at +tp
 HLE_FORCE("_ZN2nn4time20CalculateSpanBetweenEPNS_8TimeSpanERKNS0_13ClockSnapshotES5_", "span between two snapshots (time service): their steady time points, else their network times",
@@ -229,14 +229,14 @@ HLE_FORCE("_ZN2nn4time11ToPosixTimeEPiPNS0_9PosixTimeEiRKNS0_12CalendarTimeE",
     if (n > 0 && out) out[0] = (int64_t)t;
     return RES_OK;
 }
-// With an explicit time zone rule (Pokémon Legends: Z-A, SDK 19; the rule came from the host's LoadTimeZoneRule above and stays unused): the device zone, as for ToCalendarTime
+// With an explicit time zone rule (another game, SDK 19; the rule came from the host's LoadTimeZoneRule above and stays unused): the device zone, as for ToCalendarTime
 HLE_FORCE("_ZN2nn4time11ToPosixTimeEPiPNS0_9PosixTimeEiRKNS0_12CalendarTimeERKNS0_12TimeZoneRuleE", "conversion with an explicit time zone rule; same as the device zone (host mktime)",
           Result, h_time_ToPosixTimeRule, int *count, int64_t *out, int n, const CalendarTime *ct, const void *rule) { (void)rule; return h_time_ToPosixTime(count, out, n, ct); }
-// UTC calendar → absolute seconds (Super Mario Odyssey); no time zone involved, the host's timegm
+// UTC calendar → absolute seconds (another game); no time zone involved, the host's timegm
 HLE_FORCE("_ZN2nn4time18ToPosixTimeFromUtcERKNS0_12CalendarTimeE", "UTC calendar → absolute seconds; host timegm", int64_t, h_time_ToPosixUtc, const CalendarTime *ct) {
     struct tm tm = {.tm_year = ct->year - 1900, .tm_mon = ct->month - 1, .tm_mday = ct->day, .tm_hour = ct->hour, .tm_min = ct->minute, .tm_sec = ct->second};
     return (int64_t)timegm(&tm);
 }
 // The C library's localtime / localtime_r / mktime are not taken over: on a Switch they are UTC. The SDK's musl time zone helper (__secs_to_zone) is a fixed stub, offset 0, no DST, name "UTC",
 // in every sdk checked from SDK 3.5.0 to 22.2.10, so its mktime(gmtime_r(t)) == t. Local time on a Switch comes only from nn::time (ToCalendarTime / ToPosixTime above, in the host's zone).
-// The host once forced them onto its own local-time functions: Hades II then read its save times' UTC struct tm as local time and showed them shifted by the host's offset (issue #2784)
+// The host once forced them onto its own local-time functions: another game then read its save times' UTC struct tm as local time and showed them shifted by the host's offset (issue #2784)

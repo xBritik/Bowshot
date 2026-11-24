@@ -121,5 +121,5 @@ def cli_read(path):
 if __name__ == '__main__':
     m = cli_read(sys.argv[1])
     with open(sys.argv[2], 'wb') as f:
-        f.write(m.image); f.truncate(len(m.image) + m.bss)   # bss as a sparse zero tail, never allocated (Metroid Dread's main has about 1.8 GB)
+        f.write(m.image); f.truncate(len(m.image) + m.bss)   # bss as a sparse zero tail, never allocated (another game's main has about 1.8 GB)
     print([hex(x) for s in m.segments for x in s], hex(m.bss), 'moduleid', m.build_id.hex())

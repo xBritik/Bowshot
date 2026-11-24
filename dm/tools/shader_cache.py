@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# The shader build's compile cache, one file per translation chain version (a generation): <cache folder>/cas-<chain>.db, read and written in place. It was a folder of a few files per shader (Metroid Dread: 84,541 files), kept as a tar between builds and unpacked
+# The shader build's compile cache, one file per translation chain version (a generation): <cache folder>/cas-<chain>.db, read and written in place. It was a folder of a few files per shader (another game: 84,541 files), kept as a tar between builds and unpacked
 # for each build that ran. Nothing is unpacked now: an entry goes in and comes out by its name, and a file a tool needs is written only then.
 # SQLite, as it is in Python and takes several writers: dmsh_build.py's threads share one connection (its worker processes use that one too, through this process: Served). Regression builds share their own per-game file, with read-only reuse of the player's cache.
 # Generations: a chain's build writes only its own file. Its per-shader entries never hit another chain's (their digests cover the chain), and the Metal compiles it reuses from an older generation

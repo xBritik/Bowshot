@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Frostbite's game data on the Switch (EA SPORTS FC 27, Frostbite 2025.1.2): the superbundle tables (.toc), the bundle manifests and the compressed data in the cas files, and the
+"""Frostbite's game data on the Switch (another game, Frostbite 2025.1.2): the superbundle tables (.toc), the bundle manifests and the compressed data in the cas files, and the
 NVN shaders of its CompiledBytecode resources. Used by shader_split.py (frostbite_jobs, frostbite_shaders) and dm/games/profile_guess.py (is_frostbite).
 
 The RomFS holds Data/ (the base data) and Patch/ (the update's), each with NX/<superbundle>.toc files and NX/superbundlelayout/<install chunk>/cas_NN.cas files, and Data/layout.toc,

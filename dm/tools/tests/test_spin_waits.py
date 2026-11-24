@@ -66,7 +66,7 @@ class SpinWaits(unittest.TestCase):
             self.assertIsNone(region(broken, 0, [0x80]))
 
     def test_lock_wait_without_poll(self):
-        # A lock that heads no poll: its own retry loop waits for the holder, a spin wait as before the lock rules (Mario vs. Donkey Kong's locks, main+0x470fa8)
+        # A lock that heads no poll: its own retry loop waits for the holder, a spin wait as before the lock rules (another game's locks, main+0x470fa8)
         #   0x00 L: ldaxr w8, [x0] / cbnz w8, L / stxr w9, w10, [x0] / cbnz w9, L / ret
         acq = [0x885ffc08, 0x35ffffe8, 0x88097c0a, 0x35ffffa9, 0xd65f03c0]
         g = region(acq, 0, [0x4, 0xc])

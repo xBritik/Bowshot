@@ -32,7 +32,7 @@ int main(void) { @autoreleasepool {
         s.d = (nvn_texdesc){.target=NVN_TEXTURE_TARGET_2D, .format=formats[i], .width=W, .height=H, .depth=1, .levels=1, .samples=1};
         nvn_tex_layout(&s.d, &s.L);
         tex_t sb = s, d = s; sb.serial++; sb.stencil = 1; d.serial += 2;   // sb: the same storage built in stencil mode; d: the copy's destination
-        sb.d.flags |= NVN_TEXTURE_FLAGS_IMAGE;   // usage-only difference, as in Xenoblade Chronicles 3
+        sb.d.flags |= NVN_TEXTURE_FLAGS_IMAGE;   // usage-only difference, as in another game
         d.off = 0x100000;   // a separate destination, not another descriptor of the source storage
         mtl_tex_init(&s); mtl_tex_init(&sb); mtl_tex_init(&d);
         id<MTLTexture> base = tex_mtl(&s), dst = tex_mtl(&d);

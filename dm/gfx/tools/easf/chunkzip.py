@@ -14,7 +14,7 @@ Header (all big-endian), 0x30 bytes:
 Then `count` independent raw-deflate blocks. Every block starts on a 16-byte
 boundary and is followed by a small record before the next boundary.
 
-Verified on FIFA 23 (01001C8016B4E000) shader.big / shaderboot.big:
+Verified on FIFA 23 (<title ID>) shader.big / shaderboot.big:
 65 and 2 blocks, byte-exact reconstruction of the declared total size.
 """
 import struct

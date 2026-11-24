@@ -358,7 +358,7 @@ int main(void) {
     assert(!h_cv_vp9flush(dec) && dm_movie_hz() == 60);
     assert(!h_cv_vp9stop(dec) && dm_movie_hz() == 0);
     assert(!h_cv_vp9fin(dec) && !cv_of(dec) && !g_ev[ev_slot(ev)].bound);
-    // A decoder initialised again in the same memory, cleared in between (Donkey Kong Bananza's second movie): its event is bound anew.
+    // A decoder initialised again in the same memory, cleared in between (another game's second movie): its event is bound anew.
     // Finalized with packets it has not decoded: its thread ends first, and they go with it
     memset(dec, 0, sizeof dec);
     assert(!h_cv_vp9init2(dec, 0x10000, 16, 16, 1, 1, 3, NULL, 0) && cv_of(dec) && g_ev[ev_slot(ev)].bound && ev_set(ev));

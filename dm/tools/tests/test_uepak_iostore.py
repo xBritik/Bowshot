@@ -273,7 +273,7 @@ class IoStore(unittest.TestCase):
         return b + struct.pack('<II', 0, 0) + b''.join(r for r, _ in records)
 
     def test_an_archive_of_switch_2_records_gives_each_its_stage(self):
-        """Orbitals (Unreal Engine 5.6, SP_GLSL_SWITCH2): NVN2 records with no LSLG in the decoded archives; the record's stage must agree with the frequency in UE 5's numbering"""
+        """another game (Unreal Engine 5.6, SP_GLSL_SWITCH2): NVN2 records with no LSLG in the decoded archives; the record's stage must agree with the frequency in UE 5's numbering"""
         rec, ctl, code = self.sage()
         with patch.object(ss, 'nvn2_stage', return_value='ps'), patch.object(ss, 'check', return_value=None):
             self.assertEqual(ss.ue_shaders(self.decoded_archive([(rec, 3)]), 'A'), [('A#UE0', 'ps', ctl, code)])
@@ -336,13 +336,13 @@ class IoStore(unittest.TestCase):
         return str(self.romfs / 'Game.pak')
 
     def test_inline_shaders_with_the_cooked_packages_in_a_container(self):
-        container(self.romfs, 'Game.utoc', [(chunk_id(1, uepak.IO_EXPORT_BUNDLE_427), b'b'), (chunk_id(2, 3), b'bulk')], version=3)   # Mario & Luigi: Brothership
+        container(self.romfs, 'Game.utoc', [(chunk_id(1, uepak.IO_EXPORT_BUNDLE_427), b'b'), (chunk_id(2, 3), b'bulk')], version=3)   # Another game
         self.assertTrue(uepak.inline_shaders(self.inline_pak()))
-        container(self.romfs, 'Game.utoc', [(chunk_id(1, uepak.IO_EXPORT_BUNDLE), b'b'), (chunk_id(2, 2), b'bulk')], version=6)   # Yoshi and the Mysterious Book
+        container(self.romfs, 'Game.utoc', [(chunk_id(1, uepak.IO_EXPORT_BUNDLE), b'b'), (chunk_id(2, 2), b'bulk')], version=6)   # Another game
         self.assertTrue(uepak.inline_shaders(self.inline_pak()))
 
     def resonance(self, *patch_chunks):
-        """FINAL FANTASY RESONANCE's layout: the pak names the global shader cache, the container has export bundles and the shader libraries, global.utoc only script objects"""
+        """another game's layout: the pak names the global shader cache, the container has export bundles and the shader libraries, global.utoc only script objects"""
         bundle = (chunk_id(1, uepak.IO_EXPORT_BUNDLE), b'b')
         container(self.romfs, 'Game.utoc', [bundle] if patch_chunks else [bundle, (LIB, b'l'), (GROUP, b'g')], version=8)
         container(self.romfs, 'global.utoc', [(chunk_id(4, 5), b's')], version=8)
@@ -496,7 +496,7 @@ class OodleTables(unittest.TestCase):
         rec = self.record()
         return b'\x8c\x0a' + zlib.compress(rec), len(rec), 1
 
-    def export(self):   # an entry of a split package's export list: name number 1, flags 8, size 0xb8c, offset 30650 (OCTOPATH TRAVELER II)
+    def export(self):   # an entry of a split package's export list: name number 1, flags 8, size 0xb8c, offset 30650 (another game)
         return self.table([(struct.pack('<q', 0xb8c), 30650, 0)])
 
     def scan(self, d):

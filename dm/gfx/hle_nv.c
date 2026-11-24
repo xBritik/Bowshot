@@ -13,12 +13,12 @@ HLE_FORCE("_ZN2nv18InitializeGraphicsEPvm", WHY "; pool recorded for nv::GetGrap
 }
 HLE_FORCE("_ZN2nv16FinalizeGraphicsEv", WHY, void, h_nv_Fin, void) { g_nv_pool = (typeof(g_nv_pool)){0}; }
 // nv::InitCheck aborts unless graphics are initialised. Its own implementation tests the SDK's flag, which nv::InitializeGraphics sets, and that runs on the host instead:
-// Donkey Kong Bananza (SDK 20.5.19 Ounce) calls it from main+0xe19d04 once gameplay starts, and aborted at sdk+0x57582c. The host's record of the initialisation answers it
+// Another game (SDK 20.5.19 Ounce) calls it from main+0xe19d04 once gameplay starts, and aborted at sdk+0x57582c. The host's record of the initialisation answers it
 HLE_FORCE("_ZN2nv9InitCheckEv", WHY "; nv::InitializeGraphics recorded on the host", void, h_nv_InitCheck, void) {
     if (!g_nv_pool.inited) die("nv::InitCheck: graphics not initialised (nv::InitializeGraphics was not called)");
 }
 // The Switch 2's graphics system (nn::gs) check: SDK 22.2.0's (sdk+0x476d60) aborts unless the SDK's own flag reads 1, which the SDK's graphics boot sets on the console and the host, whose
-// graphics layer stands in for that system from the start, never runs. Mario Kart World 1.8.0 checks it before it makes its camera context (by pull request #1116)
+// graphics layer stands in for that system from the start, never runs. Another game 1.8.0 checks it before it makes its camera context (by pull request #1116)
 HLE_FORCE("_ZN2nn2gs3sdk30CheckGraphicsSystemInitializedEPKcm", "the graphics system is the host's graphics layer, up from the start", void, h_gs_Check, const char *who, unsigned long n) { (void)who; (void)n; }
 // The graphics server's application GPU scheduling time: how much of [begin, end] (TimeSpan ns on the system tick clock) the GPU was given to the application rather than to
 // another client of the console's GPU (the system's own rendering). SDK 20.5.29's query (sdk+0x411dc0) asks the gsv session (command 27), which the host never opens: its
@@ -30,7 +30,7 @@ HLE_FORCE("_ZN2nn2gs3sdk27QueryApplicationGpuTimeSpanEPNS_8TimeSpanEmm", "applic
           Result, h_gs_GpuTimeSpan, int64_t *out, uint64_t begin, uint64_t end) { *out = end > begin ? (int64_t)(end - begin) : 0; return RES_OK; }
 // nv::MemoryInfo is 64-bit counters, the SDK fills them from sign-extended 32-bit driver counters. Its size follows the SDK: 0x20 bytes (four counters) on SDK 10 and older,
 // 0x40 bytes from SDK 11 on (where the SDK zeroes all 0x40 when nv is not initialised). Writing 0x40 on an old SDK overran the caller's record by 32 bytes (Hyrule Warriors:
-// Definitive Edition, SDK 3.5.1). Its own implementation reads the NV driver object, which the host never creates, so it faults: Well Dweller crashed there (sdk+0x4656c8,
+// Definitive Edition, SDK 3.5.1). Its own implementation reads the NV driver object, which the host never creates, so it faults: another game crashed there (sdk+0x4656c8,
 // x0 = 0) while reporting video memory at startup. Report the pool the game installed, with nothing used from it
 HLE_FORCE("_ZN2nv21GetGraphicsMemoryInfoEPNS_10MemoryInfoE", WHY "; pool figures from nv::InitializeGraphics, no driver statistics", void, h_nv_MemInfo, uint64_t *out) {
     memset(out, 0, DM_SDK_OLD(dm_sdk_major()) ? 0x20 : 0x40);

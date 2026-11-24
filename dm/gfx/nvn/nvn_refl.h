@@ -16,17 +16,17 @@ enum { NVN_RB_CBUF = 1, NVN_RB_SAMP, NVN_RB_TEX, NVN_RB_IMG, NVN_RB_TBUF,
 // GMEM: the host's memory pool table for global memory the translator traced to no storage buffer (dmsh_abi.h DMSH_GMEM_MAP_*, nvn_mtl.m gmem_map_gpu): the shader may read, and with rw
 // write, anything in any pool. GMEML: the write log of those stores (dmsh_abi.h DMSH_GMEM_LOG_*, nvn_mtl.m gml_take)
 // TEXP / SAMPP: the texture / sampler pool as one array indexed by the handle's ID, for a handle the translator traced to no slot (dmsh_reflect.py pool_arrays): one argument buffer entry,
-// the address of the buffer the replay keeps for the element type dtt / dpf and the pool bound at the draw (nvn_mtl.m pool_gpu). Mario Party Superstars' characters
+// the address of the buffer the replay keeps for the element type dtt / dpf and the pool bound at the draw (nvn_mtl.m pool_gpu). Another game' characters
 // TEXA / SAMPA: an array of n handles in the driver table c2 that the shader indexes at run time (dmsh_reflect.py c2_array): element k = the texture / sampler of the slot whose c2 word lies
-// at byte off + 8k (combined, else separate); words outside both tables give the dummy. Luigi's Mansion 3's shadow cascades
+// at byte off + 8k (combined, else separate); words outside both tables give the dummy. Another game's shadow cascades
 // TEXD / SAMPD: Ryujinx's fallback for a texture handle it cannot trace to one slot (handle type 4, <stage>_<t|tb|s>_cb0_40000000): an array of n textures / samplers indexed by
 // the handle's texture / sampler ID (capped at n - 1); the replay binds slot k at element k and puts slot indices in c2 (profile key tex_dyn_slots, Octopath Traveler 0)
 // BORDER: the shader's border colour block (dmsh_abi.h DMSH_BORDER_*), filled from its twin samplers (a sampler binding with bw set) by nvn_mtl.m encode_args
-// SAMPI: the sampler ID is a constant in the shader (reg = the ID; Ryujinx's SeparateConstantSamplerHandle: the handle ORs a constant sampler into a bound texture, Monster Hunter Rise)
+// SAMPI: the sampler ID is a constant in the shader (reg = the ID; Ryujinx's SeparateConstantSamplerHandle: the handle ORs a constant sampler into a bound texture, another game)
 // UBOP: device pointer of compute-stage uniform slot r (the Maxwell compute stage reads uniforms via the c0 address table + global memory)   // SAMPT: the sampler is taken from the combined handle of texture slot r (high bits = sampler ID)   // Binding kind (type in the json); IMG = writable texture (D3D u_r, NVN image slot r); TBUF = typed buffer (D3D t_r Buffer<T>, buffer texture in NVN texture slot r)
 enum { NVN_DPF_FLOAT = 0, NVN_DPF_UINT, NVN_DPF_SINT, NVN_DPF_DEPTH };            // Dummy texture pixel class (determined by msl_type)
 enum { NVN_CT_FLOAT = 0, NVN_CT_UINT, NVN_CT_INT };                               // Vertex input component type
-// Bindings of one shader: NVN gives a stage 32 texture and 32 sampler slots beside its uniform and storage buffers and images. OCTOPATH TRAVELER II's 3D world map material
+// Bindings of one shader: NVN gives a stage 32 texture and 32 sampler slots beside its uniform and storage buffers and images. Another game's 3D world map material
 // (UiMM_WorldMap3D) has a pixel shader with 30 textures, 30 samplers, 3 uniform buffers and the c1 / support / driver segments, 66 in all, which the old limit of 64 refused
 // (the traveler selection drew its map black). The border colour twins (dmsh_rewrite.py border_emu) add one binding per sampler and the block: that shader has 97
 #define NVN_REFL_MAXB 128
@@ -94,7 +94,7 @@ typedef struct {
     uint32_t fc_fpos; uint32_t fc_scale[32][2];
     // gmem_map's fixed pointer sources, read before argument-block reuse as well as a fresh encode (nvn_mtl.m gmem_discover).
     uint8_t ngptr; struct { uint8_t reg; uint16_t off; } gptr[64];   // DMSH_GPTR_MAX, checked in nvn_refl.m
-    uint8_t *c1;             // c1 constant segment as-is (B): c1_len bytes, malloc'd by nvn_refl_from_json (NULL without one). It was a 4 KB array; Hyrule Warriors: Age of Calamity has 6 KB segments (its soldiers' vertex shaders)
+    uint8_t *c1;             // c1 constant segment as-is (B): c1_len bytes, malloc'd by nvn_refl_from_json (NULL without one). It was a 4 KB array; another game has 6 KB segments (its soldiers' vertex shaders)
 } nvn_refl;
 
 #ifdef __OBJC__

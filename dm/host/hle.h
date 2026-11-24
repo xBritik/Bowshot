@@ -65,7 +65,7 @@ extern __thread uint64_t dm_clock_reads;   // the calling thread's guest reads o
 // compile time, local to its file as the implementation is (the implementation's address goes into x16, then a jump to dm_bigstack_enter); a call already off the guest stacks goes straight through. The register arguments
 // and the first 64 bytes of stack arguments are carried over, so at most 16 parameters (8 in registers, 8 stack slots; a struct passed by value counts as the registers it takes);
 // not for variadic functions. Each take-over moved here one by one after it crashed on a small stack (the file system on Super Mario 3D World's save thread, add-on content,
-// AudioOut, the controller applet on Drag x Drive, Mario Kart 8 Deluxe's offline page) before this became the default (memory.md, Host calls on small guest stacks)
+// AudioOut, the controller applet on Drag x Drive, another game's offline page) before this became the default (memory.md, Host calls on small guest stacks)
 typedef struct { const char *name; void *fn; const char *why; const char *to; } hle_force_ent;   // to: a guest alias (HLE_FORCE_ALIAS below), fn NULL
 #define HLE_NARG(...) HLE_NARG_(__VA_ARGS__, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 #define HLE_NARG_(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, n, ...) n
@@ -147,7 +147,7 @@ uint64_t dm_audio_render_calls(void);   // Cumulative sound card callback count 
 void dm_audio_reset(void);   // iOS media services reset: recreate the AudioUnits (hle_audio.c)
 // nn::audio::AudioOutBuffer in the SDK's own layout, the audout service's buffer format (the same from SDK 8 to Switch 2's). The game fills and reads it through the SDK's own
 // descriptor functions, which the host leaves to the sdk: SetAudioOutBufferInfo stores the data at +0x08, the buffer size at +0x10 and the data size at +0x18, the getters load the
-// same offsets, and AudioBufferList links buffers through next (Hades's sdk+0x142ab0..0x142ae0). hle_audio.c's AudioOut queues and plays these; hle_audren.c hands it its rendered
+// same offsets, and AudioBufferList links buffers through next (another game's sdk+0x142ab0..0x142ae0). hle_audio.c's AudioOut queues and plays these; hle_audren.c hands it its rendered
 // blocks in the same form. Until 2026-11 the host took three of those functions over to keep a private 24-byte layout, and the ones it left read it wrong (docs/reference/audio.md)
 typedef struct { void *next; void *ptr; uint64_t cap, size, offset; } aout_buf;   // next, data, buffer_size, data_size, data_offset
 _Static_assert(sizeof(aout_buf) == 40 && offsetof(aout_buf, ptr) == 0x08 && offsetof(aout_buf, cap) == 0x10 && offsetof(aout_buf, size) == 0x18 && offsetof(aout_buf, offset) == 0x20,

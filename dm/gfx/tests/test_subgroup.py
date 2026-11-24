@@ -57,7 +57,7 @@ OpFunctionEnd
 '''
 
 
-# A domain shader that reads only the lane ID, in a module with no bool and no uvec4 (PRAGMATA's 859225c91a5fe2b2): the rewrite declares the types its constants need
+# A domain shader that reads only the lane ID, in a module with no bool and no uvec4 (another game's 859225c91a5fe2b2): the rewrite declares the types its constants need
 LANE_ONLY = '''OpCapability Tessellation
 OpCapability GroupNonUniform
 OpMemoryModel Logical GLSL450

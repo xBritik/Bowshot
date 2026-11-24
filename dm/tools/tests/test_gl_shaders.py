@@ -1,5 +1,5 @@
-"""gl_shaders.py: what NVIDIA's GLSL compiler takes and glslang does not (DOOM 3's GLSL 1.50: built-ins redeclared as plain varyings, the compatibility colour pair, `sampler` as a
-name; Mega Man Legacy Collection's `};` after a function), a named uniform block's table row, only the samplers the MSL reads, .glsl files, and main's '#version' strings that are only a prefix. The shaders here are written for the test, in the form DOOM 3's renderer makes them."""
+"""gl_shaders.py: what NVIDIA's GLSL compiler takes and glslang does not (another game's GLSL 1.50: built-ins redeclared as plain varyings, the compatibility colour pair, `sampler` as a
+name; another game's `};` after a function), a named uniform block's table row, only the samplers the MSL reads, .glsl files, and main's '#version' strings that are only a prefix. The shaders here are written for the test, in the form another game's renderer makes them."""
 from pathlib import Path
 import shutil
 import sys
@@ -49,7 +49,7 @@ class Fixups(unittest.TestCase):
         self.assertEqual(gl_shaders.fixups(t, 'vert'), t)
 
 
-    def test_semicolon_after_a_function_body(self):   # Mega Man Legacy Collection's .glsl files end main with `};`; a struct's and a block's `};` stay
+    def test_semicolon_after_a_function_body(self):   # Another game's .glsl files end main with `};`; a struct's and a block's `};` stay
         t = ('struct L { vec4 c; };\nuniform B { vec4 v; } b;\nlayout(std140) uniform C { vec4 w; };\n'
              'float f(float x) { if (x > 0.0) { return x; } return 0.0; } ;\nvoid main()\n{\n\tgl_Position = vec4(f(1.0));\n};\n')
         g = gl_shaders.function_semicolons(t)
@@ -59,7 +59,7 @@ class Fixups(unittest.TestCase):
         self.assertEqual(gl_shaders.function_semicolons(g), g)
 
 
-# GLSL ES 1.00 as Fate/hollow ataraxia REMASTERED's built shaders write it: a sampler named `texture` (a built-in function from ES 3.00 on) and, as GameMaker's, a variable `sample`
+# GLSL ES 1.00 as another game's built shaders write it: a sampler named `texture` (a built-in function from ES 3.00 on) and, as GameMaker's, a variable `sample`
 ES100_FRAG = (b'precision mediump float;\nvarying vec2 v_uv;\nuniform sampler2D texture;\nuniform float sample;\n'
               b'void main() { gl_FragColor = texture2D(texture, v_uv) * sample; }\n')
 
@@ -108,7 +108,7 @@ class Sources(unittest.TestCase):
                 self.assertFalse(offline['gl_capture'][0])
                 self.assertEqual(list(gl_shaders.sources([romfs])), [(fragment, 'frag', '/standalone/fragShader.FS'), (vertex, 'vert', '/standalone/vertexShader.vs')])
 
-    def test_glsl_files_are_read_with_no_stage(self):   # Mega Man Legacy Collection: shaders/nx/*.glsl, whose names say nothing of the stage
+    def test_glsl_files_are_read_with_no_stage(self):   # Another game: shaders/nx/*.glsl, whose names say nothing of the stage
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / 'shaders').mkdir()
             (Path(d) / 'shaders/default_ps.glsl').write_bytes(b'#version 320 es\nvoid main() {}\0junk')
@@ -200,7 +200,7 @@ class Translate(unittest.TestCase):
             # the colour pair is one varying, matched by name between the stages
             self.assertIn('[[user(dm_Color)]]', Path(v[0]).read_text()); self.assertIn('[[user(dm_Color)]]', Path(f[0]).read_text())
 
-    def test_a_sampler_never_read_is_not_listed(self):   # Mega Man Legacy Collection's default_ps.glsl: T1 only under #if 0, given T0's binding by glslang
+    def test_a_sampler_never_read_is_not_listed(self):   # Another game's default_ps.glsl: T1 only under #if 0, given T0's binding by glslang
         src = (b'#version 320 es\nprecision highp float;\nin vec2 Texcoord;\nout vec4 outColor;\nuniform sampler2D T0;\nuniform sampler2D T1;\n'
                b'void main()\n{\n\toutColor = texture(T0, Texcoord);\n};\n#if 0\nvoid xmain() { outColor = texture(T1, Texcoord); }\n#endif\n')
         with tempfile.TemporaryDirectory() as tmp:
@@ -249,7 +249,7 @@ void main() { gl_Position = position + value + palette[index] + lighting(); }
             self.assertEqual({x.split('=')[0] for x in r[1] if x.startswith('t:')}, {'t:dm_gl_resource_21', 't:dm_gl_resource_21Smplr'})
 
 
-    def test_es100_sampler_named_texture(self):   # Fate/hollow ataraxia REMASTERED: 16 of its 78 fragment shaders failed with `'texture' : redefinition`
+    def test_es100_sampler_named_texture(self):   # Another game: 16 of its 78 fragment shaders failed with `'texture' : redefinition`
         with tempfile.TemporaryDirectory() as tmp:
             r = gl_shaders.translate(ES100_FRAG, 'frag', 'e' * 16, tmp)
             self.assertIsInstance(r, tuple, r)

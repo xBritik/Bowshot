@@ -1,4 +1,4 @@
-"""RE Engine PAKs (KPKA) and SDF shader definitions, without game data: Monster Hunter Rise's layouts, PRAGMATA's (block table, 0x110-byte SDF entries) and Resident Evil 4's (0x60-byte stage record headers)."""
+"""RE Engine PAKs (KPKA) and SDF shader definitions, without game data: another game's layouts, another game's (block table, 0x110-byte SDF entries) and another game's (0x60-byte stage record headers)."""
 from pathlib import Path
 import re
 import struct
@@ -19,7 +19,7 @@ def nvn2(stage_byte, sph_type):
 
 
 def sdf(layout, stages):
-    """One SDF entry with stages {slot: (ctl, code)} in layout 0 (Monster Hunter Rise), 1 (PRAGMATA) or 2 (Resident Evil 4)"""
+    """One SDF entry with stages {slot: (ctl, code)} in layout 0 (another game), 1 (another game) or 2 (another game)"""
     base, size, lens, at = ss.SDF_LAYOUTS[layout]
     head = b'SDF\0' + struct.pack('<HH', 1, 1) + bytes(base - 8)
     body, offs, o = b'', [0] * 6, base + size
@@ -39,7 +39,7 @@ class SdfTests(unittest.TestCase):
                 self.assertEqual([(st, c, k) for _, st, c, k in got], [('vs', *vs), ('ps', *ps)])
                 self.assertEqual(ss.sdf_layout(sdf(layout, {0: vs}), 1, 'x'), ss.SDF_LAYOUTS[layout])
 
-    def test_mesh_shader_in_the_hull_slot(self):   # PRAGMATA keeps mesh shaders in the hull slot
+    def test_mesh_shader_in_the_hull_slot(self):   # Another game keeps mesh shaders in the hull slot
         got = ss.sdf_shaders(sdf(1, {1: nvn2(7, 3), 4: nvn2(0, 5)}), 'x')
         self.assertEqual([st for _, st, _, _ in got], ['ms', 'ps'])
 
@@ -49,7 +49,7 @@ class SdfTests(unittest.TestCase):
 
 
 class OcioTests(unittest.TestCase):
-    def ocio(self, *stages, head=0x58):   # an OCIO file: a header, then stage records (a 0x58-byte header, or Resident Evil 4's 0x60, lengths at +8) among other data, as the colour pipelines hold them
+    def ocio(self, *stages, head=0x58):   # an OCIO file: a header, then stage records (a 0x58-byte header, or another game's 0x60, lengths at +8) among other data, as the colour pipelines hold them
         d = bytearray(b'OCIO' + bytes(0xc4) + b'names\0' + bytes(2))
         for ctl, code in stages:
             d += bytes(8) + struct.pack('<II', len(ctl), len(code)) + bytes(head - 0x10) + ctl + code + bytes(8)

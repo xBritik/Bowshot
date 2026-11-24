@@ -1,6 +1,6 @@
 # Geometry shader support on Metal 4
 
-Research and implementation checked on 2026-10-23 against Apple documentation, the installed Xcode SDK, this worktree, and AI: THE SOMNIUM FILES. The implementation now has GPU readback tests; the initial compilation probe described below predates it.
+Research and implementation checked on 2026-10-23 against Apple documentation, the installed Xcode SDK, this worktree, and another game. The implementation now has GPU readback tests; the initial compilation probe described below predates it.
 
 ## Implemented compute path
 
@@ -14,7 +14,7 @@ A 90-second Mac run reached the title screen at 60 fps with no `[RED]` diagnosti
 
 Current limits are explicit: GS transform feedback and tessellation combinations are rejected; triangle-strip adjacency, quad strips and polygons are not assembled. Geometry storage-buffer addresses sit in the NVN driver table at c0 `0x410` (NieR:Automata's index-build shaders; addresses carried in guest uniform buffers use the existing binding path). Provoking-vertex mode, GS-written primitive IDs, viewport-index outputs and multiple output streams are not validated. Indirect draws, and indexed draws whose indices or vertex streams a write in the same submission covers, wait for a coherent CPU snapshot for assembly; compaction uses blocked SIMD prefix-scan stages, and a run of geometry draws with only state between them is encoded together ([Geometry-shader draws encoded a run at a time](reference/rendering.md#geometry-shader-draws-encoded-a-run-at-a-time)). Passthrough geometry shaders emit their input primitive ([Passthrough geometry shaders](reference/shaders.md#passthrough-geometry-shaders)). Scratch is capped at 256 MiB and input counts at 4,194,304, with a red diagnostic instead of truncation. Other games and iOS device execution are unvalidated. AI's opening did not previously issue these GS draws, so a successful opening alone cannot establish their in-game appearance or performance.
 
-The external build and test artifacts are under `010089B00D09C000-work/geometry-build/` beside the game's NSPs. To repeat the GPU tests, build `t_geometry` with `GAME=010089B00D09C000`, then run it with the current `cache/b-<chain>` directory as its optional first argument. No extracted shader code is stored in the repository.
+The external build and test artifacts are under `<title ID>-work/geometry-build/` beside the game's NSPs. To repeat the GPU tests, build `t_geometry` with `GAME=<title ID>`, then run it with the current `cache/b-<chain>` directory as its optional first argument. No extracted shader code is stored in the repository.
 
 ## Conclusion
 
@@ -22,9 +22,9 @@ General geometry shader emulation is feasible. A mesh pipeline can keep expansio
 
 **The implementation uses the compute route.** The vendored translator already lowers GS to compute and generates a vertex function to read its output. Native VS capture supplies an independent-stage ABI. The original isolated probe established compilation feasibility; the GPU validation above now establishes the tested output semantics. Mesh shaders remain a potential optimization.
 
-## AI: THE SOMNIUM FILES evidence
+## Another game evidence
 
-The registered profile contains exactly three geometry keys. Existing build logs fail these with an `unknown` MSL stage declaration. The profile maps the following effects; candidate vertex keys come from adjacent entries of the same Unity shader, not a captured runtime binding. [Shader inventory](../dm/games/010089B00D09C000/shader_map.tsv), [existing bring-up observations](development.md).
+The registered profile contains exactly three geometry keys. Existing build logs fail these with an `unknown` MSL stage declaration. The profile maps the following effects; candidate vertex keys come from adjacent entries of the same Unity shader, not a captured runtime binding. [Shader inventory](../dm/games/<title ID>/shader_map.tsv), [existing bring-up observations](development.md).
 
 | GS key | Effect | Body and declared output | Candidate VS |
 | --- | --- | --- | --- |
@@ -36,7 +36,7 @@ The output maxima and invocation counts were read from shader headers. Input top
 
 Probe artifacts remain beside the game, outside the repository:
 
-`/Volumes/T7/nsp/AI THE SOMNIUM FILES/010089B00D09C000-work/geometry-probe/`
+`/Volumes/T7/nsp/AI THE SOMNIUM FILES/<title ID>-work/geometry-probe/`
 
 This contains `Program.cs`, `Probe.csproj`, `translation.log`, `compile-results.json`, native GS GLSL, compute/passthrough SPIR-V and MSL, and Mac/iOS libraries. The small C# probe references the pinned binaries in this worktree's `dmsh_xlate_bin`; it does not rebuild or replace the production translator. It reads package records directly and uses float attribute defaults and deliberately separate helper/resource bindings. It is not the production reflection or binding ABI.
 

@@ -335,7 +335,7 @@ def unproven_in(source, reflection):   # whether one of the shader's c1 reads is
 
 def unproven(job):
     """(version dir, a .metal file name) → (memo digest, answer, the shader's key when one of its c1 reads is not proven bounded, else None). Each shader is checked on its own, so main()
-    spreads them over every core, as cb_extent.py does (Breath of the Wild's 19,592 libraries, FINAL FANTASY RESONANCE's 73,496: minutes on one core)"""
+    spreads them over every core, as cb_extent.py does (Breath of the Wild's 19,592 libraries, another game's 73,496: minutes on one core)"""
     version_dir, name = job
     key = name[:-len("_b.metal")] if name.endswith("_b.metal") else name[:-6]
     with romfs.open(os.path.join(version_dir, name), "rb") as stream: metal = stream.read()

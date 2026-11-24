@@ -6,7 +6,7 @@
 #               OM_j_k (the j-th output writes to attachment k) = 64 + 8 j + k
 # Rewritable samples: .sample(sampler, select(_N, float2(0.0), isnan(_N))) on a 2D float texture, where _N = float2(in.m_X.x, in.m_X.y) (interpolated output unchanged),
 # or _N = float2(in.m_X.x / in.m_X.w, in.m_X.y / in.m_X.w) (projective: 'proj', the screen position deferred decals sample their G-buffer at; screen_varyings gives the vertex side),
-# or _N = float2(gl_FragCoord.x [/ render scale] * U, gl_FragCoord.y [/ render scale] * V) with U, V uniform components ('frag_pos': their [slot, vector, component]; Splatoon Raiders'
+# or _N = float2(gl_FragCoord.x [/ render scale] * U, gl_FragCoord.y [/ render scale] * V) with U, V uniform components ('frag_pos': their [slot, vector, component]; another game'
 # ink stamps read their map at gl_FragCoord / 6400);
 # whether the texel is really fetched at this pixel is proven at runtime (correspondence between vertex uv and position, a screen varying with the viewport over the whole target,
 # or U and V = 1 / the target's size; texture size = target size); if it cannot be proven, the original version is used

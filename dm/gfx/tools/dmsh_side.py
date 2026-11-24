@@ -2,7 +2,7 @@
 # and few ever do: compiling each as a library of its own was 57% of Pokopia's 366,805 compiles. So the compile unit holds each entry point's body once, as a static function, with thin
 # entry points around it: main0, and the <entry>_a (dmsh_alpha.py) and <entry>_l (dmsh_logic.py) that test or combine what the body returned; the typed-output entry point
 # main0_u (dmsh_entry.fs_uint) holds both under function constants, and main0 has no _l beside it.
-# A pixel shader then costs about what its base alone cost: 34-36% of the Metal CPU of three compiles, on the Mac's flags and the iPhone's, over 125 shaders of six games (dm/games/0400A3A01EE4C000/README.md).
+# A pixel shader then costs about what its base alone cost: 34-36% of the Metal CPU of three compiles, on the Mac's flags and the iPhone's, over 125 shaders of six games (dm/games/<title ID>/README.md).
 # metallib gives every entry point a complete module, whether or not the body is shared, and two things in the host's path grow with what one file holds: metal-tt compiles every unspecialized
 # entry point of a library, so a base library with them made the pipeline archive twice as large, and the base library is what every shader loads. So the compile's one library is
 # cut in two: <key>_b with the plain entry points, <key>_bx with the others and the typed-output entry point main0_u, which the host loads on first need (nvn_mtl.m at_fn, lo_fn, typed_fn). <key>_b.metal stays the plain source, which is

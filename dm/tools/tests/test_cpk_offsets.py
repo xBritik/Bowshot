@@ -62,7 +62,7 @@ class CpkOffsets(unittest.TestCase):
             p = Path(t) / 'data.cpk'; p.write_bytes(data)
             return {e[0]: cpk.read(str(p), e) for e in cpk.files(str(p))}
 
-    def test_toc_after_the_header(self):   # Bayonetta 2, Unicorn Overlord: TocOffset 0x800, as before
+    def test_toc_after_the_header(self):   # Another game, another game: TocOffset 0x800, as before
         self.assertEqual(self.read_all(cpk_file(FILES, toc_at_end=False)), {f'd/{k}': v for k, v in FILES.items()})
 
     def test_toc_at_the_end(self):   # LUNAR Remastered Collection: min(TocOffset, ContentOffset) was ContentOffset, 0x1000 too far in here

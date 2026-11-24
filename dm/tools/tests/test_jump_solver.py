@@ -76,7 +76,7 @@ class Bounds(Solver):
     def base(self, r=4): return [ADRP(r, 0, self.TABLE), ADDI(r, r, self.TABLE & 0xfff)]
 
     def test_compare_and_b_hi(self):
-        # Fire Emblem Engage main+0x12eec94: cmp w18,#N; b.hi; ldrsw x18,[xB,x18,lsl #2]; add x18,x18,xB
+        # Another game main+0x12eec94: cmp w18,#N; b.hi; ldrsw x18,[xB,x18,lsl #2]; add x18,x18,xB
         t = [36, 40, 44, 48, 52]; self.table(t)
         w = self.base() + [ldr_w(18), cmp_w(18, 4), bcond(HI, 16, 56), ldrsw(18, 4, 18), ADDR(18, 18, 4), BR(18)] + [RET] * 6
         self.assertEqual(self.site(w), t)
@@ -100,7 +100,7 @@ class Bounds(Solver):
         self.assertEqual(self.site(w), t)
 
     def test_copies_before_and_after_the_check(self):
-        # Link's Awakening subsdk1+0xae9a4 / Super Mario Odyssey subsdk0: cmp w21,#7; b.hi; mov w18,w21. DRAGON QUEST XI S main+0x2dd8cd0: mov w0,w18, 41 instructions, cmp w18,#4
+        # Link's Awakening subsdk1+0xae9a4 / another game subsdk0: cmp w21,#7; b.hi; mov w18,w21. DRAGON QUEST XI S main+0x2dd8cd0: mov w0,w18, 41 instructions, cmp w18,#4
         t = [64 + 4 * i for i in range(5)]; self.table(t)
         after = self.base() + [ldr_w(21), cmp_w(21, 4), bcond(HI, 16, 60), mov_w(18, 21), ldrsw(18, 4, 18), ADDR(18, 18, 4), BR(18)] + [RET] * 12
         self.assertEqual(self.site(after), t)
@@ -119,7 +119,7 @@ class Bounds(Solver):
         self.assertEqual(self.site(w), t)
 
     def test_64_bit_compare_and_32_bit_values(self):
-        # OCTOPATH TRAVELER main+0x1676f30: cmp x22,#0x10 bounds the 64-bit index. A 32-bit compare bounds it only where the upper half is known zero
+        # Another game main+0x1676f30: cmp x22,#0x10 bounds the 64-bit index. A 32-bit compare bounds it only where the upper half is known zero
         t = [36 + 4 * i for i in range(5)]; self.table(t)
         def run(load, check):
             return self.site(self.base() + [load, check, bcond(HI, 16, 56), ldrsw(18, 4, 22), ADDR(18, 18, 4), BR(18)] + [RET] * 10)
@@ -128,7 +128,7 @@ class Bounds(Solver):
         self.assertIsNone(run(ldr_x(22), cmp_w(22, 4)))   # ldr x22: the upper half is unknown, the index is not bounded
 
     def test_shifted_down_then_a_32_bit_compare(self):
-        # ASTRAL CHAIN main+0x6db104: lsr x17,x11,#32; cmp w17,#5; b.hi; ldrsw x17,[x13,x17,lsl #2]: the shift leaves the upper half zero
+        # Another game main+0x6db104: lsr x17,x11,#32; cmp w17,#5; b.hi; ldrsw x17,[x13,x17,lsl #2]: the shift leaves the upper half zero
         t = [40 + 4 * i for i in range(5)]; self.table(t)
         def run(shift): return self.site(self.base() + [ldr_x(11), shift, cmp_w(22, 4), bcond(HI, 20, 60), ldrsw(18, 4, 22), ADDR(18, 18, 4), BR(18)] + [RET] * 10)
         self.assertEqual(run(lsr_x(22, 11, 32)), t)
@@ -136,7 +136,7 @@ class Bounds(Solver):
         self.assertIsNone(run(lsr_x(22, 11, 31)))   # 33 bits: the compare leaves the top one unknown
 
     def test_widening_keeps_the_parts_that_held(self):
-        # ASTRAL CHAIN main+0x6db1a4: w12 - 2 checked against 3 on four paths of a loop; the root's full range grows past the visits allowed, its low 32 bits do not
+        # Another game main+0x6db1a4: w12 - 2 checked against 3 on four paths of a loop; the root's full range grows past the visits allowed, its low 32 bits do not
         r = ('p', 1, 12, 64); old = jump_solver._mk(2, 5, jump_solver.FULL, 2, 5); new = jump_solver._mk(0, jump_solver.M64, jump_solver.FULL, 2, 5)
         self.assertEqual(jump_solver._widen(old, new, r)[3:], (2, 5))
         self.assertEqual(jump_solver._widen(new, jump_solver._mk(0, jump_solver.M64, jump_solver.FULL, 0, 9), r), jump_solver._default(r))
@@ -163,7 +163,7 @@ class Bounds(Solver):
         self.assertEqual(self.site(w), t)
 
     def test_complemented_index(self):
-        # Return of the Obra Dinn main+0x6eea88: tst w17,#7; b.eq; mvn w17,w17; and x18,x17,#7: 1..7 complemented, 7 entries where the mask allows 8
+        # Another game main+0x6eea88: tst w17,#7; b.eq; mvn w17,w17; and x18,x17,#7: 1..7 complemented, 7 entries where the mask allows 8
         t = [44 + 4 * i for i in range(7)]; self.table(t)
         w = self.base(16) + [ldr_w(17), tst_w(17, 3), bcond(EQ, 16, 72), mvn_w(17, 17), and_x(18, 17, 3), ldrsw(18, 16, 18), ADDR(18, 18, 16), BR(18)] + [RET] * 10
         self.assertEqual(self.site(w), t)
@@ -206,7 +206,7 @@ class Bounds(Solver):
         self.assertIsNone(self.site(w))
 
     def test_adr_relative_entries_and_halfword_tables(self):
-        # Tears of the Kingdom main+0x393bb0: adr x18,#L; ldrsw x1,[x17,x0,lsl #2]; add x18,x18,x1. Animal Crossing: New Horizons: ldrh; adr; add x18,x18,xE,lsl #2
+        # Tears of the Kingdom main+0x393bb0: adr x18,#L; ldrsw x1,[x17,x0,lsl #2]; add x18,x18,x1. Another game: ldrh; adr; add x18,x18,xE,lsl #2
         t = [40 + 4 * i for i in range(6)]; self.table(t, rel=24)
         w = self.base(17) + [ldr_w(0), cmp_w(0, 5), bcond(HI, 16, 64), NOP, adr(18, 24, 24), ldrsw(1, 17, 0), ADDR(18, 18, 1), BR(18)] + [RET] * 10
         self.assertEqual(self.site(w), t)
@@ -215,8 +215,8 @@ class Bounds(Solver):
         self.assertEqual(self.site(w), t)
 
     def test_bases_far_back_copied_and_set_later(self):
-        # ASTRAL CHAIN main+0x6db4a0: x24 set 441 instructions back; Super Smash Bros. Ultimate main+0x2b74458: adrp x7 + add, mov x30,x7 ... mov x7,x30;
-        # Blasphemous main+0xae95f8: the loop's base set after the dispatch in address order, then a branch back
+        # Another game main+0x6db4a0: x24 set 441 instructions back; another game main+0x2b74458: adrp x7 + add, mov x30,x7 ... mov x7,x30;
+        # Another game main+0xae95f8: the loop's base set after the dispatch in address order, then a branch back
         n = 450
         w = self.base(24) + [mov_x(30, 24)] + [NOP] * n + [mov_x(7, 30), ldr_w(18), cmp_w(18, 2), bcond(HI, 4 * (n + 6), 4 * (n + 14)), ldrsw(18, 7, 18), ADDR(18, 18, 7), BR(18)] + [RET] * 6
         t = [4 * (n + 10) + 4 * i for i in range(3)]; self.table(t)
@@ -226,7 +226,7 @@ class Bounds(Solver):
         self.assertEqual(self.site(w), t)
 
     def test_page_zero_numbers_are_no_base(self):
-        # Cuphead 1.3.7 main+0x59dc90: x12 is one loop's base and another's constant 1 (mov w12,#1); a path with a number in page zero never reaches a table load
+        # Another game 1.3.7 main+0x59dc90: x12 is one loop's base and another's constant 1 (mov w12,#1); a path with a number in page zero never reaches a table load
         t = [48, 52, 56]; self.table(t)
         w = [ldr_w(8), cbz(8, 4, 20), ADRP(12, 8, self.TABLE), ADDI(12, 12, 0), B(16, 24), movz(12, 1), ldr_w(18), cmp_w(18, 2), bcond(HI, 32, 60),
              ldrsw(18, 12, 18), ADDR(18, 18, 12), BR(18)] + [RET] * 6
@@ -238,7 +238,7 @@ class Bounds(Solver):
 class FoundOnTheCorpus(Solver):
     """Forms the comparison with the recognizers on every supported game's modules brought out"""
     def test_index_loaded_from_a_byte_table(self):
-        # OCTOPATH TRAVELER subsdk0+0x1a7210 (a movie middleware): ldrb w10,[x9,x10]; cmp w10,#0xa; b.hi; ldrsw x10,[x11,x10,lsl #2]: the loaded byte is the index
+        # Another game subsdk0+0x1a7210 (a movie middleware): ldrb w10,[x9,x10]; cmp w10,#0xa; b.hi; ldrsw x10,[x11,x10,lsl #2]: the loaded byte is the index
         t = [44 + 4 * i for i in range(11)]; self.table(t)
         w = [ADRP(11, 0, self.TABLE), ADDI(11, 11, 0), ldr_x(9), ldr_w(10), ldrb_reg(10, 9, 10), cmp_w(10, 10), bcond(HI, 24, 96), ldrsw(10, 11, 10), ADDR(18, 10, 11), BR(18)] + [RET] * 16
         self.assertEqual(self.site(w), t)
@@ -265,7 +265,7 @@ class FoundOnTheCorpus(Solver):
         self.assertEqual(jump_solver.solve(ins, self.img, lambda a: True, unwound=False)[0].get(36), t)
 
     def test_a_copy_stays_tied_to_its_source_through_a_loop(self):
-        # Mario + Rabbids Kingdom Battle subsdk0+0x7340b8: mov w18,w17 at the loop's head, then w17 checked again before the dispatch; w17 counts up around the loop
+        # Another game subsdk0+0x7340b8: mov w18,w17 at the loop's head, then w17 checked again before the dispatch; w17 counts up around the loop
         t = [48 + 4 * i for i in range(5)]; self.table(t)
         w = [ADRP(9, 0, self.TABLE), ADDI(9, 9, 0), ldr_w(17), mov_w(18, 17), cmp_w(17, 4), bcond(HI, 20, 68), ldrsw(18, 9, 18), ADDR(18, 18, 9), BR(18), RET, RET,
              RET, add_w(17, 17, 1), B(52, 12), RET, RET, RET, RET]

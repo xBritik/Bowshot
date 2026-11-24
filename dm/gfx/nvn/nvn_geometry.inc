@@ -153,7 +153,7 @@ static void vertex_dump(NvShader *vs, const p_draw *dw, const p_draw_idx *di) {
 static void geo_draw(NvProg *pr, const p_draw *dw0, const p_draw_idx *di0, uint32_t primitive_base);
 // A draw whose capture would need more scratch than the bound, drawn as smaller draws in the hardware's order: one instance at a time, then runs of a list topology's primitives
 // (points, lines, triangles, lines and triangles with adjacency), each with its own index range. The capture lays the vertices out by vertex number from the lowest index to the highest for
-// every instance, and the geometry shader's output takes room per primitive: OCTOPATH TRAVELER II draws 129,032 triangles of one mesh through a cube shadow map's geometry shader in its
+// every instance, and the geometry shader's output takes room per primitive: another game draws 129,032 triangles of one mesh through a cube shadow map's geometry shader in its
 // first battle, which asked for more than the bound and was skipped. The index list is read once and cut into runs of at most GEO_RUN_PRIMS primitives whose index range takes at most
 // GEO_RUN_SPAN of capture; the runs skip the GPU wait their draw would take (the outer draw waited already, and nothing in between writes index or vertex data). Halving the list at every
 // level instead, each part reading its indices again and waiting for the GPU, made that one frame take 805 ms. Strips, fans and primitive restart cannot be cut that way.
@@ -279,7 +279,7 @@ static int geo_color_omit(void) {
     if (g_geo_full_colors < 0) { const char *e = getenv("DM_NVN_GEOMETRY_COLOR"); g_geo_full_colors = e && !strcmp(e, "full"); }
     if (g_geo_full_colors || !R.has_rt || !R.rt.depth || R.clear_d || R.clear_s) return 0;
     // The answer of the last call with the same targets (each tex_t with its serial, so another texture at the same address does not match), views, clears and color
-    // mask: resolving every attachment's Metal texture a draw was about 15 % of a mesh draw's time in Donkey Kong Bananza
+    // mask: resolving every attachment's Metal texture a draw was about 15 % of a mesh draw's time in another game
     // A byte key: the target record's bytes as they lie (padding included: unequal padding of an equal record only costs a recompute), then the serials, mask and clears
     enum { KEY_RT = sizeof(p_set_rt), KEY_N = KEY_RT + 10 * 8 + 8 };
     uint8_t key[KEY_N]; uint64_t w[10];
@@ -347,7 +347,7 @@ static geo_access geo_access_of(NvProg *pr, NvShader *gs) {
 // kernel (dmsh_geometry.lean) reads only the capture words it decides with, writes the viewport masks and its storage, and the
 // program's own vertex and fragment stages draw the kept primitives. Instanced or multi-invocation draws, vertex shaders with
 // storage writes (they would run twice) and transform feedback keep the full kernel and its reader. So does a passthrough shader that writes the layer (its reader has it, the
-// vertex shader does not): Mario Tennis Fever's atmosphere table (d9c3a99828b4f39f, one 8x8 plane of a 64-plane 3D texture per draw) and its shadow map went to layer 0, and the
+// vertex shader does not): another game's atmosphere table (d9c3a99828b4f39f, one 8x8 plane of a 64-plane 3D texture per draw) and its shadow map went to layer 0, and the
 // other planes stayed zero: a blue wash over the whole scene. A VS viewport mask also requires the full path: only the final
 // VTG stage controls the mask, so rerunning the VS raster entry would incorrectly clip a primitive the GS kept. DM_NVN_GEO_LEAN=0 turns it off.
 static NvShader *geo_lean_pick(NvProg *pr, NvShader *gs, int topology, int instances) {
@@ -487,13 +487,13 @@ static id<MTLRenderPipelineState> geo_mesh_pso_for(NvProg *pr, id<MTLFunction> f
         return nil;
     }
     // A failed pipeline sends the pair back to the compute path for good: with its mesh function still set, every draw of the pair left the geometry runs (geo_run_walk) and drew
-    // alone (a mesh output over Metal's limit took Donkey Kong Bananza's translation from about 10 to 22-31 ms a frame)
+    // alone (a mesh output over Metal's limit took another game's translation from about 10 to 22-31 ms a frame)
     if (ps == NSNull.null && run) g_geo_mesh_runfn[[NSValue valueWithPointer:(__bridge const void *)g_geo_mesh.fn]] = NSNull.null;   // the draws of the pair stay single
     else if (ps == NSNull.null && g_geo_mesh.lean) { NvShader *vs = pr->sh[0]; vs->geo_mesh[@(g_geo_mesh.lean->key)] = NSNull.null; g_geo_mesh_last.vs = nil; }
     return ps == NSNull.null || ps == g_pso_mesh_building ? nil : ps;
 }
 static id<MTLRenderPipelineState> geo_mesh_pso(NvProg *pr) { return g_geo_mesh.ps = geo_mesh_pso_for(pr, g_geo_mesh.fn, 0); }
-// Mesh draws gathered into one dispatch. A mesh draw costs the M1 about 2.7 us however few triangles it has: Donkey Kong Bananza's depth prepass draws 420-550 of them a frame
+// Mesh draws gathered into one dispatch. A mesh draw costs the M1 about 2.7 us however few triangles it has: another game's depth prepass draws 420-550 of them a frame
 // (vertex f9c807930abd1234, culling kernel 5d537f7630ec3671), each a culling geometry shader over 15-350 triangles, 1.5-1.7 ms of GPU a frame where one draw of the same
 // triangles takes 0.5-0.6. A draw that fits waits instead (geo_mesh_take): its record keeps its arguments and the addresses bound at the vertex table's slots for it (g_vt_addr,
 // which the mesh stage shares), and the run is drawn as one dispatch of the run twin (dmsh_mesh.py dm_mesh_run...), whose threadgroups find their draw in the table, before:
@@ -502,11 +502,11 @@ static id<MTLRenderPipelineState> geo_mesh_pso(NvProg *pr) { return g_geo_mesh.p
 // GPU may rasterize in any order, so a run takes only draws whose result does not depend on their order: no colour writes, no stencil writes, depth written only with a test that
 // keeps the nearest (or the farthest), and a fragment shader that writes no memory. The fragment table is not in the record: the run is drawn with the table as it is then, so a
 // change to it while a run waits draws the run first (enc_r_args, geo_mesh_ft_change), and every draw of a run had the same fragment bindings. Before, a fragment shader with
-// any resource kept its draws single: Donkey Kong Bananza's alpha-tested prepass draws (fragment 7f7781d3621f0ce6, two uniform buffers and a discard) drew 1,700-2,800 mesh
+// any resource kept its draws single: another game's alpha-tested prepass draws (fragment 7f7781d3621f0ce6, two uniform buffers and a discard) drew 1,700-2,800 mesh
 // draws a frame one by one, 14-23 fps in those areas. Occlusion query counting may be on (it stays on for the rest
 // of the game after the first samples-passed reset): a report ends the run (geo_mesh_keeps) and a pass keeps one slot, so a query's interval holds whole runs, and whether any of its
 // samples passed is the same in any order (the nearest fragment of each pixel passes whatever the order), which is what occlusion tests and conditional rendering ask. Only the exact
-// count can differ by fragments another order rejects. Donkey Kong Bananza resets that counter once and draws its depth prepass with counting on: refused, no draw ever joined a run.
+// count can differ by fragments another order rejects. Another game resets that counter once and draws its depth prepass with counting on: refused, no draw ever joined a run.
 // DM_NVN_GEO_MESH_RUN=0 turns it off
 typedef struct { uint64_t slot[31]; geo_mesh_args d; uint32_t group_end, n; } geo_mesh_rec;   // = dmsh_mesh.py dm_mesh_rec (RUN_SLOTS)
 enum { GEO_MESH_RUN = 1024 };
@@ -1043,7 +1043,7 @@ static geo_job g_geo_run[GEO_RUN];
 // reads. A job conflicts with some earlier job of the run exactly when one of its ranges meets the writes or one of its writes
 // meets the reads (the pairwise rule: read/read pairs cannot communicate), and overlap with a union is overlap with one of its members,
 // so merging touching or overlapping intervals loses nothing. Checking each job against every earlier one cost O(n^2) range
-// scans a run: about 8 % of the submit thread in Donkey Kong Bananza (58-draw runs, hundreds of geometry draws a frame).
+// scans a run: about 8 % of the submit thread in another game (58-draw runs, hundreds of geometry draws a frame).
 typedef struct { uint64_t lo[GEO_RUN * 64], hi[GEO_RUN * 64]; int n; } geo_span_set;
 static int geo_span_first(const geo_span_set *s, uint64_t lo) {   // the first interval that ends after lo (branch-free halving)
     const uint64_t *h = s->hi; int base = 0, n = s->n;
@@ -1100,7 +1100,7 @@ static int geo_prep(NvProg *pr, const p_draw *dw0, const p_draw_idx *di0, geo_jo
     // of intervening draws. The single-draw path keeps main's ordered copies.
     if (!may_wait) {
         if (ind) return -1;
-        // An empty stream has nothing to prepare, a CPU fill at most (vbuf_unaligned): FINAL FANTASY XII THE ZODIAC AGE leaves one bound at address 1, size 0, which kept every one of its geometry draws out of a run
+        // An empty stream has nothing to prepare, a CPU fill at most (vbuf_unaligned): another game leaves one bound at address 1, size 0, which kept every one of its geometry draws out of a run
         for (int i = 0; i < 16; i++) if (S.vbuf[i].size && (S.vbuf[i].address & 3)) return -1;
     }
     int drained = g_geo_split_depth != 0;
@@ -1122,7 +1122,7 @@ static int geo_prep(NvProg *pr, const p_draw *dw0, const p_draw_idx *di0, geo_jo
     }
     if (cp_on()) { if (drained) g_cp_geo_waited++; else g_cp_geo_safe++; }
     // The kernel for this topology and the reader, looked up by name once per geometry shader: building the names on every draw took about 40 % of geo_prep's time
-    // in Donkey Kong Bananza (an NSString format, a substring and two dictionary lookups a draw, at hundreds of geometry draws a frame)
+    // in another game (an NSString format, a substring and two dictionary lookups a draw, at hundreds of geometry draws a frame)
     if (!(base->geo_bg_tried >> topology & 1)) {
         base->geo_bg_tried |= 1 << topology;
         base->geo_bg_v[topology] = shader_get([NSString stringWithFormat:@"%.16s_bg%d", base->key, topology], 2);

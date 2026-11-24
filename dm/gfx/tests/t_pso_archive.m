@@ -1170,7 +1170,7 @@ int main(int argc, char **argv) { @autoreleasepool {
         EXPECT("index: one with a pipeline with no key is not complete", 1, arch_keys_write(kp, keys, 0) && arch_keys_read(kp, &partial) && partial == 0);
         unlink(kp.fileSystemRepresentation);
     }
-    {   // two shader keys whose library files hold the same bytes (Cuphead's sprite shaders): Metal hands out one function object for both, and fn4_note keeps the descriptor of whichever
+    {   // two shader keys whose library files hold the same bytes (another game's sprite shaders): Metal hands out one function object for both, and fn4_note keeps the descriptor of whichever
         // was noted last, which the prewarm's workers make differ from start to start. The key names a library by its bytes, so it is the same either way; other bytes, another key
         NSString *metal = [@(dir) stringByAppendingPathComponent:@"same.metal"], *la = [@(dir) stringByAppendingPathComponent:@"aaaa_b.metallib"],
                  *lb = [@(dir) stringByAppendingPathComponent:@"bbbb_b.metallib"], *lc = [@(dir) stringByAppendingPathComponent:@"cccc_b.metallib"];

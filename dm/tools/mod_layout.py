@@ -4,7 +4,7 @@ Usage: mod_layout.py <in.nso|in.nro> [out.nro]   (prints what it moves; writes o
 
 Why: Horizon maps modules at 4 KB, the Mac and iOS hosts at 16 KB. loader.c seals [0, text_end rounded up to 16 KB) read + execute (and gen_embed.py puts the same range in __TEXT),
 so a module whose data starts below that boundary has read-only data: the first R_AARCH64_RELATIVE into it stops the game with SIGBUS in relocate()
-(FINAL FANTASY VIII Remastered: Math.nro is text 0x1000, ro 0x1000, data 0x1000; Platform.nro text 0x1000, ro 0x2000, data 0x1000). Keep ro in place to preserve the
+(another game: Math.nro is text 0x1000, ro 0x1000, data 0x1000; Platform.nro text 0x1000, ro 0x2000, data 0x1000). Keep ro in place to preserve the
 linker's relative references between text and ro, including signed jump-table entries. References crossing into or out of the moved part change by D:
   - the NRO header (when NRO0: module size, ro size and data offset), the MOD0 offset at +4, and MOD0's offsets whose target and MOD0 lie on different sides
   - the dynamic section's address tags, symbol values (excluding STT_TLS), RELA / JMPREL offsets and RELATIVE (and symbol-less ABS64) addends, DT_RELR offsets and slot addends

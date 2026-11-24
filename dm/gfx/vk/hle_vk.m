@@ -1,4 +1,4 @@
-// Vulkan → Metal layer for games that render with Vulkan (Hades: The Forge renderer). The game's vk* imports bind to the functions here through the host's import
+// Vulkan → Metal layer for games that render with Vulkan (another game: The Forge renderer). The game's vk* imports bind to the functions here through the host's import
 // table (hle.h swhle); the Vulkan loader (subsdk0) and NVIDIA's driver (subsdk1) are not loaded. vkGet{Instance,Device}ProcAddr look names up in the same table
 // (a name ending in KHR is also tried without it, for extensions promoted to core 1.1); every name the game asks for is logged once.
 // Model:
@@ -68,7 +68,7 @@ typedef struct { VkFormat vk; MTLPixelFormat pf; MTLVertexFormat vf; uint8_t byt
 #define FB(v, p, b, w, h) {VK_FORMAT_##v, MTLPixelFormat##p, MTLVertexFormatInvalid, b, w, h, K_BLOCK}
 #define FV(v, x, b) {VK_FORMAT_##v, MTLPixelFormatInvalid, MTLVertexFormat##x, b, 1, 1, K_COLOR}
 // Packed formats Metal does not have: the texture has a wider format and the host unpacks the texels into it (conv_unpack). Only for linear images the CPU writes (conv_sync):
-// Super Mario 3D All-Stars' Super Mario 64 keeps its N64 textures so, R4G4 among them
+// Another game' Super Mario 64 keeps its N64 textures so, R4G4 among them
 enum { CV_NONE, CV_R4G4, CV_B4G4R4A4, CV_B5G6R5, CV_B5G5R5A1 };
 #define FX(v, p, b, c) {VK_FORMAT_##v, MTLPixelFormat##p, MTLVertexFormatInvalid, b, 1, 1, K_COLOR, c}
 static const fmt_t g_fmts[] = {
@@ -106,7 +106,7 @@ static const fmt_t g_fmts[] = {
     FB(ASTC_5x5_SRGB_BLOCK, ASTC_5x5_sRGB, 16, 5, 5), FB(ASTC_6x6_UNORM_BLOCK, ASTC_6x6_LDR, 16, 6, 6), FB(ASTC_6x6_SRGB_BLOCK, ASTC_6x6_sRGB, 16, 6, 6),
     FB(ASTC_8x8_UNORM_BLOCK, ASTC_8x8_LDR, 16, 8, 8), FB(ASTC_8x8_SRGB_BLOCK, ASTC_8x8_sRGB, 16, 8, 8),
     // Vertex-only formats: integers read as unnormalized floats (USCALED / SSCALED, Metal converts the integer formats to the shader's float type) and three components.
-    // Super Mario Galaxy's GX vertex data is mostly these (positions as R16G16B16_SSCALED, colours as R8G8B8A8_USCALED…)
+    // Another game's GX vertex data is mostly these (positions as R16G16B16_SSCALED, colours as R8G8B8A8_USCALED…)
     FV(R8_USCALED, UChar, 1), FV(R8_SSCALED, Char, 1), FV(R8G8_USCALED, UChar2, 2), FV(R8G8_SSCALED, Char2, 2),
     FV(R8G8B8_UNORM, UChar3Normalized, 3), FV(R8G8B8_SNORM, Char3Normalized, 3), FV(R8G8B8_USCALED, UChar3, 3), FV(R8G8B8_SSCALED, Char3, 3),
     FV(R8G8B8_UINT, UChar3, 3), FV(R8G8B8_SINT, Char3, 3), FV(R8G8B8A8_USCALED, UChar4, 4), FV(R8G8B8A8_SSCALED, Char4, 4),
@@ -258,7 +258,7 @@ static void sh_read_table(FILE *f) {
     }
     free(line);
     if (ferror(f)) die("[vk] cannot read the shader table");
-    qsort(g_sh, g_nsh, sizeof *g_sh, sh_cmp);   // looked up by key (Super Mario Galaxy creates over 3,000 modules at boot)
+    qsort(g_sh, g_nsh, sizeof *g_sh, sh_cmp);   // looked up by key (another game creates over 3,000 modules at boot)
 }
 static void sh_load(void) {
     const char *d = getenv("DM_MSL_DIR"); char p[1024];
@@ -328,7 +328,7 @@ typedef struct { uint32_t binding, count, base; VkDescriptorType type; int dyn, 
 struct VkDescriptorSetLayout_T { _Atomic int refs; uint32_t n, total, ndyn; lbind b[MAXB]; int8_t idx[128]; __strong VkSamplerMetal **imm; };
 // A descriptor holds the Metal objects it was written with (retained), as a hardware descriptor holds a copy of the object's handle: a set may still name a view, sampler
 // or buffer the game has destroyed (the hardware reads it only when a draw samples it), and the replay binds every element of an array the shader takes. Descriptors
-// used to point at this layer's view / sampler / buffer structs, and Super Mario Galaxy 2 crashed reading a freed view's texture from element 1 of its 8-texture array
+// used to point at this layer's view / sampler / buffer structs, and another game crashed reading a freed view's texture from element 1 of its 8-texture array
 // when the ship took off after its first galaxy (GitHub issue 68). buf / off: the buffer's memory and its offset there plus the descriptor's; tex: an image view's
 // texture or a texel buffer's
 typedef struct { __strong id<MTLBuffer> buf; VkDeviceSize off; __strong id<MTLTexture> tex; __strong VkSamplerMetal *smp; } desc_t;
@@ -357,7 +357,7 @@ struct VkPipeline_T {
     uint32_t nviewport;
     MTLViewport vp0, *vp; VkRect2D sc0, *sc;   // static state, with heap storage only for multiple viewports
     abuf_t ab[3][2]; int nab[3];   // at most two argument buffers per stage (ST_*)
-    // Dynamic stencil state (Super Mario 3D All-Stars' Super Mario 64): the reference is the encoder's; the masks are part of a Metal depth-stencil state, so the
+    // Dynamic stencil state (another game' Super Mario 64): the reference is the encoder's; the masks are part of a Metal depth-stencil state, so the
     // pipeline keeps its depth-stencil description and builds the state for the masks set (one cached)
     VkLogicOp logic;   // not implemented (0 = none: VK_LOGIC_OP_CLEAR is not met)
     int dyn_sref, dyn_smask, stencil; VkStencilOpState sf, sb; MTLCompareFunction dcmp; int dwrite; uint64_t dss_key; __strong id<MTLDepthStencilState> dss_dyn;
@@ -429,7 +429,7 @@ VK(vkCreateInstance, VkResult, const VkInstanceCreateInfo *ci, const VkAllocatio
     *out = &g_inst; return VK_SUCCESS;
 }
 VK(vkDestroyInstance, void, VkInstance i, const VkAllocationCallbacks *a) { (void)i; (void)a; }
-// VK_EXT_debug_report: a game that enabled it calls its functions without checking the lookup (Super Mario 3D All-Stars' Super Mario 64 called the null pointer).
+// VK_EXT_debug_report: a game that enabled it calls its functions without checking the lookup (another game' Super Mario 64 called the null pointer).
 // The layer reports nothing, so the callback object is a token that is never called
 VK(vkCreateDebugReportCallbackEXT, VkResult, VkInstance i, const VkDebugReportCallbackCreateInfoEXT *ci, const VkAllocationCallbacks *a, VkDebugReportCallbackEXT *out) {
     (void)i; (void)ci; (void)a; static uint64_t next; *out = (VkDebugReportCallbackEXT)(uintptr_t)(0x1000 + ++next); return VK_SUCCESS;
@@ -577,7 +577,7 @@ VK(vkGetPhysicalDeviceSurfaceSupportKHR, VkResult, VkPhysicalDevice pd, uint32_t
 VK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR, VkResult, VkPhysicalDevice pd, VkSurfaceKHR s, VkSurfaceCapabilitiesKHR *c) {
     (void)pd; (void)s; memset(c, 0, sizeof *c);
     c->minImageCount = 2; c->maxImageCount = 4; c->currentExtent = surf_ext(); c->minImageExtent = (VkExtent2D){1, 1}; c->maxImageExtent = (VkExtent2D){1920, 1080};
-    // INHERIT as well: Super Mario Galaxy creates its swapchain with preTransform INHERIT and asserts when the surface does not list it (transforms are ignored here)
+    // INHERIT as well: another game creates its swapchain with preTransform INHERIT and asserts when the surface does not list it (transforms are ignored here)
     c->maxImageArrayLayers = 1; c->currentTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR; c->supportedCompositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     c->supportedTransforms = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR | VK_SURFACE_TRANSFORM_INHERIT_BIT_KHR;
     c->supportedUsageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -759,7 +759,7 @@ VKB(vkCreateImage, VkResult, VkDevice d, const VkImageCreateInfo *ci, const VkAl
     const fmt_t *f = fmt_of(ci->format);
     if (!f || f->pf == MTLPixelFormatInvalid) { LOG("[vk] [RED] image format %d not mapped", ci->format); return VK_ERROR_FORMAT_NOT_SUPPORTED; }
     // Linear 2D images with one level and layer alias their memory, as on the Switch: the texture is made over the bound buffer at vkBindImageMemory, with rows at
-    // Metal's linear-texture alignment (which vkGetImageSubresourceLayout reports). Super Mario Galaxy fills staging images from the CPU this way and samples a 4x4 one
+    // Metal's linear-texture alignment (which vkGetImageSubresourceLayout reports). Another game fills staging images from the CPU this way and samples a 4x4 one
     if (ci->tiling == VK_IMAGE_TILING_LINEAR && ci->imageType == VK_IMAGE_TYPE_2D && ci->mipLevels <= 1 && ci->arrayLayers <= 1 && ci->samples <= 1 && f->kind != K_BLOCK && !fmt_has_depth(f) && !fmt_has_stencil(f)) {
         NSUInteger al = [g_dev minimumLinearTextureAlignmentForPixelFormat:f->pf]; if (!al) al = 256;
         VkImage im = zalloc(sizeof *im);
@@ -777,7 +777,7 @@ VKB(vkCreateImage, VkResult, VkDevice d, const VkImageCreateInfo *ci, const VkAl
         td.pixelFormat = f->pf; td.width = ci->extent.width; td.height = umax(1, ci->extent.height); td.depth = umax(1, ci->extent.depth);
         td.mipmapLevelCount = umax(1, ci->mipLevels); td.sampleCount = samples;
         // A 1D image is a one-row 2D (array) texture, as in the NVN layer and in MoltenVK: Metal's 1D texture is no render target, has one level and no depth format, all of which
-        // Vulkan's 1D image allows (Hades draws into a 512x1 colour target), and vk_shaders.py translates 1D images as texture2d (spirv-cross --msl-texture-1d-as-2d)
+        // Vulkan's 1D image allows (another game draws into a 512x1 colour target), and vk_shaders.py translates 1D images as texture2d (spirv-cross --msl-texture-1d-as-2d)
         if (ci->imageType == VK_IMAGE_TYPE_3D) td.textureType = MTLTextureType3D;
         else if (samples > 1) td.textureType = layers > 1 ? MTLTextureType2DMultisampleArray : MTLTextureType2DMultisample;
         else if (cube) td.textureType = layers > 6 ? MTLTextureTypeCubeArray : MTLTextureTypeCube;
@@ -802,7 +802,7 @@ VKB(vkCreateImage, VkResult, VkDevice d, const VkImageCreateInfo *ci, const VkAl
     }
     return VK_SUCCESS;
 }
-// A swap chain's image is not the game's to destroy, but Super Mario 3D All-Stars' Super Mario 64 destroys the images vkGetSwapchainImagesKHR gave it as it tears down (main+0x9500) and keeps the
+// A swap chain's image is not the game's to destroy, but another game' Super Mario 64 destroys the images vkGetSwapchainImagesKHR gave it as it tears down (main+0x9500) and keeps the
 // swap chain, as the console's driver lets it: ignored, or the swap chain would go on using freed memory
 VKB(vkDestroyImage, void, VkDevice d, VkImage im, const VkAllocationCallbacks *a) { (void)d; (void)a; if (im && im->swap) return; if (im) { if (im->shadow) conv_remove(im); im->tex = nil; free(im->shadow); free(im); } }
 VK(vkGetImageMemoryRequirements, void, VkDevice d, VkImage im, VkMemoryRequirements *r) {
@@ -967,7 +967,7 @@ VK(vkDestroyDescriptorSetLayout, void, VkDevice d, VkDescriptorSetLayout L, cons
 VK(vkCreateDescriptorPool, VkResult, VkDevice d, const VkDescriptorPoolCreateInfo *ci, const VkAllocationCallbacks *a, VkDescriptorPool *out) {
     (void)d; (void)ci; (void)a; *out = zalloc(sizeof **out); return VK_SUCCESS;
 }
-// The sets that exist: a set freed with its pool (reset or destroyed) may still be named to vkFreeDescriptorSets, against the Vulkan rules: Super Mario 3D All-Stars' Super Mario 64 does so
+// The sets that exist: a set freed with its pool (reset or destroyed) may still be named to vkFreeDescriptorSets, against the Vulkan rules: another game' Super Mario 64 does so
 // as it tears down on the way back to the launcher, and freeing the set again read freed memory (a crash in set_free). The console's driver lets it pass, and a free of a set that is gone is ignored here
 static pthread_mutex_t g_sets_mu = PTHREAD_MUTEX_INITIALIZER; static CFMutableSetRef g_sets;
 static void set_live(VkDescriptorSet s, int on) {
@@ -1105,7 +1105,7 @@ VK(vkCreateFramebuffer, VkResult, VkDevice d, const VkFramebufferCreateInfo *ci,
 VK(vkDestroyFramebuffer, void, VkDevice d, VkFramebuffer fb, const VkAllocationCallbacks *a) { (void)d; (void)a; free(fb); }
 
 // ---------- Shaders and pipelines ----------
-// DM_VK_CAPTURE=<dir> (Mac): every SPIR-V module the game creates is written to <dir>/<key>.spv. Super Mario Galaxy generates its GX shaders as SPIR-V at run time
+// DM_VK_CAPTURE=<dir> (Mac): every SPIR-V module the game creates is written to <dir>/<key>.spv. Another game generates its GX shaders as SPIR-V at run time
 // (over 3,000 at boot, from the pipeline database), so no game file holds them; vk_shaders.py translates a capture folder like a RomFS
 static void sh_capture(const char *key, const void *code, size_t n) {
     static const char *dir; static int init;
@@ -1135,7 +1135,7 @@ VKB(vkCreateShaderModule, VkResult, VkDevice d, const VkShaderModuleCreateInfo *
     *out = m; return VK_SUCCESS;
 }
 VKB(vkDestroyShaderModule, void, VkDevice d, VkShaderModule m, const VkAllocationCallbacks *a) { (void)d; (void)a; if (m) { m->fn = m->fn_d = nil; free(m); } }
-// Pipeline caches hold nothing: the game's initial data is NVIDIA's binary cache (Super Mario Galaxy's data/database/vulkan/*.cache), and Metal keeps its own
+// Pipeline caches hold nothing: the game's initial data is NVIDIA's binary cache (another game's data/database/vulkan/*.cache), and Metal keeps its own
 VK(vkCreatePipelineCache, VkResult, VkDevice d, const VkPipelineCacheCreateInfo *ci, const VkAllocationCallbacks *a, VkPipelineCache *out) {
     (void)d; (void)ci; (void)a; *out = zalloc(sizeof **out); return VK_SUCCESS;
 }
@@ -1171,7 +1171,7 @@ static int dual_source(const VkPipelineColorBlendStateCreateInfo *cb) {   // a b
     return 0;
 }
 // Specialization constants: SPIRV-Cross keeps each SpecId as a Metal function constant of the same index, and Metal builds no pipeline from a function that has constants
-// until they are given (Super Mario 3D All-Stars' Super Mario 64). The values the pipeline gives are set; the others keep the defaults the translation wrote
+// until they are given (another game' Super Mario 64). The values the pipeline gives are set; the others keep the defaults the translation wrote
 static id<MTLFunction> spec_fn(id<MTLFunction> fn, const VkSpecializationInfo *si) {
     if (!fn || !fn.functionConstantsDictionary.count) return fn;
     MTLFunctionConstantValues *cv = [MTLFunctionConstantValues new];
@@ -1675,7 +1675,7 @@ static void end_rp(rs_t *s, int final) {   // final: the pass's own store action
     if (d.stencilAttachment.texture) [s->re setStencilStoreAction:final ? s->st_s : MTLStoreActionStore];
     [s->re endEncoding]; s->re = nil;
 }
-// A copy inside a render pass, which NVIDIA's driver runs: Super Mario Galaxy copies from its EFB in the middle of a pass (vkCmdCopyImage). The encoder ends here and
+// A copy inside a render pass, which NVIDIA's driver runs: another game copies from its EFB in the middle of a pass (vkCmdCopyImage). The encoder ends here and
 // the pass resumes at its next draw (resume_rp); without that, the rest of the pass's draws were dropped
 static id<MTLBlitCommandEncoder> blit(rs_t *s, uint32_t op) {
     if (s->re) { static int n; if (n++ < 3) OLOG("copy inside a render pass (command %u): the pass is split and the next draw continues it", op); end_rp(s, 0); s->cut = 1; }
@@ -1684,7 +1684,7 @@ static id<MTLBlitCommandEncoder> blit(rs_t *s, uint32_t op) {
     return s->be;
 }
 // The occlusion query running counts the render encoder there is, each from a slot of its own in the submit's visibility buffer. It may have begun outside a render pass (Vulkan lets a query span
-// from before a pass to after it: Super Mario 3D All-Stars' Sunshine, Hagi's GX) and a pass's encoder may be split for a copy: every encoder started while it runs gets a slot
+// from before a pass to after it: another game' Sunshine, Hagi's GX) and a pass's encoder may be split for a copy: every encoder started while it runs gets a slot
 static void query_record(subq_t *s, VkQueryPool pool, uint32_t idx, int64_t slot) {
     if (s->nwrites == s->write_cap) {
         uint32_t cap = s->write_cap ? 2 * s->write_cap : 16;
@@ -1759,7 +1759,7 @@ static void begin_rp(rs_t *s, const c_brp *c) {
     s->rpd = d; s->re = [s->cb renderCommandEncoderWithDescriptor:d]; s->enc_id = ++g_enc_id;
     s->applied = NULL; s->rt_w = w; s->rt_h = h; s->rt_layers = fb->layers; s->db_live = 0;
     // Dynamic viewport and scissor persist across render passes within a command buffer, as in Vulkan; the render target's size stands in only until the game sets them.
-    // Resetting them at every pass drew Super Mario Galaxy's handheld UI 1.5x too big: it sets a 1280x720 viewport once and then draws through several passes into its 1920x1080 swapchain
+    // Resetting them at every pass drew another game's handheld UI 1.5x too big: it sets a 1280x720 viewport once and then draws through several passes into its 1920x1080 swapchain
     s->vp_dirty = s->sc_dirty = 1;
     g_n_pass++;
     occ_start(s);
@@ -2690,7 +2690,7 @@ static void replay_ops(rs_t *s, VkCommandBuffer cb) {
             }
             case C_STENCIL: { const c_stencil *x = c; if (x->faces & VK_STENCIL_FACE_FRONT_BIT) s->sdyn[x->what][0] = x->v; if (x->faces & VK_STENCIL_FACE_BACK_BIT) s->sdyn[x->what][1] = x->v;
                               s->sdyn_set[x->what] = 1; s->s_dirty = 1; break; }
-            case C_CLEARI: {   // an image cleared outside a render pass (Super Mario 3D All-Stars' Super Mario 64 clears its depth buffer so): a pass per level and layer that only clears
+            case C_CLEARI: {   // an image cleared outside a render pass (another game' Super Mario 64 clears its depth buffer so): a pass per level and layer that only clears
                 const c_cleari *x = c; VkImage im = x->im;
                 if (!im || !im->tex) { RED1("a cleared image was not created"); break; }
                 if (s->re) { end_rp(s, 0); s->cut = 1; }
@@ -2911,7 +2911,7 @@ VKB(vkAcquireNextImageKHR, VkResult, VkDevice d, VkSwapchainKHR sc, uint64_t tim
     uint32_t i = sc->next++ % sc->n;
     uint64_t period = 1000000000ull / (uint64_t)mtl_fps_target(), now = now_ns();
     // Paced by the display link when it runs, as NVN's acquire (hle_nvn.c nvnWindowAcquireTexture): FIFO presents one frame per vsync. A clock of our own drifts against the screen:
-    // Super Mario Galaxy 2 on an iPhone put two frames into some display-link ticks and none into others (about one tick in seven), and on a Mac window it ran at 30 fps
+    // Another game on an iPhone put two frames into some display-link ticks and none into others (about one tick in seven), and on a Mac window it ran at 30 fps
     if (mtl_link_active() && mtl_link_wait_tick((int)(60 / mtl_fps_target()), 2 * period)) g_next_acq = now_ns() + period;
     else {
         if (g_next_acq > now) { uint64_t w = g_next_acq - now; struct timespec ts = {(time_t)(w / 1000000000ull), (long)(w % 1000000000ull)}; nanosleep(&ts, NULL); }
@@ -2935,7 +2935,7 @@ static void frame_end(void) {
 VKB(vkQueuePresentKHR, VkResult, VkQueue q, const VkPresentInfoKHR *pi) {
     (void)q; dm_gfx_enter();
     pthread_mutex_lock(&g_qmu); uint64_t v = g_ev_val; pthread_mutex_unlock(&g_qmu);
-    int crop[4]; dm_vi_layer_crop(crop);   // the vi layer crop (hle_vi.c): Super Mario Galaxy shows the top-left 1280x720 of its 1920x1080 swapchain in handheld mode
+    int crop[4]; dm_vi_layer_crop(crop);   // the vi layer crop (hle_vi.c): another game shows the top-left 1280x720 of its 1920x1080 swapchain in handheld mode
     for (uint32_t i = 0; i < pi->swapchainCount; i++) {
         VkSwapchainKHR sc = pi->pSwapchains[i]; uint32_t k = pi->pImageIndices[i];
         int fit = crop[2] > 0 && crop[3] > 0 && k < sc->n && (uint32_t)(crop[0] + crop[2]) <= sc->img[k]->w && (uint32_t)(crop[1] + crop[3]) <= sc->img[k]->h;

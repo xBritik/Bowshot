@@ -18,7 +18,7 @@ one dispatch: buffer 12 holds a table of dm_mesh_rec, one a draw, each with the 
 the end of its threadgroups (a running total) and the addresses bound at the vertex table's slots
 for it. A threadgroup finds its draw by halving, takes its resources through those addresses and
 runs the same body with the draw's own threadgroup and primitive numbers. A mesh draw on an M1
-costs about 2.7 us however few triangles it has; Donkey Kong Bananza's depth prepass draws 420-550
+costs about 2.7 us however few triangles it has; another game's depth prepass draws 420-550
 of them a frame (nvn_geometry.inc, geo_mesh_run).
 """
 import re
@@ -33,7 +33,7 @@ _SCALAR = {'float': 4, 'int': 4, 'uint': 4, 'half': 2, 'short': 2, 'ushort': 2}
 
 def out_bytes(src):
     """The bytes of one vertex the mesh writes: the members of main0_out, packed as Metal counts
-    the mesh output (Donkey Kong Bananza: 24 float4 and the position, 388 bytes, with the point size)."""
+    the mesh output (another game: 24 float4 and the position, 388 bytes, with the point size)."""
     m = re.search(r'struct main0_out\s*\{(.*?)\};', src, re.S)
     if not m: raise ValueError('mesh: no main0_out')
     n = 0

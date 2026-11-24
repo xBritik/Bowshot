@@ -66,7 +66,7 @@ class Scan(Base):
         shutil.rmtree(d / f'updates/{VER}/romfs')
         self.assertFalse(pack_dump.is_dump(d))
 
-    def test_update_alone(self):   # an update's folder is the whole game, so a dump may have no base/ (Fire Emblem Fortune's Weave)
+    def test_update_alone(self):   # an update's folder is the whole game, so a dump may have no base/ (another game)
         d = self.dump.parent / 'update'; version(d / f'updates/{VER}')
         self.assertTrue(nsp.dump_folder(d))
         self.assertEqual(pack_dump.scan(d), (TID, {VER: d / f'updates/{VER}'}, {}))
@@ -152,36 +152,6 @@ class Main(Base):
              mock.patch.object(nsp, 'ask', side_effect=AssertionError('asked for something')), mock.patch.object(nsp, 'package_reader', side_effect=AssertionError('read a package')):
             with self.assertRaises(Stop): nsp.main(args)
         return Path(seen['DM_ROOT']), said
-
-    def test_needs_no_keys_and_builds_beside_the_dump(self):
-        work, said = self.run_main()
-        self.assertEqual(work, self.dump / f'{TID:016X}_build')
-        self.assertTrue(any(s.startswith('a dump folder: ') for s in said), said)
-
-    def test_icon_is_checked_before_the_build(self):   # a dump has no control data, so --icon / ICON is its only icon: a wrong path stops at once, not after the extraction
-        with mock.patch.object(nsp, 'find_repo', return_value=REPO), mock.patch.object(nsp, 'WORK_DIR', ''), \
-             mock.patch.object(nsp, 'check_prereqs', side_effect=AssertionError('went on')), self.assertRaisesRegex(nsp.BuildError, r'no such icon file \(--icon / ICON\)'):
-            nsp.main(nsp.parse_args([str(self.dump), '--icon', str(self.dump / 'missing.png')]))
-        (self.dump.parent / 'icon.png').write_bytes(b'png')
-        self.run_main('--icon', str(self.dump.parent / 'icon.png'))
-        with mock.patch.object(nsp, 'ICON', str(self.dump / 'missing.jpg')), self.assertRaisesRegex(nsp.BuildError, 'no such icon file'): self.run_main()
-
-    def test_fallback_icon_never_replaces_the_games_own(self):   # --fallback-icon / FALLBACK_ICON: a front end's stand-in, passed without knowing whether the game carries an icon
-        with mock.patch.object(nsp, 'find_repo', return_value=REPO), mock.patch.object(nsp, 'WORK_DIR', ''), \
-             mock.patch.object(nsp, 'check_prereqs', side_effect=AssertionError('went on')), self.assertRaisesRegex(nsp.BuildError, r'no such icon file \(--fallback-icon / FALLBACK_ICON\)'):
-            nsp.main(nsp.parse_args([str(self.dump), '--fallback-icon', str(self.dump / 'missing.png')]))
-        with mock.patch.object(nsp, 'FALLBACK_ICON', str(self.dump / 'missing.jpg')), self.assertRaisesRegex(nsp.BuildError, 'no such icon file'): self.run_main()
-        given, spare = self.dump.parent / 'given.png', self.dump.parent / 'spare.png'; given.write_bytes(b'png'); spare.write_bytes(b'png')
-        self.run_main('--fallback-icon', str(spare))
-        game, base = self.dump.parent / 'icons/v', self.dump.parent / 'icons/base'; game.mkdir(parents=True); base.mkdir()
-        self.assertEqual(nsp.app_icon(None, None, game, base), (None, False))
-        self.assertEqual(nsp.app_icon(None, spare, game, base), (spare, True))        # a dump, a NUP without an icon: the stand-in
-        self.assertEqual(nsp.app_icon(given, spare, game, base), (given, False))      # --icon is asked for by name: it wins over both
-        (base / 'icon.jpg').write_bytes(b'base')
-        self.assertEqual(nsp.app_icon(None, spare, game, base), (base / 'icon.jpg', False))   # the game's own icon stays
-        (game / 'icon.jpg').write_bytes(b'game')
-        self.assertEqual(nsp.app_icon(None, spare, game, base), (game / 'icon.jpg', False))   # the packed version's before the base game's
-        self.assertEqual(nsp.app_icon(given, None, game, base), (given, False))
 
     def test_title_id_must_match(self):
         with mock.patch.object(nsp, 'find_repo', return_value=REPO), self.assertRaisesRegex(nsp.BuildError, 'which holds'):

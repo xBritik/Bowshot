@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# CRI CPK archives (CRIWARE File System): Bayonetta 2 keeps all its data but sound and movies in six of them (data000.cpk …). A CPK starts with 'CPK ' and a 0x10-byte header, then an
+# CRI CPK archives (CRIWARE File System): another game keeps all its data but sound and movies in six of them (data000.cpk …). A CPK starts with 'CPK ' and a 0x10-byte header, then an
 # @UTF table that names where its table of contents is (TocOffset) and where the file data starts (ContentOffset); the TOC ('TOC ', 0x10 bytes, @UTF) has one row per file:
 # DirName, FileName, FileSize (stored), ExtractSize, FileOffset (relative to the smaller of ContentOffset and TocOffset, TocOffset counted as at most 0x800: files). A file whose stored size is smaller than its size is
-# CRILAYLA-compressed (crilayla). The @UTF tables may be stored masked (Unicorn Overlord; unmask). shader_split.py reads every CPK through it (cpk_jobs).
+# CRILAYLA-compressed (crilayla). The @UTF tables may be stored masked (another game; unmask). shader_split.py reads every CPK through it (cpk_jobs).
 # Usage: cpk.py <file.cpk> [--extract <dir> [<name regex>]] lists (or extracts) the files.
 import re, struct, sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../tools'))
@@ -10,7 +10,7 @@ from romfs import open
 from pathlib import Path
 
 def unmask(b):
-    """An @UTF table stored masked (Unicorn Overlord's CPKs): each byte XOR the low byte of a 16-bit value that starts at 0x655f and is multiplied by 0x4115 after every byte"""
+    """An @UTF table stored masked (another game's CPKs): each byte XOR the low byte of a 16-bit value that starts at 0x655f and is multiplied by 0x4115 after every byte"""
     out, m = bytearray(len(b)), 0x655f
     for i, x in enumerate(b): out[i] = x ^ (m & 0xff); m = m * 0x4115 & 0xffff
     return bytes(out)
@@ -55,7 +55,7 @@ def utf(d, o=0):
     return sz(tn), rows
 
 def files(path):
-    """→ [(path in the archive, offset, stored length, length)] of a CPK; a file with both a TOC and an ITOC only by its TOC (Bayonetta 2's have names)"""
+    """→ [(path in the archive, offset, stored length, length)] of a CPK; a file with both a TOC and an ITOC only by its TOC (another game's have names)"""
     with open(path, 'rb') as f:
         h = f.read(0x800)
         if h[:4] != b'CPK ': raise ValueError(f'{path}: not a CPK')
@@ -68,7 +68,7 @@ def files(path):
         if t[:4] != b'TOC ': raise ValueError(f'{path}: no TOC at {toc:#x}')
         n = struct.unpack_from('<I', t, 8)[0]; f.seek(toc + 0x10); t = utf_at(f.read(n), 0, n)
     # FileOffset counts from the smaller of ContentOffset and TocOffset, with TocOffset capped at 0x800 (CRI's rule, as CriPakTools reads it). The cap makes no
-    # difference when the TOC follows the header (Bayonetta 2, Unicorn Overlord: TocOffset 0x800); with the TOC at the end of the file (LUNAR Remastered Collection's
+    # difference when the TOC follows the header (another game, another game: TocOffset 0x800); with the TOC at the end of the file (LUNAR Remastered Collection's
     # data.cpk: ContentOffset 0x16000, TocOffset 0x42b06800) min(toc, ctt) read every file 0x15800 bytes too far in
     toc_base = min(toc, 0x800)
     base = min(ctt, toc_base) if ctt else toc_base
@@ -83,7 +83,7 @@ def crilayla(c):
     """CRILAYLA: 'CRILAYLA', u32 size, u32 compressed length, then the compressed bits, then 0x100 bytes stored as they are (the output's first 0x100). The bits are read from the end of the
     compressed bytes backwards, highest bit first, and the output is written from its end backwards: a 1 bit, 13 offset bits (+3, forward from the write position) and a length in growing
     fields (2, 3, 5 bits, then 8 bits while all ones; +3), or a 0 bit and a literal byte. The bits are read from a string of '0' / '1' (twice as fast as shifting in Python: 29 MB/s on
-    Bayonetta 2's shader.dat)"""
+    another game's shader.dat)"""
     if c[:8] != b'CRILAYLA': raise ValueError('not CRILAYLA')
     usz, csz = struct.unpack_from('<II', c, 8)
     out = bytearray(usz + 0x100)

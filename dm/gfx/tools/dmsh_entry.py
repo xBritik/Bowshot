@@ -8,8 +8,8 @@ import dmsh_abi, dmsh_side, dmsh_alpha, dmsh_logic
 from dmsh_reflect import attributes
 
 def vs_writes(src, binds):
-    """Whether a vertex shader has side effects that a draw with rasterizer discard still runs, so that it needs main0_discard: storage buffer writes (Xenoblade Chronicles 3's
-    vertex-only work before its skinned models) or image stores (Metroid Prime Remastered's volumetric fog: 1cbc19f806a08166 fills its 100x57x64 RGBA16F froxel volume from
+    """Whether a vertex shader has side effects that a draw with rasterizer discard still runs, so that it needs main0_discard: storage buffer writes (another game's
+    vertex-only work before its skinned models) or image stores (another game's volumetric fog: 1cbc19f806a08166 fills its 100x57x64 RGBA16F froxel volume from
     5,700 points with rasterization off; without the entry the host skipped the draw, the volume stayed zero and the fog pass blended every scene to black)"""
     return any(b.get('rw') for b in binds) or bool(re.search(r'access::(read_)?write\b', src))
 
@@ -65,7 +65,7 @@ VP_BASE_INSTANCE = '(*spvDescriptorSet0.vp_c0)._m0[100].y'   # c0 + 0x644, the d
 def vs_base_instance(src):
     """The draw's base instance from Metal, not from the driver segment. GLSLC adds c0 + 0x644 to Maxwell's instance ID where a shader needs the absolute instance (gl_InstanceID +
     gl_BaseInstance); the host writes that word from the draw command (nvn_mtl.m encode_args), but an indirect draw's base instance is in its argument record, which the GPU may write
-    earlier in the same submission. Metal passes every draw's base instance, direct or indirect, as [[base_instance]], so a vertex function reads it there. Super Mario Party Jamboree's
+    earlier in the same submission. Metal passes every draw's base instance, direct or indirect, as [[base_instance]], so a vertex function reads it there. Another game's
     GPU-driven instances (276504dc5c987ecf writes the records, 4b05556737e9535f draws them: record = instance + c0 + 0x644, 80 bytes each) all took the first records' transforms
     with 0 there, and stray grey triangles crossed the board. The segment's rows are float4 holding raw bits, so the word becomes the float with the base instance's bits; a function without
     the parameter gets it"""
@@ -93,7 +93,7 @@ def drop_point_size(src):
 def vs_layer(src):
     """A vertex shader that writes the layer (render_target_array_index) loses the point size output. The translator writes gl_PointSize = 1.0 in every vertex shader; Metal builds a pipeline
     whose vertex function writes the layer only with an input primitive class, and one that writes a point size only with the point class (or none), so with both no pipeline can be built.
-    Pokémon Legends: Z-A's layered full-screen passes (57246f9a04af8529, b29f08619f379a83: a triangle per instance, layer = instance + offset) draw triangles, where the point size is unused;
+    Another game's layered full-screen passes (57246f9a04af8529, b29f08619f379a83: a triangle per instance, layer = instance + offset) draw triangles, where the point size is unused;
     the host gives such pipelines the triangle class (layer_out, nvn_mtl.m pso_desc). Shaders that do not write the layer are unchanged"""
     if not layer_out(src): return src
     i = src.find('struct main0_out\n{\n'); j = src.find('\n};', i)
@@ -219,8 +219,8 @@ def vs_depth(src):
 def fs_uint(src):
     """The typed-output entry point main0_u, for every pixel shader. Maxwell writes an output register's bits to its target, and the target's format, not the shader, says what they are: a
     float, unsigned or signed integer. With no PC version the translator declares every colour output float, and Metal refuses a pipeline whose float output meets an integer attachment
-    (a pipeline from a Metal 4 base is not refused, and the target takes undefined values). Luigi's Mansion 3 draws its whole scene into an R32Uint + RGBA8Uint G-buffer, Pokémon Sword
-    mixes float colours 0 and 2 with an RGBA16Uint colour 1, Kirby and the Forgotten Land writes an R8Uint colour 5 beside float ones (GitHub issue #2760), Mortal Kombat 11 needs signed and
+    (a pipeline from a Metal 4 base is not refused, and the target takes undefined values). Another game draws its whole scene into an R32Uint + RGBA8Uint G-buffer, another game
+    mixes float colours 0 and 2 with an RGBA16Uint colour 1, another game writes an R8Uint colour 5 beside float ones (GitHub issue #2760), Mortal Kombat 11 needs signed and
     unsigned ones (PR #2807). So the pipeline says which outputs are integers: main0_u is the same body (dmsh_side.shared_body) returning each colour output n as a float, an unsigned or a
     signed vector of the same bits (as_type, nothing converted), by the bool function constants DMSH_UINT_FC + n (dm_ui<n>) and DMSH_SINT_FC + n (dm_si<n>), a float where neither is set
     (dm_uf<n>); its output struct holds the three members on [[color(n)]], each present by its constant. It also holds the fixed-function work Metal lacks, each by a constant and with its
@@ -231,7 +231,7 @@ def fs_uint(src):
     side library holds one more body than before, not three (dmsh_side.unit gives main0 an alpha test entry point, which needs no specialization, and no logic one). The host specializes it
     with the pipeline's targets and state (nvn_mtl.m typed_fn) when a target's class is not the one main0 declares, the pipeline has a logic operation, or target 0 blends with a SRC1 factor.
     A shader got an integer entry
-    point only when its code looked like an integer writer, which took five rules and still missed (Trails in the Sky 2nd Chapter: a uniform word, zeros, a register reused by two branches,
+    point only when its code looked like an integer writer, which took five rules and still missed (another game: a uniform word, zeros, a register reused by two branches,
     a texel read as it is; Kirby's 76 shaders of #2760): every pixel shader gets it, and the build cuts it into the side library <key>_bx that the host loads on first need
     (dmsh_build.py ps_libraries), so the base library every shader loads stays as it was. A colour member of another type (half) or shape (an index, a function constant) stays as it is.
     → main0_u (with the helpers it uses), to append to the source with its body shared, or None when main0 is not of a shape dmsh_side.entry knows or has no colour output"""

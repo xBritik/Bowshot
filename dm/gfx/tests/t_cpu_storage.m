@@ -1,6 +1,6 @@
 // An uncompressed 2D texture the CPU wrote, over storage the GPU has not written (nvn_mtl.m tex_cpu_content): its storage is its content at first use, flushed or not, and a later CPU
 // write is uploaded. Once the GPU writes its storage it becomes a GPU texture with the content it has (cpu_unc_drop), and CPU writes are no longer uploaded. Over storage the GPU already
-// writes it stays a GPU texture, unless the CPU has rewritten that storage since. Mario Kart World's terrain patches: R16, RG8, RGBA8, R11G11B10F and RGBA16 in a CPU_CACHED pool, never
+// writes it stays a GPU texture, unless the CPU has rewritten that storage since. Another game's terrain patches: R16, RG8, RGBA8, R11G11B10F and RGBA16 in a CPU_CACHED pool, never
 // flushed, were zeros and every patch a flat plane. Ocarina of Time's terrain height and blend maps lie in the pool its normal maps are drawn into: zeros, and holes in the ground.
 #include "../nvn/nvn_mtl.m"
 void *front_metal_layer(void) { return NULL; }

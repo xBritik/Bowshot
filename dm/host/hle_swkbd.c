@@ -5,7 +5,7 @@
 //     +0x3ac maximum length, +0x3b0 minimum length, +0x3bd isUseUtf8, +0x3c0 offset of the initial text within the work buffer, +0x3c4 UTF-16 length of the initial text;
 //     work buffer pointer / size at +0x4d0 / +0x4d8 (handed to the applet together with CreateLargeStorage)
 //   SetInitialTextUtf8 0x3a74c0: UTF-8 → UTF-16 written to work buffer+offset (offset 0x14, at most 500 characters + terminating 0)
-//   ReadCloseResultAndString 0x3a63f0: output storage = u32 CloseResult + text area; the text area is copied as is into String{+0 pointer, +8 capacity}, at most the capacity, which it only reads (Pikmin 4: sdk+0x39b7d0)
+//   ReadCloseResultAndString 0x3a63f0: output storage = u32 CloseResult + text area; the text area is copied as is into String{+0 pointer, +8 capacity}, at most the capacity, which it only reads (another game: sdk+0x39b7d0)
 //   ShowKeyboard wrap-up 0x3a6acc: CloseResult == 0 (OK) → Result 0, otherwise (cancel) → 0x29F; GetRequiredStringBufferSize = 0x7D4
 // A game that sets isUseUtf8 = 1 after MakePreset reads the result back as a C string; UTF-16 output is supported as well per the original convention.
 // No window and DM_KBD unset: return as cancel (no popup, no hang). DM_KBD="text": no popup, return that text directly as OK (windowless testing / lockstep comparison).
@@ -74,7 +74,7 @@ Result swkbd_show(void *out, const void *arg_, swkbd_input_fn input) {
     // The guest clock keeps running while the keyboard is up, as on the Switch: the applet blocks the calling thread and the game's other threads go on in real time. d2r-mobile froze it here
     // (monsters should not attack while the player typed), which left the threads that wait on the clock spinning: Octopath Traveler 0's sound stuttered and the input box lagged on an iPhone
     // (5,035 wakeups a second while the box was up, about 1,800 otherwise; 7,936 on the Mac with the box held 8 s). The iOS input box froze it a second time around its own wait (front_ios.m),
-    // which kept the stutter until that went too. The inline keyboard below still freezes it: there the host's input box blocks a game that on hardware keeps running and steps by real time (Monster Hunter Rise)
+    // which kept the stutter until that went too. The inline keyboard below still freezes it: there the host's input box blocks a game that on hardware keeps running and steps by real time (another game)
     // Test switch DM_TEST_SWKBD_HOLD_MS=<ms> (with DM_KBD): the keyboard stays up that long before DM_KBD's text is returned, the way a player types into the input box (for reproducing on the Mac what the game's other threads do meanwhile)
     static int hold = -1; if (hold < 0) { const char *h = getenv("DM_TEST_SWKBD_HOLD_MS"); hold = h ? atoi(h) : 0; }
     if (script && hold > 0) usleep((useconds_t)hold * 1000);
@@ -90,7 +90,7 @@ Result swkbd_show(void *out, const void *arg_, swkbd_input_fn input) {
     if (!buf || !cap) return RES_OK;                         // same as the SDK: if String has no buffer, the text is not read
     memset(buf, 0, cap);
     uint16_t u16[1003]; size_t n = swkbd_u8_to_u16(text, maxlen > 0 ? (size_t)maxlen : 1002, u16, 1003);   // truncate to the character limit (counted in UTF-16 units)
-    if (arg[ARG_UTF8]) swkbd_u16_to_u8(u16, n, (char *)buf, cap);   // String's +8 stays the game's capacity: ReadCloseResultAndString only reads it (Pikmin 4's sdk+0x39b81c)
+    if (arg[ARG_UTF8]) swkbd_u16_to_u8(u16, n, (char *)buf, cap);   // String's +8 stays the game's capacity: ReadCloseResultAndString only reads it (another game's sdk+0x39b81c)
     else memcpy(buf, u16, (n + 1) * 2 <= cap ? n * 2 : (cap / 2 - 1) * 2);
     { const char *lag = getenv("DM_TEST_SWKBD_LAG_MS"); if (lag) usleep((useconds_t)atoi(lag) * 1000); }   // test: slow down "keyboard handed back → the game's thread gets the result" to verify that auto-accept does not jump the gun   // front end path cleanup (dm_cursor.c): auto-accept after the name is typed on the naming page
     return RES_OK;
@@ -102,21 +102,21 @@ HLE_FORCE("_ZN2nn5swkbd12ShowKeyboardEPNS0_6StringERKNS0_15ShowKeyboardArgE", "s
     return swkbd_show(out, arg, front_text_input);
 }
 
-// ---------- InlineKeyboard (Super Mario 3D World + Bowser's Fury) ----------
+// ---------- InlineKeyboard (another game) ----------
 // On hardware Initialize starts a resident keyboard applet (swkbd::detail::InlineKeyboardImpl::Launch -> applet::CreateLibraryApplet); after that Calc collects its results every frame and calls the callbacks the game registered,
 // Appear / Disappear / SetInputText / SetCursorPos send requests through applet storage, and GetImage takes the keyboard picture from shared memory. The host has no applet proxy: entering the save select after the character select, Initialize crashed on a null pointer in CreateLibraryApplet.
 // Every entry that touches the applet is taken over here. Appear arms one request; the next Calc (on hardware the callbacks are called from Calc too) asks for the text the way ShowKeyboard does
 // (DM_KBD, else the front end's input box) and hands it to the game's changed-string and enter callbacks, or calls its cancel callback (no callbacks, no input box, or the player cancelled).
-// No picture (GetImage reports none). Monster Hunter Rise names the hunter, the Palico and the Palamute through it; with every Appear counted as a cancel the name box stayed empty for good
+// No picture (GetImage reports none). Another game names the hunter, the Palico and the Palamute through it; with every Appear counted as a cancel the name box stayed empty for good
 // The constructor, GetRequiredWorkBufferSize / GetImageMemoryRequirement / GetRequiredStringBufferSize and InputText::Set are pure computations and keep running in the SDK
 typedef void (*ikb_cb0)(void);
-// fin_init / released: callbacks the applet makes from Calc once Initialize / UnsetUserWordInfo have finished (Monster Hunter Rise, SDK 11); the host makes them on the next Calc
-// The arguments of the changed-string and enter callbacks, as the game reads them (Monster Hunter Rise's callbacks main+0x6fb3910 / main+0x6fb3afc): the text inline, then its length;
+// fin_init / released: callbacks the applet makes from Calc once Initialize / UnsetUserWordInfo have finished (another game, SDK 11); the host makes them on the next Calc
+// The arguments of the changed-string and enter callbacks, as the game reads them (another game's callbacks main+0x6fb3910 / main+0x6fb3afc): the text inline, then its length;
 // the changed-string one adds three cursor positions. AppearArg: textMaxLength at +0x20 (as libnx's SwkbdAppearArg)
 typedef struct { uint16_t str[502]; int32_t length, dic_start, dic_end, cursor; } ikb_str_arg;
 _Static_assert(offsetof(ikb_str_arg, length) == 0x3ec && offsetof(ikb_str_arg, cursor) == 0x3f8, "swkbd ChangedStringArg / DecidedEnterArg");
 typedef void (*ikb_cb1)(const ikb_str_arg *);
-// state: what Calc returns (nn::swkbd::State as Monster Hunter Rise reads it at main+0x6fb3e6c: it finishes an entered name only when Calc returns 1 after a non-zero value):
+// state: what Calc returns (nn::swkbd::State as another game reads it at main+0x6fb3e6c: it finishes an entered name only when Calc returns 1 after a non-zero value):
 // 0 until initialization has finished, 1 ready / hidden, 3 shown. The hook used to return nothing, leaving w0 as whatever the host last held
 static struct { const void *kb; ikb_cb0 cancel, fin_init, released, finished; ikb_cb1 enter, changed; int pending, fin_init_due, released_due, finished_due, max_len, state; } g_ikb[4];   // finished: called on the Calc after Disappear (the keyboard has closed)
 static pthread_mutex_t g_ikb_mu = PTHREAD_MUTEX_INITIALIZER;
@@ -211,5 +211,5 @@ HLE_FORCE("_ZN2nn5swkbd14InlineKeyboard12GetMaxHeightEv", "inline keyboard heigh
 HLE_FORCE("_ZN2nn5swkbd14InlineKeyboard12SetInputTextERKNS0_9InputTextE", "inline keyboard: set text (the host does not show it, ignored)", void, h_ikb_SetText, void *kb, const void *t) { (void)kb; (void)t; }
 HLE_FORCE("_ZN2nn5swkbd14InlineKeyboard12SetCursorPosEi", "inline keyboard: set cursor (the host does not show it, ignored)", void, h_ikb_SetCursor, void *kb, int pos) { (void)kb; (void)pos; }
 HLE_FORCE("_ZN2nn5swkbd14InlineKeyboard8GetImageEPvm", "inline keyboard image: none (returns false)", unsigned, h_ikb_GetImage, void *kb, void *buf, size_t n) { (void)kb; (void)buf; (void)n; return 0; }
-// The keyboard draws into a 1280 × 720 picture on hardware; Monster Hunter Rise makes three textures of this size for it (a 0 × 0 answer made its texture creation return null, then a null read at main+0x7713044)
+// The keyboard draws into a 1280 × 720 picture on hardware; another game makes three textures of this size for it (a 0 × 0 answer made its texture creation return null, then a null read at main+0x7713044)
 HLE_FORCE("_ZNK2nn5swkbd14InlineKeyboard13GetWindowSizeEPiS2_", "inline keyboard window size: 1280 × 720 as on hardware (no picture is ever delivered)", void, h_ikb_WinSize, const void *kb, int *w, int *h) { (void)kb; if (w) *w = 1280; if (h) *h = 720; }

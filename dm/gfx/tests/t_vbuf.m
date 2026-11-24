@@ -1,6 +1,6 @@
 // Real Metal readback: cached stream bindings survive helper overwrites, encoder/submit changes and pool replacement.
 // Byte-aligned streams preserve their bytes and GPU write ordering (Arkham Knight's Scaleform streams sit at addresses 2 mod 4).
-// A draw that reads past a stream's bound size reads zeros there, not the pool's next bytes (Super Mario Odyssey's 9-vertex draw from a 3-vertex stream).
+// A draw that reads past a stream's bound size reads zeros there, not the pool's next bytes (another game's 9-vertex draw from a 3-vertex stream).
 #include "../nvn/nvn_mtl.m"
 uint64_t g_t0_ns;
 int dm_guest_as_contains(uintptr_t address) { (void)address; return 0; }   // Tests use host-thread stacks.
@@ -258,7 +258,7 @@ int main(void) { @autoreleasepool {
         S.vbuf[5] = (NVNbufferRange){0, 0}; S.attr[0] = S.attr[1] = (va_st){0}; S.nattr = 0;
     }
     // Only the streams the vertex shader's inputs read are looked up, bound (bind_vbufs) and laid out (pull_layout_fill): a stream an earlier mesh left bound costs a draw
-    // nothing and leaves its table slot alone (Donkey Kong Bananza kept 14 of 16 bound). With no shader given every bound stream is still bound and laid out
+    // nothing and leaves its table slot alone (another game kept 14 of 16 bound). With no shader given every bound stream is still bound and laid out
     {
         NVNbufferRange keep[16]; memcpy(keep, S.vbuf, sizeof keep); memset(S.vbuf, 0, sizeof S.vbuf);
         uint32_t *read = mem + 256, *stale = mem + 512;   // both in the pool, 4-byte aligned

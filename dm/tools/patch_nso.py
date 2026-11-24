@@ -33,7 +33,7 @@ except ValueError: sys.exit('[RED] DM_REWRITE_J must be a positive integer')
 if WORKERS < 1: sys.exit('[RED] DM_REWRITE_J must be a positive integer')
 
 src, outdir, NAME = sys.argv[1], sys.argv[2], sys.argv[3]
-# An NSO, or an NRO (a module the game loads at run time with nn::ro, Super Smash Bros. Ultimate's fighter code), rewritten as an NSO of the same layout would be. nso.py checks the file
+# An NSO, or an NRO (a module the game loads at run time with nn::ro, another game's fighter code), rewritten as an NSO of the same layout would be. nso.py checks the file
 # against its header before anything is allocated (a damaged module stops here with a [RED] line)
 MOD = nso.cli_read(src)
 ORIG_TEXT = bytes(MOD.image[:MOD.text_end])   # the text as the file has it, before any relayout, cut or site: <name>.changed.tsv compares against it
@@ -42,23 +42,23 @@ try: MOD, _relayout_D, _relayout_notes = mod_layout.relayout_module(MOD)
 except mod_layout.Error as e: sys.exit(f'[RED] {NAME}: {e}')
 if _relayout_D: print(f'{NAME}: ' + '; '.join(_relayout_notes))
 bss = MOD.bss
-# Every jump between the patch area and the code is a B (±128 MB). A patch area appended after the image (with bss) cannot reach the code when it would start beyond 112 MB (leaving 16 MB for the patch area): Metroid Dread's main has about 1.8 GB of bss (the engine's static heap); Engage's main starts its patch area at about 103 MB and keeps it after the image.
+# Every jump between the patch area and the code is a B (±128 MB). A patch area appended after the image (with bss) cannot reach the code when it would start beyond 112 MB (leaving 16 MB for the patch area): another game's main has about 1.8 GB of bss (the engine's static heap); Engage's main starts its patch area at about 103 MB and keeps it after the image.
 # The patch area then sits FRONT bytes before the module base (PATCH_OFF is negative), and the output file holds only text + ro + data (FILE_IMAGE_LEN) followed by the patch area; the loader supplies zero pages for bss and the key page (IMAGE_SIZE is the whole image).
 # The key page stays after bss (the patch area reaches it through ADRP, ±4 GB). Modules below the limit produce output byte-identical to before
 NEAR_PATCH_OFF = ((((len(MOD.image) + bss + 0x3FFF) & ~0x3FFF) + 0x4000 + 0xFFFF) & ~0xFFFF)   # where an appended patch area would start (as in the else branch below)
 FAR, FRONT = NEAR_PATCH_OFF > 0x7000000, 0x2000000
-# A text segment that ends within 32 MB of the ±128 MB reach (Monster Hunter Rise: 125.3 MB of text) puts the patch area right before the base instead. Its stubs follow the sites in address
+# A text segment that ends within 32 MB of the ±128 MB reach (another game: 125.3 MB of text) puts the patch area right before the base instead. Its stubs follow the sites in address
 # order, so the last site's stub ends up about as far from it as the text is long. The first pass tries the gap that keeps every site in reach; when the patch area does not fit there
-# (Monster Hunter Rise: 3.6 MB), the rewriter runs again with exactly the size it needs (DM_PATCH_FRONT, set only by that rerun) and B() checks every branch
+# (another game: 3.6 MB), the rewriter runs again with exactly the size it needs (DM_PATCH_FRONT, set only by that rerun) and B() checks every branch
 BIG_TEXT = FAR and MOD.text_end + FRONT > 0x8000000 - 0x10000
-# A text segment longer than the reach itself (EA SPORTS FC 27: 185.6 MB of text in main) leaves no gap before the base from which a B reaches its end, so the patch area is split in
+# A text segment longer than the reach itself (another game: 185.6 MB of text in main) leaves no gap before the base from which a B reaches its end, so the patch area is split in
 # two (TWO): the front area before the base takes the sites below SPLIT, the back area right after the image (after bss, the key page and the frame step page, at BACK_OFF) takes
 # the others. A site's stubs, and their branches back to it, stay in the area it belongs to; SPLIT keeps 1 MB of margin for a stub's exits past its site (a window's targets, a
 # switch's cases). The front area starts at 16 MB; when its sites need more, the rewriter runs again with exactly that size (DM_PATCH_FRONT), and B() checks every branch.
 # SPLIT is also no lower than the lowest site the back area reaches with the same margin (BACK_MIN): when ro, data and bss after the text are large (Hello Kitty Party Land: 151.8 MB
 # of text, 98 MB more before BACK_OFF), a 16 MB front area would hand the back area sites more than 128 MB below it, so the front area's first pass takes the gap up to BACK_MIN instead
 TWO = BIG_TEXT and MOD.text_end > 0x8000000 - 0x10000
-# When BACK_MIN is beyond the front area's reach too (GAP: Resident Evil 4 v131072), branches that cannot reach their area go through a hop in function alignment padding.
+# When BACK_MIN is beyond the front area's reach too (GAP: another game v131072), branches that cannot reach their area go through a hop in function alignment padding.
 # The gap's sites are split between the two areas according to how many hop locations each area can reach. Putting them all at the back exhausts its padding on Minecraft 1.26.62.
 BACK_MIN, GAP = 0, False   # TWO: BACK_OFF (set below) less the reach, plus the margin
 if TWO:
@@ -187,7 +187,7 @@ if STUB_RULES and BUILD_ID not in PATCHES['STUBS']:
     from nso_match import locate_stub
     STUB_MATCH = locate_stub(IMG, TEXT_END, [{k: v for k, v in r.items() if k != 'fps_required'} for r in STUB_RULES])
 # The frame step state page is the page after the key page. An appended patch area starts on the first 64 KB boundary after the key page, which is that page itself when the key
-# page ends on such a boundary (Hades II's v0 main): a main that gets the state page then starts its patch area 64 KB later. Nothing has been written to the patch area yet, and
+# page ends on such a boundary (another game's v0 main): a main that gets the state page then starts its patch area 64 KB later. Nothing has been written to the patch area yet, and
 # every other module keeps its layout
 if (BUILD_ID in PATCHES['FRAME_STEP'] or FS_MATCH) and NAME == 'main' and not FAR and PATCH_OFF < KEY_PAGE_OFF + 0x4000 + 0x1000:
     PATCH_OFF += 0x10000
@@ -449,7 +449,7 @@ def site_casp(ins):
     """A compare and swap whose pair is x18, x19. A pair is an even register and the next one, so subst cannot rename x18 alone (xS, x19 is no pair): the pair moves to a free even
     pair P, P + 1, P loaded from the slot K18 and P + 1 copied from x19. The instruction writes the compare pair with the memory's old value, so after it P goes back to the slot and
     P + 1 to x19; a new-value pair is only read. The memory access is still the one instruction, so it stays atomic. P, P + 1 and T (the slot's address) are saved below sp as in
-    site_plain (casp has no writeback: sp does not move). Sonic Frontiers Definitive Edition main+0x19ce5c4: caspal x18, x19, x4, x5, [x16]"""
+    site_plain (casp has no writeback: sp does not move). Another game main+0x19ce5c4: caspal x18, x19, x4, x5, [x16]"""
     w = struct.unpack('<I', ins.bytes)[0]
     rs, rn, rt = (w >> 16) & 31, (w >> 5) & 31, w & 31
     assert rn != 18, f'casp with x18 as its base and in a pair {ins.address:x} {ins.op_str}'
@@ -472,7 +472,7 @@ def site_casp(ins):
 
 def site_sp_align(ins, n):
     """sub sp, sp, xN (no shift): Horizon leaves stack alignment checking off for user code, Apple's kernel does not, so an sp that is not 16-byte aligned faults (SIGBUS) at the next sp-based access.
-    Paper Mario: The Thousand-Year Door's script call bridges (main+0x17c140 and five more beside it, hand-written) reserve the callee's stack arguments as their sizes add up (4 for one int)
+    Another game's script call bridges (main+0x17c140 and five more beside it, hand-written) reserve the callee's stack arguments as their sizes add up (4 for one int)
     and give the area back with add sp, sp, xN: the callee's first stp faulted. xN is rounded up to 16 first, which the add then gives back too. Compiled code keeps such sizes 16-aligned, so
     there it changes nothing; of the 22 games' modules on hand only Paper Mario's main has the form"""
     start = here()
@@ -650,7 +650,7 @@ def find_windows(insl):
     return out
 
 def window_adrp(x, S, pc):
-    """An adrp inside a window, copied to pc: the same page from the copy's address (x18 as its stand-in S). Pikmin 4 1.1.1 main+0x43da140 (Unreal Engine 4.26.2): ldaxr x9,[x9]; cmp; b.ne;
+    """An adrp inside a window, copied to pc: the same page from the copy's address (x18 as its stand-in S). Another game 1.1.1 main+0x43da140 (Unreal Engine 4.26.2): ldaxr x9,[x9]; cmp; b.ne;
     adrp x10 + add x10 (the same address again for the store); mov x18,x26; stlxr w9,x8,[x10]; …; cbnz w9"""
     rd = num(x.reg_name(x.operands[0].reg))
     return ADRP(S if rd == 18 else rd, pc, x.operands[1].imm)
@@ -824,7 +824,7 @@ elif ehs_rel != 0:
 starts = sorted(x for x in starts if x < TEXT_END)
 
 # ---- Linear scan to find all rewrite points (not relying on register read/write reports) ----
-# Data blocks in the text (nso_code.py: Absolum's main starts with 1.7 MB of them) are not code: words there that read as rewrite sites are left alone
+# Data blocks in the text (nso_code.py: another game's main starts with 1.7 MB of them) are not code: words there that read as rewrite sites are left alone
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nso_code
 DATA_BLOCKS = nso_code.data_blocks(IMG, TEXT_END, md)
@@ -934,7 +934,7 @@ for s, a, size in odd_sp_frames(IMG, CODE_RANGES, md):   # both immediates round
     struct.pack_into('<I', IMG, s, sp_adjust(0xD10003FF, r)); struct.pack_into('<I', IMG, a, sp_adjust(0x910003FF, r))
     stat('sp_frame')
 def trinity_completer_sites(img, ranges):
-    """Offsets of the completer of Trinity's per-frame rendezvous (Game Freak; Pokémon Scarlet 1.0.0 main+0x28f872c, 4.0.0 main+0x2d0010c):
+    """Offsets of the completer of Trinity's per-frame rendezvous (Game Freak; another game 1.0.0 main+0x28f872c, 4.0.0 main+0x2d0010c):
       stp x29,x30,[sp,#-0x20]!; stp x20,x19,[sp,#0x10]; mov x29,sp; ldr x8,[x0,#imm]; mov w9,#1; strb w9,[x8,#A]; ldrb w9,[x8,#A+1]; cbz w9,..;
       ldr x20,[x8,#B]; add x9,x20,#C; ldar w8,[x9]; cmp w8,#2; b.ne ..
     It sets the release flag with the plain strb and returns without a wake if the state word (ldar) is 2. A load-acquire does not order an earlier plain store, so the flag can stay
@@ -965,7 +965,7 @@ md_lite = Cs(CS_ARCH_ARM64, CS_MODE_ARM)   # no details: the x18 scan reads only
 R18 = re.compile(r'\b[xw]18\b')
 def x18_words(lo, hi):
     """offsets in [lo, hi) of the instructions whose operands name x18 / w18 (as has18). Decoded 16 KB at a time without details, going on after a word capstone cannot decode:
-    a third of the time of decoding one word at a time with details (Paper Mario: The Thousand-Year Door main, 437 sites in 300,000 words either way)"""
+    a third of the time of decoding one word at a time with details (another game main, 437 sites in 300,000 words either way)"""
     out, a = set(), lo
     while a < hi:
         end = min(hi, a + 0x4000); last = a - 4
@@ -1041,15 +1041,15 @@ for o in (o for s, e in CODE_RANGES for o in range(s, e, 4)):
 import bisect
 def func_of(a):
     """The function holding a: from the FDE start at or before it to the next one. Code before the first FDE is one function as well, from the end of the data block before it (or the text's
-    start) to the first FDE: FINAL FANTASY RESONANCE 1.0.1 main (Unreal Engine 5.6.1) has no unwind entry before main+0x6a75d4, and each of its sites there used to be a function of one
+    start) to the first FDE: another game 1.0.1 main (Unreal Engine 5.6.1) has no unwind entry before main+0x6a75d4, and each of its sites there used to be a function of one
     instruction, so the byte jump table at main+0x219234 (adr x18; ldrb w0,[x17,x16]; add x18,x18,x0,lsl #2; br x18) was never seen. Of the 120 modules of 33 games on hand, only one other has x18
-    sites before its first FDE (DRAGON QUEST VII Reimagined main, 110 before +0xb310, none in an exclusive window or a br x18), so every other rewrite is byte-identical"""
+    sites before its first FDE (another game main, 110 before +0xb310, none in an exclusive window or a br x18), so every other rewrite is byte-identical"""
     i = bisect.bisect_right(starts, a) - 1
     if i >= 0: return (starts[i], starts[i + 1] if i + 1 < len(starts) else TEXT_END)
     return (max((e for s, e in DATA_BLOCKS if e <= a), default=0), starts[0]) if starts else (a, a + 4)
 done = set(); windows = []; jumps = {}; tabjumps = {}; tailcalls = set(); retries = []
 def tail_call_at_end(insl, j):
-    """The br x18 is an indirect tail call, not a jump table: the last write of x18 before it is a plain pointer load and the br ends the function. Ace Attorney Investigations Collection
+    """The br x18 is an indirect tail call, not a jump table: the last write of x18 before it is a plain pointer load and the br ends the function. Another game
     (Unity 2022.3 IL2CPP) main+0x1d271bc: ldr x18,[x0,#0x18]; ...; ldr x16,[sp]; ...; br x18, a thunk that moves stack arguments and jumps to the method pointer at +0x18"""
     if j + 1 != len(insl): return False
     for p in reversed(insl[:j]):
@@ -1151,7 +1151,7 @@ def tail_call(insl, j):
             leaves = True
         elif (cond(p) or p.mnemonic == 'b') and p.operands[-1].imm <= after_br: return False
     if thunk and (not guarded or not leaves or suffix[-1].mnemonic not in ('bl', 'udf', 'b') or any(p.mnemonic in ('ret', 'br', 'blr') for p in suffix)): return False
-    # Nothing re-enters the frame's setup, or lands past the restore: the frame's end is what the proof rests on. A guard may skip a reload of x18 (Subnautica main+0x24f210 through x2)
+    # Nothing re-enters the frame's setup, or lands past the restore: the frame's end is what the proof rests on. A guard may skip a reload of x18 (another game main+0x24f210 through x2)
     return not any(t < setup_end or insl[restore].address < t <= after_br for t in targets)
 
 def jump_bytes_far(insl, j, half):
@@ -1170,14 +1170,14 @@ def jump_bytes_far(insl, j, half):
     if base is None or ld is None: return None
     return base, 256 if ld.mnemonic in ('ldrb', 'ldrsb') else half(base) or 65536
 def disasm_fn(fa, fb):
-    """A function's instructions. Capstone stops at the first word it cannot decode, so go on after it: Monster Hunter Rise main+0x6b34540 is a trap word (0xe7ffdefe)
+    """A function's instructions. Capstone stops at the first word it cannot decode, so go on after it: another game main+0x6b34540 is a trap word (0xe7ffdefe)
     in the middle of a function, and the br x18 jump table after it (main+0x6b346d0) was never seen"""
     out, a = [], fa
     while a < fb:
         l = list(md.disasm(bytes(IMG[a:fb]), a))
         out += l; a = (l[-1].address + 4 if l else a) + 4
     return out
-# Text with no unwind entry is one function to func_of. FINAL FANTASY RESONANCE 1.0.1 main (Unreal Engine 5.6.1) has 82 MB of it (main+0x6c5008 to +0x59220c0) beside the 6.65 MB before its
+# Text with no unwind entry is one function to func_of. Another game 1.0.1 main (Unreal Engine 5.6.1) has 82 MB of it (main+0x6c5008 to +0x59220c0) beside the 6.65 MB before its
 # first FDE: disassembled with details at once, it took 100 GB of memory and the rewrite never finished on a 16 GB Mac. A function longer than BIG_FN is analysed in pieces of about PIECE
 # bytes, cut only right after an unconditional ret / br / b where no conditional branch and no b within ±PIECE_B crosses: a window, a jump table's context (the bounds check's branch
 # and the table base before it) and a retry block reach each other by fall-through or by such branches, so each lies within one piece. Farther b / bl that cross a cut (calls and
@@ -1230,7 +1230,7 @@ import jump_solver
 def branch_entries(ranges):
     """Direct branches (b, bl, b.cond, cbz / cbnz, tbz / tbnz) from anywhere in the module's code into each range from outside it: {range: {target}}. A data word that
     decodes as a branch only adds an entry, which makes a proof stricter. Only the words whose top byte is a branch's are decoded (found with bytes.translate and re, in
-    C): b / bl in the whole text, the conditional branches, which reach 1 MB, only near the ranges (2.9 s for the 130 MB text of Sonic Superstars' main)"""
+    C): b / bl in the whole text, the conditional branches, which reach 1 MB, only near the ranges (2.9 s for the 130 MB text of another game' main)"""
     out = {r: set() for r in ranges}
     if not ranges: return out
     lo_ = [a for a, _ in ranges]
@@ -1282,7 +1282,7 @@ def table_at(fa, fb, insl, at):
     return found.get(at), failed.get(at, 'not a dispatch')
 def half_pads(fa, fb, insl, at, base):
     """Landing pads a halfword table needs (ldrh wE,[xT,xI,lsl #1]; ...; adr x18,#L; add x18,x18,xE,lsl #2; br x18: target = L + 4 x entry): its largest entry + 1, from the
-    table the solver read, or None (site_br then gives all 65,536 entries a pad, 768 KB: Animal Crossing: New Horizons 3.0.3 main has 51 such tables, 40 MB, which put its patch
+    table the solver read, or None (site_br then gives all 65,536 entries a pad, 768 KB: another game 3.0.3 main has 51 such tables, 40 MB, which put its patch
     area's end beyond the +-128 MB a B reaches). Byte tables keep their 256 pads (3 KB)"""
     tgt, _ = table_at(fa, fb, insl, at)
     if not tgt or any(t < base or (t - base) % 4 for t in tgt): return None
@@ -1304,7 +1304,7 @@ for fa, fb in funcs:
                 if temp is not None: selects[ins.address] = args, temp
         if ins.mnemonic == 'br' and ins.op_str == 'x18':
             base = width = None
-            # 16 instructions back, as for the offset-table form: Hades main+0x1135d0 has six vector moves between the add and the br, which put its adr x18 nine back
+            # 16 instructions back, as for the offset-table form: another game main+0x1135d0 has six vector moves between the add and the br, which put its adr x18 nine back
             ctx = insl[max(0, j - 16):j]
             for p in reversed(ctx):
                 if p.mnemonic == 'adr' and p.op_str.startswith('x18,'): base = p.operands[1].imm; break
@@ -1495,14 +1495,14 @@ if UE_REGION is not None:
     assert UE_REGION not in kinds and not any(lo <= UE_REGION < hi for wseg in windows for lo, hi in [(wseg[0].address, wseg[-1].address + 4)]), f'engine region gate conflicts with a rewrite site {UE_REGION:#x}'
     region_obs.append((UE_REGION, OBS_UE_REGION | UE_REGION_REG << 8, f'{struct.unpack_from("<I", IMG, UE_REGION)[0]:08x}',
                        f'Unreal\'s engine region: its size in x{UE_REGION_REG}, stored before nninitStartup reserves it; the host gives what the alias region has room for (hle_svc.c)'))
-    if UE_REGION_X1 is not None:   # the request's size set again after the store (TRIANGLE STRATEGY): mov x1, xS, so it takes what the gate gave S
+    if UE_REGION_X1 is not None:   # the request's size set again after the store (another game): mov x1, xS, so it takes what the gate gave S
         assert UE_REGION_X1 not in kinds and not any(lo <= UE_REGION_X1 < hi for wseg in windows for lo, hi in [(wseg[0].address, wseg[-1].address + 4)]), f'engine region size conflicts with a rewrite site {UE_REGION_X1:#x}'
         struct.pack_into('<I', IMG, UE_REGION_X1, 0xAA0003E1 | UE_REGION_REG << 16)
 for off, oid, ow, why in region_obs: use_area(off); put_branch(off, site_obs(off, oid, int(ow, 16))); stat('obs')
 obs += region_obs
 
-# ---- Frame step in whole vsyncs (the mains whose patch file has FRAME_STEP: The Legend of Zelda: Tears of the Kingdom 1.4.3, Breath of the Wild 1.9.0, Hyrule Warriors: Age of Calamity 1.3.0,
-# Paper Mario: The Thousand-Year Door 1.0.1 and ASTRAL CHAIN 1.0.1; host only) ----
+# ---- Frame step in whole vsyncs (the mains whose patch file has FRAME_STEP: another game 1.4.3, Breath of the Wild 1.9.0, another game 1.3.0,
+# Another game 1.0.1 and another game 1.0.1; host only) ----
 # The games step their game time by a whole number of vsyncs (1/60 s) per frame that their own interval logic picks. With the stubs the host picks it (hle_nvn.c fstep_tick,
 # nvn_fstep.h): the step is the number of vsyncs the host keeps the frame on screen (1 = 60 fps, 2 = 30 when 60 does not hold), plus one while the game is behind real time after
 # a late frame, so motion is even and game time = real time. The steps stay values the games' own logic uses (1 to 3). Age of Calamity's updates are not held by the presents:
@@ -1564,7 +1564,7 @@ if FS_STATE_OFF:   # the build's stubs (FRAME_STEP of its patches.py), or those 
 # A fix of the game's own code that needs more instructions than its sites hold: STUBS[build ID](ctx) in its patches.py assembles them into the patch area and branches there from
 # its sites, with the frame step's ctx (here / emit / site / put / address, above) and no state page, so the host's pacing does not change (FRAME_STEP would also make the host take
 # the main for one with a frame step). A stub's code must hold nothing the rewriter would rewrite (x18, svc, tpidr, exclusive pairs), since it is not scanned.
-# Ori and the Will of the Wisps 1.2.1 serializes the users of Unity's shared constant-buffer table this way (its patches.py)
+# Another game 1.2.1 serializes the users of Unity's shared constant-buffer table this way (its patches.py)
 STUBS = PATCHES['STUBS']
 if BUILD_ID in STUBS or STUB_MATCH:
     use_area(0)
@@ -1579,7 +1579,7 @@ if NATIVE_FPS_BLOCKED: print(f'[RED] {NAME}: native frame target disabled: a req
 
 # ---- Spin waits (every module) ----
 # A guest loop that polls memory until another thread changes it fills only its own core on the Switch, where any higher-priority thread pinned there preempts it, so the
-# spin costs the game nothing; on the host it takes a whole core from the threads doing the work. Paper Mario: The Thousand-Year Door's gfx::ParallelManager workers
+# spin costs the game nothing; on the host it takes a whole core from the threads doing the work. Another game's gfx::ParallelManager workers
 # (main+0xa8e680, three, pinned at priority 45) poll their job list this way while a batch is pending; on an iPhone Rogueport ran at 24 fps with the three at 94% of a core each.
 # A loop counts as a spin wait only when it provably cannot leave by itself. From its head T, every pass along the region R (the paths from T back to T, within SPIN_WIN bytes
 # after T) runs only loads, register and flag arithmetic, direct branches and barriers: no store, call, SVC, system register or event wait; and no register or flag that is
@@ -1592,7 +1592,7 @@ if NATIVE_FPS_BLOCKED: print(f'[RED] {NAME}: native frame target disabled: a req
 # thread of core 0, and the others wait until it is taken, taking and releasing the queue's lock on every pass; polled at full speed by two workers, the lock went back and
 # forth between their cores, and the main thread, whose item it was, lost nearly every exclusive store to them (CPU frames of 30-200 ms with three cores spinning there).
 # 1.6.0's compiler writes the same lock without clrex, its failed test going straight back to the exclusive load (main+0x12c0e48); spin_lock takes both forms. A lock that
-# heads no poll still has its own retry loop as a spin wait (Mario vs. Donkey Kong's test-and-test-and-set locks, main+0x470fa8).
+# heads no poll still has its own retry loop as a spin wait (another game's test-and-test-and-set locks, main+0x470fa8).
 # Such a pass leaves memory and registers as it found them (a pass with stores, from its last state change on), so only another thread can end the loop, and a pause
 # there changes only timing. R is copied into the patch area; the original back-edges jump to the copy (no pause on the first pass, so a
 # single retry costs nothing), the copy's back-edges go through a spin gate, which the host takes as a yield with the yield back-off (hle_thread.c dm_spin_wait), and exits
@@ -1605,7 +1605,7 @@ SPIN_LSE = ('ldadd', 'ldclr', 'ldeor', 'ldset', 'ldsmax', 'ldsmin', 'ldumax', 'l
 SPIN_BAD = {'bl', 'blr', 'br', 'ret', 'eret', 'svc', 'hvc', 'smc', 'brk', 'hlt', 'udf', 'mrs', 'msr', 'sys', 'sysl', 'wfe', 'wfi', 'sev', 'sevl', 'clrex', 'dc', 'ic', 'at',
             'tlbi', 'drps', 'dcps1', 'dcps2', 'dcps3', 'blraa', 'blrab', 'blraaz', 'blrabz', 'braa', 'brab', 'braaz', 'brabz', 'retaa', 'retab', 'eretaa', 'eretab'}
 # Per-head decode cache for spin_region: cleared in spin_region's finally block, so it holds at most the ~135 instructions in [T - 4, hi + 20] for the head being analysed
-# (kept across heads, one 0.5-2.6 KB capstone object per instruction passed 24 GB on EA SPORTS FC 27 1.8e's 185 MB main; the parallel search strides heads by 8 * WORKERS,
+# (kept across heads, one 0.5-2.6 KB capstone object per instruction passed 24 GB on another game 1.8e's 185 MB main; the parallel search strides heads by 8 * WORKERS,
 # so cross-head reuse is effectively zero). Returned regions keep the instruction objects they need, and spin_emit decodes nothing.
 spin_dec = {}
 def spin_ins(a):
@@ -1620,7 +1620,7 @@ def spin_norm(n):
     return 'v' + m.group(1) if m else n
 def spin_rw(ins):
     """(registers read, registers written), w / x and the vector views merged. Capstone's own lists are not enough: it lists a compare's first operand as written and the flags
-    as read by cbz / tbz, and leaves out the destination of adds (sdk+0x31033c in Paper Mario: The Thousand-Year Door, adds w9,w9,#8; b.ne: a counted loop). So every register
+    as read by cbz / tbz, and leaves out the destination of adds (sdk+0x31033c in another game, adds w9,w9,#8; b.ne: a counted loop). So every register
     operand counts as well: operand 0 written and the others read, or for a load all of them written (its address registers are in capstone's reads)"""
     m = ins.mnemonic
     regs = [spin_norm(ins.reg_name(o.reg)) for o in ins.operands if o.type == ARM64_OP_REG]

@@ -36,13 +36,13 @@ static uint32_t mip(uint32_t s, unsigned l) { s >>= l; return s ? s : 1; }
 static uint32_t blk(uint32_t s, uint32_t b) { return (s + b - 1) / b; }
 static unsigned pick_tile(uint32_t gobs) { return gobs >= 16 ? 4 : gobs >= 8 ? 3 : gobs >= 4 ? 2 : gobs >= 2 ? 1 : 0; }
 // A packaged layout's width alignment (byte 1's low nibble, log2 GOBs; 0 = none). It pads the tiled levels in level_walk whether or not the texture is SPARSE, and a layered texture's
-//   layers align to the whole block times that width (layer_bytes). Bayonetta Origins' 2052x1026 ASTC 6x6 tutorial-card background (byte 0 3, width 4) is 96 GOBs wide, 0x120000 bytes;
+//   layers align to the whole block times that width (layer_bytes). Another game Origins' 2052x1026 ASTC 6x6 tutorial-card background (byte 0 3, width 4) is 96 GOBs wide, 0x120000 bytes;
 //   unpadded (86 GOBs, 0x102000) its rows from the second block row on read the padding, all-zero blocks that ASTC decodes as magenta (a fixed magenta rectangle, PR #2268)
 static unsigned packaged_width_log2(const nvn_texdesc *d) {
     return d->pkg_layout ? ((unsigned)(d->pkg_layout - 1) >> 8) & 0xf : 0;
 }
 // The automatic block height (no packaged layout): NVN truncates height in blocks × 1.5 / 8 before picking the power of two (found by MacNativeGames; Touchable checked
-//   16 such textures of Rhythm Heaven Groove). Rounding it up, as this file did until then, gave one step more at 6–10, 17–21, 38–42 and 81–85 block rows: Rhythm Heaven
+//   16 such textures of another game). Rounding it up, as this file did until then, gave one step more at 6–10, 17–21, 38–42 and 81–85 block rows: Rhythm Heaven
 //   Groove's 672×160 and 1232×160 BC7 textures (40 block rows) need 4 GOBs, not 8 (the calibration screen's beat numbers came out torn); its 112×112, 288×208 and 880×432 agree
 static unsigned adj_tile(unsigned shift, uint32_t unit, uint32_t dim) {
     if (!shift) return 0;
@@ -73,23 +73,23 @@ static void samples_xy(int s, uint32_t *sx, uint32_t *sy) {
 
 // Sparse textures (flag SPARSE, block-linear) are mapped in 64 KB tiles: one row of blocks, 128 GOBs / (block height × block depth) wide. A level at least one tile wide, high and deep
 // is laid out with its width padded to whole tiles, so it fills whole tiles; the levels from the first smaller one on form the mip tail, packed as usual from there, and the
-// storage is whole tiles, 64 KB aligned. Monster Hunter Rise's streamed textures come pre-swizzled that way in its files and are placed at the level offsets the host reports: laid out unpadded,
+// storage is whole tiles, 64 KB aligned. Another game's streamed textures come pre-swizzled that way in its files and are placed at the level offsets the host reports: laid out unpadded,
 // its 1024×1024 ASTC 6×6 textures (48 GOBs wide instead of 43, level 1 at 0x90000 instead of 0x81000) read 2,183 all-zero blocks in level 0 and 3,043 in level 1, which ASTC
 // decodes as its error colour (magenta clothes)
-// Yoshi's Crafted World ships its streamed textures pre-swizzled in the 64 KB tile shapes below (sparse_tile_h): a 384×384 DXT5 level is 32 GOBs × two 8-GOB block rows (0x40000 bytes, 16-GOB blocks
+// Another game ships its streamed textures pre-swizzled in the 64 KB tile shapes below (sparse_tile_h): a 384×384 DXT5 level is 32 GOBs × two 8-GOB block rows (0x40000 bytes, 16-GOB blocks
 // gave 0x30000), a 1350×270 BGRA8 one 88 GOBs × three 16-GOB block rows. UE sizes its upload buffer from the host's layout, and the larger level data overran it into the heap
 enum { SPARSE_TILE = 0x10000 };
 static int sparse_of(const nvn_texdesc *d) { return (d->flags & 0x20) && !(d->flags & 0x50) && d->target != 10; }
 // A sparse 2D texture without a packaged layout whose level 0 is at least one tile wide and high takes the block height of its 64 KB tile instead of the automatic one: the tile's shape in blocks is the standard one,
 // 256×256 / 256×128 / 128×128 / 128×64 / 64×64 blocks for 1 / 2 / 4 / 8 / 16 bytes per block, so its rows make a block height of 32 / 16 / 16 / 8 / 8 GOBs
-// (log2 5 / 4 / 4 / 3 / 3); -1 for other block sizes. OCTOPATH TRAVELER's world map (4096×2048 BC1, 512 block rows) is laid out in 8 GOBs where the automatic rule gives 16:
-// read with 16, its 64 KB tiles came out shuffled into a patchwork; its 512×512 RGBA8 sprite sheets read right with 16, and Monster Hunter Rise's packaged ASTC 6×6 (16 bytes
+// (log2 5 / 4 / 4 / 3 / 3); -1 for other block sizes. Another game's world map (4096×2048 BC1, 512 block rows) is laid out in 8 GOBs where the automatic rule gives 16:
+// read with 16, its 64 KB tiles came out shuffled into a patchwork; its 512×512 RGBA8 sprite sheets read right with 16, and another game's packaged ASTC 6×6 (16 bytes
 // per block) carry 8. Checked for 4, 8 and 16 bytes per block; the 1- and 2-byte heights follow the same tile shapes. A texture smaller than one tile is all mip tail and keeps the automatic
-// height: Yoshi's Crafted World's 192×160 DXT5 loading icon (12 × 5 GOBs) is laid out in 4 GOBs, its 384×384 DXT1 textures (12 GOBs wide, 96 block rows) in 16; read with 8, the icon lost
+// height: another game's 192×160 DXT5 loading icon (12 × 5 GOBs) is laid out in 4 GOBs, its 384×384 DXT1 textures (12 GOBs wide, 96 block rows) in 16; read with 8, the icon lost
 // its right half and bottom to the padding
 static int sparse_tile_h(unsigned bpb) { return bpb == 1 ? 5 : bpb == 2 || bpb == 4 ? 4 : bpb == 8 || bpb == 16 ? 3 : -1; }
 // A sparse 3D texture without a packaged layout whose level 0 is at least one tile wide, high and deep takes the standard 3D shape of its 64 KB tile: 64x32x32 / 32x32x32 / 32x32x16 / 32x16x16 / 16x16x16
-// blocks for 1 / 2 / 4 / 8 / 16 bytes per block, so its blocks are 4 / 4 / 4 / 2 / 2 GOBs high and 32 / 32 / 16 / 16 / 16 GOBs deep (log2 below; -1 for other block sizes). Metroid Prime Remastered's lighting
+// blocks for 1 / 2 / 4 / 8 / 16 bytes per block, so its blocks are 4 / 4 / 4 / 2 / 2 GOBs high and 32 / 32 / 16 / 16 / 16 GOBs deep (log2 below; -1 for other block sizes). Another game's lighting
 // volumes (512x256x368 BC1 and BC6H, streamed around the player) map the same tile indices whatever the host's tile layout says, so its layout is fixed: with this shape BC1's tiles 5-7 and 9-11 of a 16-slice
 // slab and BC6H's 10-15 and 18-23 are the same texels (128..512 x 64..192); laid out 1 GOB high they were two different patchworks (GitHub issue #783). Seen for 8 and 16 bytes per block; the others follow the same table
 static int sparse_tile_h3(unsigned bpb) { return bpb == 1 || bpb == 2 || bpb == 4 ? 2 : bpb == 8 || bpb == 16 ? 1 : -1; }
@@ -150,7 +150,7 @@ void nvn_tex_layout(const nvn_texdesc *d, nvn_texlayout *o) {
         o->layer_size = o->size = (uint64_t)t.bpb * d->width;
         o->align = t.bpb == 12 ? 4 : t.bpb; return;
     }
-    // LINEAR_RENDER_TARGET (0x40) is linear by itself. Persona 5 Royal creates
+    // LINEAR_RENDER_TARGET (0x40) is linear by itself. Another game creates
     // a 16x16 RGBA8 target with flags 0x44 and stride 128; block-linear sizing
     // returned 1024 instead of 2048 bytes and tripped its surface-memory assertion.
     if (d->flags & 0x50) {                                            // LINEAR or LINEAR_RENDER_TARGET

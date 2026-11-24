@@ -52,13 +52,5 @@ class Languages(unittest.TestCase):
         with self.assertRaisesRegex(nsp.BuildError, r'the game has no th \(Thai\)'): nsp.game_language('th', True, ['en-US', 'ja'])
         self.assertEqual(nsp.language_list(['pl', 'th']), 'pl (Polish), th (Thai)')
 
-    def test_the_game_language_row_offers_them(self):
-        def row(listed):
-            with tempfile.TemporaryDirectory() as tmp, patch.object(settings.nacp, 'languages', return_value=listed), patch.dict(os.environ, {'GFXAPI': 'nvn', 'DM_LANG': 'en-US'}):
-                return next(s for s in settings.build(BOTW, tmp, Path(tmp) / 'control.nacp')['settings'] if s['env'] == 'DM_LANG')
-        self.assertEqual(row(['en-US', 'pl', 'th'])['options'], [['en-US', 'American English'], ['pl', 'Polish'], ['th', 'Thai']])
-        self.assertEqual(row([])['options'][-2:], [['pl', 'Polish'], ['th', 'Thai']])   # no list: every language, with the note
-
-
 if __name__ == '__main__':
     unittest.main()

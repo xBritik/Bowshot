@@ -1,5 +1,5 @@
 # Logic operations (the <entry>_l entry points of <key>_bx, dmsh_side.py): NVN's ColorStateSetLogicOp combines the bits a pixel shader writes with the bits already in the target (CLEAR, AND, ..., OR, ..., SET), in place of
-# blending; as in OpenGL and Vulkan it applies to integer and normalized targets. Metal has none. Xenoblade Chronicles 2 builds its per-pixel light probe lists with OR: each probe's box draws its index
+# blending; as in OpenGL and Vulkan it applies to integer and normalized targets. Metal has none. Another game builds its per-pixel light probe lists with OR: each probe's box draws its index
 # into the next free byte of an RG32Uint target and every other fragment writes 0, so without the operation every fragment replaced the list and the lighting showed hard-edged dark boxes.
 # Skyward Sword HD's Dof_FogToAlpha ORs (0, 0, 0, fog) into the frame's RGBA8Unorm target to put fog in its alpha: as a plain write it blacked out the colours, a brown cast over the distance.
 # main0 of a shader without the typed-output entry point main0_u (dmsh_entry.py fs_uint, which holds the same operation under its function constant DMSH_TYPED_LOGIC_FC: parts) gets a

@@ -1,8 +1,8 @@
 """NSP script: what nx_extract wrote for a version, its program (extract: ExeFS/ and RomFS.img) and its offline HTML pages (extract_html), is extracted again when nx_extract,
 the packages (name, size, time) or the options change, and reused otherwise (extraction_key). Both were reused for as long as they existed, so pages an older nx_extract had read
-wrongly stayed in every later build (Super Smash Bros. Ultimate 13.0.5's How to Play page, PR #1545), and so did an image packed with --allow-damaged. No game files, keys, .NET or
+wrongly stayed in every later build (another game 13.0.5's How to Play page, PR #1545), and so did an image packed with --allow-damaged. No game files, keys, .NET or
 Xcode needed: nx_extract is a stand-in that writes one page, or an ExeFS main and an image. The image is reused for its key and a valid index, whatever it holds: the profile's
-RomFS marker was checked too, but that is the registered profile's, so another edition's files (Persona 5 Royal's Asian title: CPK/ALL_ASIA.CPK, no CPK/ALL_USEU.CPK) were
+RomFS marker was checked too, but that is the registered profile's, so another edition's files (another game's Asian title: CPK/ALL_ASIA.CPK, no CPK/ALL_USEU.CPK) were
 extracted again on every build."""
 import importlib.util
 import os

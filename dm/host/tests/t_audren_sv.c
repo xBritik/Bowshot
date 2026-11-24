@@ -1,4 +1,4 @@
-// audren:u (hle_audren_sv.c) through the host sessions (hle_sf.c), as SDK 1.3.1's client drives it (Rayman Legends: Definitive Edition): GetWorkBufferSize and OpenAudioRenderer on the
+// audren:u (hle_audren_sv.c) through the host sessions (hle_sf.c), as SDK 1.3.1's client drives it (another game): GetWorkBufferSize and OpenAudioRenderer on the
 // manager (the parameter, two copied handles and the process ID in; the renderer as a moved session out), then the renderer's own commands, RequestUpdate with an A buffer in and two B
 // buffers out. An update of REV2 with one memory pool, one PCM16 voice into the final mix, one device sink: the answer's header and sections at the client's sizes, the pool attached,
 // the mix to stereo by the voice's channel resource, the wave buffer consumed at its end and reported, a stop consuming what is queued, an Aux effect's send and return rings, and

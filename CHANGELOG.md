@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Builder (Bowshot.app)
+
+- The builder app is much smaller: about 60 MB in place of 880 MB. It carried 225 other games' profiles (745 MB of shader tables and notes), the project's tests and developer documentation, and files a local build left in the source tree (`dm/host/gen`, `.DS_Store`). The packaging now takes only the files Git tracks (and new files it does not ignore), and the app carries only what a build runs. The source ZIP is built the same way.
+- Bowshot builds Ocarina of Time for the Mac and nothing else, and the source tree says so: the other games' profiles, the iPhone and iPad app (`dm/ios`, except `ios_metal.py`, which the shader chain reads by path and whose change would compile every shader again), the IPA and Xcode project paths of `scripts/build_ipa_from_nsp.py` (`--platform ios`, `--prepare-xcode`, `--romfs`, `--shader-files`, `--team-id`, `--xcode-workspace`), `scripts/regress.py` (it needs every game), `scripts/push_romfs.sh`, the game-request issue form and `UPSTREAM_README.md` are gone, and the tests that only covered them. The launcher's three Swift files moved from `dm/ios/Sources` to `dm/mac`.
+- The first build after this update compiles every shader again (1.5 hours or more): the shader chain version changed (`174df0acb40b` to `ba5a707f7ecf`) because the comments of the chain's tools no longer name other games. The Game screen says so before you start. Nothing else about the shaders changed.
+- Other games' names and title IDs are gone from the comments and docstrings of the source (`dm/gfx`, `dm/tools`, `dm/host`, `scripts`) and from the Markdown notes, replaced by "another game" (done by a script that checked the code outside the comments was byte for byte the same). Short nicknames of games (a first name alone) were not touched, nor the vendored third-party code, nor the two C# sources a prebuilt tool is locked to. The rows of per-game tables in the host (`hle_fpslock.c`, `hle_uemalloc.c`) are removed, and so is the GitHub triage tooling (`issue_areas.py`, `pr_areas.py`, `triage_report.py`) that labelled issues by game.
+- Each build frees the disk space of files it will not use, and only those Bowshot made and nothing reads any more: the engine copies of other Bowshot versions (`~/Library/Application Support/Bowshot/engine/`, except one another build is running from), the `obsolete` folder of the build folder (after a successful build), and the idle Metal build folders that the pipeline archive compiler leaves in the user cache folder (`scripts/clean_metal_cache.py`: only folders nothing changed in for an hour, none while a game runs). What the next build reuses (the extracted game, the shaders, the app), your game files and other apps are never touched. The log says what was freed, and the Done screen shows the total.
+- The folder the build works and writes in, inside your game folder, is now called `Bowshot-build` (it was `Bowshot-local`): it holds the finished app, the work of the build and its log. A game folder that has the old one gets it renamed at the next build, at once and keeping everything in it, so nothing is built again because of the name.
+- The Game screen shows "What this build will do" before you start: whether the game files and the shaders of your last build will be reused, and when the translation chain changed (so the shaders are compiled again, 1.5 hours or more). It is read from the files of your last build and never starts the engine (`bowshot_build.sh --forecast <game folder>`, `scripts/bowshot_forecast.py`); the pipeline steps are marked as decided during the build.
+- The Build and Done screens list every step with what became of it (reused, made, failed) and the time it took, and say why the shaders are compiled again when the engine reports it.
+- A build writes `Bowshot-build/last-build.txt` (the Bowshot version and engine revision it was made with), which the forecast compares with the Bowshot you run.
+
 ## 0.1.2 (23 Nov 2026)
 
 ### Engine
@@ -16,6 +28,9 @@
 ### Builder (Bowshot.app) and game app
 
 - The settings window no longer draws the rows the build fixes (Dynamic resolution, Console mode, Upscaling, Hold frames when late: they only showed a greyed value) nor Press a button to join (Ocarina of Time has one player). Their values still apply.
+- The builder is named Bowshot <version> (Bowshot 0.1.2.app) and its window title says it.
+- The game's settings window says which Bowshot built it ("Built with Bowshot 0.1.2", at the bottom left).
+- The finished game app is also put in Applications (a clone on the same disk, so no extra space; `scripts/bowshot_install.sh`). The copy in Bowshot-local stays, so the next build reuses it. An app of the same name in Applications is replaced only if it is this game's, and not while it runs; if Applications cannot be written, the app stays in Bowshot-local and the log says why.
 - View > Show Memory Use (⌥⌘I) shows the memory the game uses beside the limit that closes it, without changing anything.
 - ⌘= and ⌘- show a message at the bottom of the picture for about 3 seconds: the Render scale (its name, percentage and size in pixels) and the memory the game uses beside the limit that closes it, read again after 1.5 seconds, once the new size's render targets exist.
 - The memory warning under the Render scale slider names Potato, whose value is now 0.6667.

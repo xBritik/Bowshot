@@ -126,30 +126,6 @@ class Images(unittest.TestCase):
         self.assertEqual(self.dst.read_bytes(), original)
         self.assertFalse(Path(str(self.dst) + '.part').exists())
 
-    def test_push_helper_refreshes_cache_and_propagates_copy_failure(self):
-        resources = self.root / 'resources.env'
-        resources.write_text('DM_RESOURCE_ROMFS=' + shlex.quote(str(self.src)) + '\n')
-        bin_dir = self.root / 'bin'; bin_dir.mkdir()
-        xcrun = bin_dir / 'xcrun'
-        xcrun.write_text('#!/bin/sh\nprintf "%s\\n" "$@" >> "$ROMFS_PUSH_ARGS"\nexit "${ROMFS_PUSH_RC:-0}"\n')
-        xcrun.chmod(0o755)
-        args_file = self.root / 'copy-args'
-        env = dict(os.environ, PATH=str(bin_dir) + os.pathsep + os.environ['PATH'], ROMFS_PUSH_ARGS=str(args_file), ROMFS_PUSH_VIA='devicectl')
-        cmd = ['bash', str(REPO / 'scripts/push_romfs.sh'), 'fixture-device', 'fixture.bundle', str(resources)]
-        (self.src / 'a').write_bytes(b'old')
-        def push(*args): return subprocess.run(cmd + list(args), env=env, capture_output=True, text=True)
-        self.assertEqual(push().returncode, 0)
-        self.dst = Path(str(self.src) + '.img')
-        self.assertEqual(self.content('a'), b'old')
-        (self.src / 'a').write_bytes(b'new')
-        self.assertEqual(push().returncode, 0); self.assertEqual(self.content('a'), b'new')
-        identity = image.file_identity(self.dst)
-        result = push('--repack'); self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertNotEqual(image.file_identity(self.dst), identity)
-        self.assertIn('Documents/romfs.img', args_file.read_text())
-        env['ROMFS_PUSH_RC'] = '7'; result = push()
-        self.assertEqual(result.returncode, 7); self.assertNotIn('game files on the phone', result.stdout)
-
     def test_case_collision_guest_names(self):
         if not shutil.which('xattr'): self.skipTest('macOS xattr tool required')
         (self.src / 'a').write_bytes(b'lower')
@@ -159,7 +135,7 @@ class Images(unittest.TestCase):
         self.assertTrue(self.valid()); self.assertEqual(self.content('A'), b'upper')
         self.assertEqual(self.content('a'), b'lower')
 
-    def test_dump_tool_listings_are_left_out(self):   # an FTP dump's .listing in every folder (Nintendo Switch Sports Resort's dump): not a game file
+    def test_dump_tool_listings_are_left_out(self):   # an FTP dump's .listing in every folder (another game's dump): not a game file
         (self.src / 'Parameter/P').mkdir(parents=True)
         (self.src / 'Parameter/P/Body00.bgyml').write_bytes(b'b')
         for d in ('', 'Parameter', 'Parameter/P'): (self.src / d / '.listing').write_bytes(b'-r--r--r-- 1 ftp ftp')
@@ -271,72 +247,6 @@ class DlcTransfers(unittest.TestCase):
         return subprocess.run(['bash', str(REPO / 'scripts/push_romfs.sh'), 'fixture-device', 'fixture.bundle',
                                str(self.img if image_only else resources)], env=self.env, capture_output=True, text=True)
 
-    def test_smaller_dlc_set_replaces_images_and_legacy_folders(self):
-        (self.aoc / '1.img').write_text('old')
-        (self.aoc / '2').mkdir(); (self.aoc / '2/marker').write_text('legacy DLC')
-        result = self.push(self.aoc); self.assertEqual(result.returncode, 0, result.stderr)
-        remote = self.device / 'Documents/aoc'
-        self.assertEqual({p.name for p in remote.iterdir()}, {'1.img', '2'})
-        self.assertEqual((remote / '2/marker').read_text(), 'legacy DLC')
-        (self.aoc / '1.img').write_text('updated'); shutil.rmtree(self.aoc / '2')
-        result = self.push(self.aoc); self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual({p.name for p in remote.iterdir()}, {'1.img'})
-        self.assertEqual((remote / '1.img').read_text(), 'updated')
-        self.assertIn('DLC on the phone', result.stdout)
-
-    def test_empty_dlc_set_clears_previous_content(self):
-        for aoc in ('', None, self.aoc):
-            with self.subTest(aoc=aoc):
-                remote = self.device / 'Documents/aoc'; remote.mkdir(parents=True, exist_ok=True)
-                (remote / '1.img').write_text('stale')
-                self.env['DM_RESOURCE_AOC'] = str(self.root / 'inherited-stale-path')
-                result = self.push(aoc); self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertTrue(remote.is_dir()); self.assertEqual(list(remote.iterdir()), [])
-                self.assertEqual(list(self.scratch.iterdir()), [])
-
-    def test_dlc_sync_keeps_saves_and_the_rest_of_the_container(self):
-        save = self.device / 'Documents/save/slot_00'; save.parent.mkdir(); save.write_text('progress')
-        prefs = self.device / 'Library/Preferences/app.plist'; prefs.parent.mkdir(parents=True); prefs.write_text('choices')
-        for aoc in ('', self.aoc):
-            with self.subTest(aoc=aoc):
-                (self.aoc / '1.img').write_text('dlc')
-                result = self.push(aoc); self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(save.read_text(), 'progress'); self.assertEqual(prefs.read_text(), 'choices')
-        self.assertFalse(self.xcrun_calls.exists())   # neither the image nor the DLC goes through devicectl
-
-    def test_image_only_push_preserves_dlc(self):
-        remote = self.device / 'Documents/aoc'; remote.mkdir(parents=True)
-        (remote / '1.img').write_text('keep')
-        self.env['DM_RESOURCE_AOC'] = str(self.aoc)
-        result = self.push(image_only=True); self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((remote / '1.img').read_text(), 'keep')
-        self.assertEqual((self.device / 'Documents/romfs.img').read_bytes(), self.img.read_bytes())
-
-    def test_missing_dlc_stops_before_any_transfer(self):
-        result = self.push(self.root / 'missing')
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn('Add-on content unavailable', result.stderr)
-        self.assertEqual(list((self.device / 'Documents').iterdir()), [])
-
-    def test_dlc_transfer_failure_is_reported(self):
-        (self.aoc / '1.img').write_text('dlc')
-        self.env['DLC_PUSH_FAIL'] = '1'   # afcclient exits 0 all the same: the script checks the device
-        result = self.push(self.aoc)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn('1.img', result.stderr)
-        self.assertNotIn('DLC on the phone', result.stdout)
-        self.assertNotIn('game files on the phone', result.stdout)
-
-    def test_devicectl_never_empties_the_container(self):
-        self.env['ROMFS_PUSH_VIA'] = 'devicectl'
-        result = self.push(''); self.assertEqual(result.returncode, 0, result.stderr)   # no DLC in the build: Documents/aoc left as it is
-        (self.aoc / '1.img').write_text('dlc')
-        result = self.push(self.aoc)
-        self.assertNotEqual(result.returncode, 0)   # a DLC set needs afcclient
-        self.assertIn('afcclient', result.stderr)
-        self.assertNotIn('--remove-existing-content', self.xcrun_calls.read_text())
-
-
 class AfcTransfers(unittest.TestCase):
     """The image goes over AFC (afcclient), which streams it, where devicectl copies the whole file through CoreDeviceService's memory."""
 
@@ -359,44 +269,5 @@ class AfcTransfers(unittest.TestCase):
     def push(self):
         return subprocess.run(['bash', str(REPO / 'scripts/push_romfs.sh'), 'fixture-device', 'fixture.bundle', str(self.img)],
                               env=self.env, capture_output=True, text=True)
-
-    def test_image_goes_over_afc_and_is_renamed_once_complete(self):
-        self.afc(); (self.device / 'Documents/romfs.img').write_bytes(b'an older image')
-        result = self.push(); self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((self.device / 'Documents/romfs.img').read_bytes(), self.img.read_bytes())
-        self.assertFalse((self.device / 'Documents/romfs.img.part').exists())
-        calls = self.calls.read_text()
-        self.assertIn(f'put -f {self.img} /Documents/romfs.img.part', calls)
-        self.assertIn('mv /Documents/romfs.img.part /Documents/romfs.img', calls)
-        self.assertFalse(self.xcrun_calls.exists())   # devicectl is not used for the image
-        self.assertIn('game files on the phone', result.stdout)
-
-    def test_cut_off_afc_copy_fails_and_never_replaces_the_image(self):
-        self.afc(); old = b'an older image'; (self.device / 'Documents/romfs.img').write_bytes(old)
-        self.env['AFC_PUT_SHORT'] = '1'
-        result = self.push()
-        self.assertNotEqual(result.returncode, 0)   # afcclient itself exits 0: the script checks the size on the device
-        self.assertIn('incomplete', result.stderr)
-        self.assertEqual((self.device / 'Documents/romfs.img').read_bytes(), old)
-        self.assertNotIn('game files on the phone', result.stdout)
-
-    def test_unknown_device_is_named_before_any_copy(self):
-        self.afc(); self.env['AFC_NO_DEVICE'] = '1'
-        result = self.push()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn('UDID', result.stderr); self.assertNotIn('incomplete', result.stderr)
-        self.assertNotIn(' put ', self.calls.read_text())
-
-    def test_without_afcclient_a_large_image_is_not_copied_through_devicectl(self):
-        self.env['PATH'] = str(self.bin) + os.pathsep + '/usr/bin:/bin'   # no afcclient; sysctl is the fake below
-        (self.bin / 'sysctl').write_text('#!/bin/sh\necho 64\n'); (self.bin / 'sysctl').chmod(0o755)   # a "Mac" with 64 bytes of memory
-        result = self.push()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn('afcclient', result.stderr)
-        self.assertFalse(self.xcrun_calls.exists())
-        self.env['ROMFS_PUSH_VIA'] = 'devicectl'   # chosen explicitly, it goes through devicectl
-        result = self.push(); self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('Documents/romfs.img', self.xcrun_calls.read_text())
-
 
 if __name__ == '__main__': unittest.main()

@@ -30,7 +30,7 @@ enum { DIRMODE_DIR = 1, DIRMODE_FILE = 2 };
 typedef struct { char name[0x301]; uint8_t pad0[3]; int8_t type; uint8_t pad1[3]; int64_t size; } DirectoryEntry;
 _Static_assert(sizeof(DirectoryEntry) == 0x310, "DirectoryEntry layout");
 
-#define MAX_MOUNT 512   // Monster Hunter Rise mounts every add-on content it owns (aoc0 … : 252 licences in the folder) right after the first-boot settings: 16 ended in "mount table full"
+#define MAX_MOUNT 512   // Another game mounts every add-on content it owns (aoc0 … : 252 licences in the folder) right after the first-boot settings: 16 ended in "mount table full"
 // Save transactions (HLE audit items 1–3): on the real device a save can be rolled back as a whole before commit, and after a crash / kill a remount sees only the version from the last Commit.
 // Host: at mount, the committed directory commit (= $DM_SAVE) is clonefile'd as a whole tree into the working directory <commit>.work (APFS copy-on-write, nearly zero cost), and the mount points at the working directory,
 // all game reads and writes happen in the working directory; Commit = clonefile(work → <commit>.new), then renamex_np(RENAME_SWAP) swaps it atomically with commit, then the swapped-out old version is deleted.
@@ -406,7 +406,7 @@ static int rom_overlay_path(const mount_t *m, const char *rest, char *out, size_
     errno = ENOENT; return 0;
 }
 // The path after the mount name is normalized lexically as Horizon's PathNormalizer does: "." is dropped, ".." goes up one level, and going above the root is an error (ResultDirectoryUnobtainable on hardware, reported here as not found).
-// Metroid Dread's stream sound paths are "rom:/system/snd/../../sounds/streams/...": ".." used to be reported as not found, and Atk's stream load task got an unexpected error code and aborted (main+0x1225a8c)
+// Another game's stream sound paths are "rom:/system/snd/../../sounds/streams/...": ".." used to be reported as not found, and Atk's stream load task got an unexpected error code and aborted (main+0x1225a8c)
 static int norm_rest(const char *rest, char *out, size_t n) {
     size_t len = 0; out[0] = 0;
     while (*rest) {
@@ -563,7 +563,7 @@ HLE_FORCE("_ZN2nn2fs8MountRomEPKcPvm", "fsp-srv; rom → host RomFS directory", 
 #define RES_TARGET_NOT_FOUND 0x7D402u   // fs module 2, description 1002
 // The cache a Query…CacheSize asks for is, on Horizon, the RomFS's file table as RomFsFileSystem::GetRequiredWorkingMemorySize sizes it: the directory and file hash tables (4 bytes a bucket)
 // and entries (0x18 / 0x20 bytes plus the name, padded to 4). The host reads the files directly and needs no cache, but games take it from heaps sized for the real answer:
-// Mario Kart 8 Deluxe mounts its add-on content (two files) with a cache from its 0x3130-byte AocHeap, and with a 4 KB answer the decryption buffer that follows came back null (main+0x87376c).
+// Another game mounts its add-on content (two files) with a cache from its 0x3130-byte AocHeap, and with a 4 KB answer the decryption buffer that follows came back null (main+0x87376c).
 static size_t romfs_buckets(size_t n) {   // the hash table size of the RomFS builder: 3 below 3 entries, odd below 19, else the next number with no prime factor up to 17
     if (n < 3) return 3;
     if (n < 19) return n | 1;
@@ -618,8 +618,8 @@ HLE_FORCE("_ZN2nn2fs17MountAddOnContentEPKciPvm", "fsp-srv; add-on content → D
 }
 // System data archives are firmware content, which the host does not ship. A player can supply their own console's: <DM_SYSTEM_DIR>/sysdata/<id as 16 hex digits>/ holds an archive's
 // RomFS files, mounted read-only. Without it, the two Mii model archives are the host's stand-in, one directory of files in their shared layout with every part blank (hle_mii.c
-// dm_mii_standin), written into <DM_TEMP>_sysdata/mii: the Switch's MiiModel, 0100000000000802 (Mario Kart 8 Deluxe mounts it as MiiResource: and builds Mii heads from it at boot, for
-// the title screen's demo race), and the Switch 2's, 0400000000000849 (Nintendo Switch Sports Resort mounts it as MiiResource:; refused, the game went on with an empty Mii resource and,
+// dm_mii_standin), written into <DM_TEMP>_sysdata/mii: the Switch's MiiModel, 0100000000000802 (another game mounts it as MiiResource: and builds Mii heads from it at boot, for
+// the title screen's demo race), and the Switch 2's, 0400000000000849 (another game mounts it as MiiResource:; refused, the game went on with an empty Mii resource and,
 // minutes later in two-player Avioneta, read its texture file's part sizes through a null pointer, main+0x1cdcfb4 under main+0x1cd2e30). Any other archive answers "target not found",
 // as for a title that is not installed
 #define SYSDATA_MIIMODEL 0x0100000000000802ull
@@ -655,7 +655,7 @@ static int host_mounted(const char *name) {
 }
 // ---------- Mounts in the SDK's own table ----------
 // A mount call the host does not take over (nn::fs::MountRamDisk) runs in the SDK and registers in the SDK's own table, which the host's file calls did not consult: every path on such a
-// mount was "path not found". Nintendo Switch Sports Resort (04008E001F098000) mounts its VoiceText speech data as the RAM disk "vtapi" and aborted at boot on GetEntryType("vtapi:/VoiceText")
+// mount was "path not found". Another game (<title ID>) mounts its VoiceText speech data as the RAM disk "vtapi" and aborted at boot on GetEntryType("vtapi:/VoiceText")
 // (Result 0x202, main+0x414dbc). A path whose mount name the host does not hold but the SDK's IsMounted does goes to the SDK's own call (guest_sym: the module's definition, not the host's
 // take-over), and the handles it opens are listed, so the calls that take them go to the SDK too. The host's own handles (an fd or an image entry shifted by FH_OUT, a dirh_t pointer) never
 // enter the list, and a path on a host mount never asks the SDK. No host lock is held across an SDK call: the SDK takes its own locks
@@ -719,7 +719,7 @@ static Result sdk_opened(Result r, uint64_t *out, const char *close_sym) {
 // IsMounted: the original SDK checks its own mount table, which the host's mounts never enter. Engage (IL2CPP) uses it to check whether "rom:" is mounted before opening a file; a "no" fails with an invalid-parameter error (0x57) and global-metadata.dat cannot be opened
 HLE_FORCE("_ZN2nn2fs9IsMountedEPKc", "fsp-srv; looks up the host mount table, then the SDK's own (a RAM disk)", int, h_fs_IsMounted, const char *name) { return host_mounted(name) || sdk_mounted(name); }   // bool in w0: 1 / 0
 // IsPathMounted / GetPathLengthMax: the SDK's C library (nnmusl) checks every path with them before it calls nn::fs (sdk+0x8ef50, under open / stat / opendir), and the original SDK answers from
-// its own empty mount table. Ace Attorney Investigations Collection (Unity 2022 IL2CPP): File.Exists → SystemNative_Stat → stat → open failed with no nn::fs call at all, so Addressables
+// its own empty mount table. Another game (Unity 2022 IL2CPP): File.Exists → SystemNative_Stat → stat → open failed with no nn::fs call at all, so Addressables
 // never found StreamingAssets/aa/settings.json and the game crashed on a null asset (main+0x31100ec; found by armyja, GitHub issue #18). The mount name is the part before ':', as in FindFileSystem
 HLE_FORCE("_ZN2nn2fs13IsPathMountedEPKc", "fsp-srv; looks up the host mount table, then the SDK's own (a RAM disk)", int, h_fs_IsPathMounted, const char *path) {   // bool in w0: 1 / 0
     const char *c = path ? strchr(path, ':') : NULL;
@@ -829,8 +829,8 @@ HLE_FORCE("_ZN2nn2fs17MountCacheStorageEPKci", "fsp-srv; cache storage → host 
 HLE_FORCE("_ZN2nn2fs18DeleteCacheStorageEi", "fsp-srv; cache storage → deletes the host directory", Result, h_fs_DeleteCache, int index) {
     char b[1100]; rm_tree(cache_dir(index, b, sizeof b)); unlink(cache_size_path(index, b, sizeof b)); return RES_OK;
 }
-HLE_FORCE("_ZN2nn2fs17MountCacheStorageEPKc", "fsp-srv; cache storage 0 → host directory (SDK 11 one-argument form, Monster Hunter Rise)", Result, h_fs_MountCache0, const char *name) { return h_fs_MountCache(name, 0); }
-// Save data size (Monster Hunter Rise, SDK 11): the save directory has no size of its own, so it reports 256 MB of data and journal, more than a game asks for; extending succeeds without doing anything
+HLE_FORCE("_ZN2nn2fs17MountCacheStorageEPKc", "fsp-srv; cache storage 0 → host directory (SDK 11 one-argument form, another game)", Result, h_fs_MountCache0, const char *name) { return h_fs_MountCache(name, 0); }
+// Save data size (another game, SDK 11): the save directory has no size of its own, so it reports 256 MB of data and journal, more than a game asks for; extending succeeds without doing anything
 HLE_FORCE("_ZN2nn2fs15GetSaveDataSizeEPlS1_RKNS_7account3UidE", "fsp-srv; save data size: 256 MB data + 256 MB journal", Result, h_fs_SaveSize, int64_t *size, int64_t *journal, const void *uid) {
     (void)uid; if (size) *size = 256 << 20; if (journal) *journal = 256 << 20; return RES_OK;
 }
@@ -883,7 +883,7 @@ HLE_FORCE("_ZN2nn2fs18IsSaveDataExistingENS_13ApplicationIdERKNS_7account3UidE",
     return app == DM_GAME_PROGRAM_ID && dm_account_user(uid) >= 0;
 }
 // A read-only mount of an application's save data. Another program's: the host has none. This game's own: its committed account save, read-only, as Horizon mounts the save
-// data of that application and user (IsSaveDataExisting above says it exists, and on the console the system creates it at the first launch). Nintendo Switch Sports Resort mounts
+// data of that application and user (IsSaveDataExisting above says it exists, and on the console the system creates it at the first launch). Another game mounts
 // its own save as SaveReadOnly at boot; refused, the game aborted at the first boot that found an account save (main+0x349d880 checks that the mount it reads from is named
 // SaveReadOnly, and calls the abort at main+0x3917260 otherwise), so every run after its first save stopped about 48 s in
 // Without a save folder it answers TargetNotFound, as before, and the game's own MountSaveData stops the run with the reason
@@ -934,9 +934,9 @@ HLE_FORCE("_ZN2nn2fs13MountSaveDataEPKcRKNS_7account3UidE", "fsp-srv; each regis
     if (!user) save_sync_or_stop(dd);   // sync the primary account before cloning its work directory
     return mount_ex(name, dd, 0, 1);
 }
-// Device save data: one save for the console instead of one per user. Animal Crossing: New Horizons keeps its island there (3.0.3's main mounts no account save data at all); the host
+// Device save data: one save for the console instead of one per user. Another game keeps its island there (3.0.3's main mounts no account save data at all); the host
 // has one player, so it is the host save directory with its transaction, as the account save. Its size and extension follow the account save's.
-// A game that mounts both is given two saves, as on Horizon: the device save is <DM_SAVE>_device, a transaction of its own. Mario Kart 8 Deluxe mounts CommonSave (device) and then
+// A game that mounts both is given two saves, as on Horizon: the device save is <DM_SAVE>_device, a transaction of its own. Another game mounts CommonSave (device) and then
 // UserSave (account, main+0x8b0c84), and at boot its save manager deletes CommonSave:/userdata.dat (main+0x8b1910, through its file device's DeleteFile); in one shared directory that
 // was UserSave's own userdata.dat, so every boot started a new save. Decided by main's imports: of the games on hand only this one imports both, and ACNH's islands stay where they are
 HLE_FORCE("_ZN2nn2fs19MountDeviceSaveDataEPKc", "fsp-srv; device save data → the host save directory (one player, as the account save), or a save of its own when main mounts account save data too", Result, h_fs_MountDeviceSave, const char *name) { dm_thread_service_request();
@@ -1051,13 +1051,13 @@ out:
     if (notify_error) front_save_failed(notify_error);
     return r;
 }
-// The overload with a CommitOption (Animal Crossing: New Horizons 3.0.3): its only flag clears the restore flag, which the host never sets
+// The overload with a CommitOption (another game 3.0.3): its only flag clears the restore flag, which the host never sets
 HLE_FORCE("_ZN2nn2fs6CommitEPKcRKNS0_12CommitOptionE", "fsp-srv; same as Commit (the option only clears the restore flag)", Result, h_fs_CommitOpt, const char *name, const void *opt) { (void)opt; return h_fs_Commit(name); }
-// SDK 11's old name: CommitSaveData(mount name) is the later Commit (Metroid Dread)
+// SDK 11's old name: CommitSaveData(mount name) is the later Commit (another game)
 HLE_FORCE("_ZN2nn2fs14CommitSaveDataEPKc", "fsp-srv; same as Commit (SDK 11's old name)", Result, h_fs_CommitSaveData, const char *name) { return h_fs_Commit(name); }
 // The host's mount table is permanent, so unmounting one of its names changes nothing, except an add-on content or cache storage mount's, whose name is released (host_unmount,
 // mount_releasable: a game may mount the next add-on or cache storage index under it). A mount call the host does not take over runs in the SDK and registers in the SDK's own table
-// (nn::fs::MountRamDisk), and only the SDK can release it. Paper Mario: The Thousand-Year Door unmounts its "cache" RAM disk, frees the buffer and mounts it again, which with the entry left
+// (nn::fs::MountRamDisk), and only the SDK can release it. Another game unmounts its "cache" RAM disk, frees the buffer and mounts it again, which with the entry left
 // behind failed with MountNameAlreadyExists and aborted (main+0x303b74, GitHub issue #1012). The SDK's Unmount aborts on a name it does not hold, hence its IsMounted first; a name in
 // neither table stays a no-op. No host lock is held across the SDK's calls, which take the SDK's own locks and free guest memory
 HLE_FORCE("_ZN2nn2fs7UnmountEPKc", "fsp-srv; host mounts are permanent, a no-op, but an add-on content or cache storage mount releases its name; a mount in the SDK's own table (RAM disk) is released there", void, h_fs_Unmount, const char *name) {
@@ -1116,7 +1116,7 @@ HLE_FORCE("_ZN2nn2fs8ReadFileEPmNS0_10FileHandleElPvm", "fsp-srv → pread(2)", 
         ssize_t r = pread(fd, (uint8_t *)buf + got, sz - got, base + off + got);
         if (r < 0) { if (errno == EINTR) continue;
             // The graphics layer write-protects tracked pages again after each upload (nvn_dirty.c), so a page made writable above can be read-only again by the time pread
-            // writes it: a plain write would fault into the tracker's handler, a system call gets EFAULT. Prepare the rest again (unprotect, mark dirty) and read on. Monster Train 2
+            // writes it: a plain write would fault into the tracker's handler, a system call gets EFAULT. Prepare the rest again (unprotect, mark dirty) and read on. Another game
             // at 60 fps lost one read this way in two of three runs on the Mac (0x2c000 bytes of pool pages, protection read-only), never at 30 fps, where uploads come half as often
             if (errno == EFAULT && reprep++ < 8) {
                 static _Atomic int once; if (!once++) LOG("[fs] ReadFile into %p+%#zx: the destination was write-protected again during the read, prepared again at +%#zx (first case)", buf, sz, got);
@@ -1265,13 +1265,13 @@ HLE_FORCE("_ZN2nn2fs25CleanDirectoryRecursivelyEPKc", "fsp-srv → recursively d
 }
 // file data cache (a global read cache in the fs process): the host reads through the page cache and leaves the buffer unused
 HLE_FORCE("_ZN2nn2fs25EnableGlobalFileDataCacheEPvm", "fsp-srv global read cache; unused by the host", void, h_fs_EnableGlobalCache, void *buf, size_t sz) { (void)buf; (void)sz; }
-// the same cache for one file (SDK 11, Big Brain Academy: Brain vs. Brain; the game does not read the result)
+// the same cache for one file (SDK 11, another game; the game does not read the result)
 HLE_FORCE("_ZN2nn2fs29EnableIndividualFileDataCacheEPKcPvm", "fsp-srv read cache for one file; unused by the host", Result, h_fs_EnableFileCache, const char *path, void *buf, size_t sz) {
     (void)path; (void)buf; (void)sz; return RES_OK;
 }
 HLE_FORCE("_ZN2nn2fs30DisableIndividualFileDataCacheEPKc", "fsp-srv read cache for one file; unused by the host", void, h_fs_DisableFileCache, const char *path) { (void)path; }
 HLE_FORCE("_ZN2nn2fs26DisableGlobalFileDataCacheEv", "fsp-srv global read cache; unused by the host (DRAGON QUEST XI S's nninitStartup turns it off again after its start-up thread)", void, h_fs_DisableGlobalCache, void) {}
-// SDK 11 (Metroid Dread): delete an empty directory
+// SDK 11 (another game): delete an empty directory
 HLE_FORCE("_ZN2nn2fs15DeleteDirectoryEPKc", "fsp-srv → rmdir(2) (the directory must be empty)", Result, h_fs_DeleteDir, const char *path) { dm_thread_service_request();
     SDK_PATH(path, "_ZN2nn2fs15DeleteDirectoryEPKc", Result (*)(const char *), path);
     HP_ACCESS(path, 0, 1); RW(); return rmdir(hp) ? save_path_error("rmdir", path) : RES_OK;
@@ -1299,7 +1299,7 @@ static Result rename_any(const char *from, const char *to, const char *sym) {
     return sdk_rename ? sdk_rename(from, to) : rename_entry(from, to);
 }
 HLE_FORCE("_ZN2nn2fs10RenameFileEPKcS2_", "fsp-srv → rename(2)", Result, h_fs_RenameFile, const char *from, const char *to) { dm_thread_service_request(); return rename_any(from, to, "_ZN2nn2fs10RenameFileEPKcS2_"); }
-// The Great Ace Attorney Chronicles (SDK 10) imports it; a directory carries its guest name the same way as a file
+// Another game (SDK 10) imports it; a directory carries its guest name the same way as a file
 HLE_FORCE("_ZN2nn2fs15RenameDirectoryEPKcS2_", "fsp-srv → rename(2) of a directory", Result, h_fs_RenameDir, const char *from, const char *to) { dm_thread_service_request(); return rename_any(from, to, "_ZN2nn2fs15RenameDirectoryEPKcS2_"); }
 HLE_FORCE("_ZN2nn2fs12GetEntryTypeEPNS0_18DirectoryEntryTypeEPKc", "fsp-srv → stat(2)", Result, h_fs_GetEntryType, int32_t *out, const char *path) { dm_thread_service_request();
     SDK_PATH(path, "_ZN2nn2fs12GetEntryTypeEPNS0_18DirectoryEntryTypeEPKc", Result (*)(int32_t *, const char *), out, path);
@@ -1437,9 +1437,9 @@ HLE_FORCE("_ZN2nn2fs14CloseDirectoryENS0_15DirectoryHandleE", "fsp-srv → close
 
 // ---------- Overloads from newer SDKs (SDK 16: MountRom without a cache, ReadFile without the bytes-read output / with read options, directory entry count) ----------
 HLE_FORCE("_ZN2nn2fs8MountRomEPKc", "fsp-srv; rom → host RomFS directory (overload without the cache arguments)", Result, h_fs_MountRom1, const char *name) { return h_fs_MountRom(name, NULL, 0); }
-// SDK 19 (Metroid Prime 4: Beyond): MountRom and QueryMountRomCacheSize with an int after the first argument, the index of a program of the application (fsp-srv
+// SDK 19 (another game): MountRom and QueryMountRomCacheSize with an int after the first argument, the index of a program of the application (fsp-srv
 // OpenDataStorageByProgramIndex): any program can mount another's RomFS. A Switch 2 Edition of a Switch 1 game is one application of two programs, and the Switch 2 program's own
-// RomFS holds a few files: Super Mario Bros. Wonder's mounts the Switch 1 program's, index 0, as content: and its upgrade add-on as aocup: (issue/PR #2692).
+// RomFS holds a few files: another game's mounts the Switch 1 program's, index 0, as content: and its upgrade add-on as aocup: (issue/PR #2692).
 // The other programs' RomFS images are <index>.img in DM_ROMFS_PROGRAMS, by default the folder romfs_programs beside DM_ROMFS (scripts/pack_nup.py writes them, the app carries them
 // beside its RomFS); an index with no image there gets this program's own RomFS (its own index, or a build that has only this program's)
 static int program_romfs(int idx, char *out, size_t n) {

@@ -97,7 +97,7 @@ fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuff
 '''
 BINDINGS = [{'kind': dmsh_abi.KIND_TEX, 'msl_name': 'fp_t_tcb_8', 'reg': 0}]
 FS_KEY = 'fedcba9876543210'
-# Splatoon Raiders' ink stamp (6a5b76a60670e513), cut down: its ink map sampled at gl_FragCoord over the render scale times c[6].xy (1 / the map's size), through the border colour
+# Another game' ink stamp (6a5b76a60670e513), cut down: its ink map sampled at gl_FragCoord over the render scale times c[6].xy (1 / the map's size), through the border colour
 # correction; the read's channels rotated into its output (red from green, green from blue plus one minus alpha): red where it read green, black where it read red, and green
 # wherever a missing channel of an R or RG map read other than 0, 0, 1
 FS_POS = """#include <metal_stdlib>

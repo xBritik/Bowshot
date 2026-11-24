@@ -1,5 +1,5 @@
 // H.264 (AVC) decoding for the movie decoder (hle_movie.c), on Apple's VideoToolbox (the hardware decoder on the Mac and the iPhone).
-// Super Mario Odyssey's 44 movies are MP4 / H.264 (the hint videos in its tutorial boxes, the kingdom travel videos): 41 High or Main profile with B-frames, 3 Baseline.
+// Another game's 44 movies are MP4 / H.264 (the hint videos in its tutorial boxes, the kingdom travel videos): 41 High or Main profile with B-frames, 3 Baseline.
 // The SDK's demuxer hands over one access unit per packet with Annex B start codes; SPS / PPS come in Configure's csd-0 / csd-1 (as with Android's MediaCodec) and may also appear in the stream.
 // VideoToolbox wants a format description built from SPS / PPS and NAL units with 4-byte length prefixes. Decoding is synchronous and yields pictures in decode order; MediaCodec yields them
 // in presentation order. For progressive POC type 0 and sliding-window references, Annex C's DPB occupancy and the SPS reorder bound
@@ -26,7 +26,7 @@ struct mavc {
     avc_sps sp; avc_pps pp;
     int ordered, prev_frame, prev_lsb; int64_t prev_msb; uint64_t refs;
     uint8_t *au; size_t aucap;   // length-prefixed copy of the access unit being decoded
-    int red, rgba;               // rgba: pictures as 4-byte RGBA (native texture mode, Monster Hunter Rise) instead of NV12
+    int red, rgba;               // rgba: pictures as 4-byte RGBA (native texture mode, another game) instead of NV12
     movie_vt_history history;
 };
 

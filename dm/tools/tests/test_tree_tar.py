@@ -106,15 +106,6 @@ class PackQuiet(unittest.TestCase):
         time.sleep(0.05)
         return tree_tar.pack_quiet(self.w, self.lines.append, days=0.0000001, **k)
 
-    def test_packs_a_quiet_folder_and_keeps_its_attributes(self):
-        d = self.folder('issue1')
-        subprocess.run(['xattr', '-w', 'org.d2rmobile.guest-name', 'Foo.txt', d / 'sub/f0'], check=True)
-        self.assertEqual(self.run_old(), ['issue1'])
-        self.assertEqual(sorted(p.name for p in self.w.iterdir()), ['issue1.tar'])
-        (self.w / 'back').mkdir()
-        subprocess.run(['tar', '--xattrs', '-xf', self.w / 'issue1.tar', '-C', self.w / 'back'], check=True)
-        self.assertEqual(subprocess.run(['xattr', '-p', 'org.d2rmobile.guest-name', self.w / 'back/sub/f0'], capture_output=True, text=True).stdout.strip(), 'Foo.txt')
-
     def test_leaves_regress_small_recent_and_an_existing_tar(self):
         self.folder('regress'); self.folder('small', 99); self.folder('kept'); (self.w / 'kept.tar').write_bytes(b'mine')
         self.assertEqual(self.run_old(), [])

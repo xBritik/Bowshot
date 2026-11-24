@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ampere instructions through the offline translator (dmsh_xlate, arch sm86): SUATOM (0x593), the image atomic Donkey Kong Bananza's agl technique compute shaders (agl_technique_pfx) take an
+"""Ampere instructions through the offline translator (dmsh_xlate, arch sm86): SUATOM (0x593), the image atomic another game's agl technique compute shaders (agl_technique_pfx) take an
 append counter with; shared memory's scaled address, IMAD.HI and ATOMS.CAS; and the instructions tested on the atomic's result below. Needs DMSH_TEST_XLATE (the translator) like the other translator tests."""
 import json, os, re, struct, subprocess, sys, tempfile, unittest
 from pathlib import Path
@@ -55,7 +55,7 @@ class GuardedWrites(Translated):
         self.assertRegex(msl, r'_m0\[(int\()?\w+')   # an index from the register
 
     def test_a_deferred_write_under_a_false_guard_writes_nothing(self):
-        # MUFU.EX2 R17, R32 under P0 (write barrier 3); R17 = R29 * R29 under !P0; R17 = R36 * R17 after waiting on the barrier: Yoshi and the Mysterious Book's local lights' falloff. The wait copied
+        # MUFU.EX2 R17, R32 under P0 (write barrier 3); R17 = R29 * R29 under !P0; R17 = R36 * R17 after waiting on the barrier: another game's local lights' falloff. The wait copied
         # the old R17 over !P0's value, whatever the guard had been
         ex2, other, used = (0x000ee20000000800, 0x0000002000170308), (0x000fe20000410000, 0x0000001d1d178220), (0x008fe20000410000, 0x0000001724177220)
         msl = self.translate(inst(*self.MOV_R5) + inst(*self.P0) + inst(*ex2) + inst(*other) + inst(*used) + inst(SUATOM[0], 0x00000c17030c7593) + inst(*EXIT))
@@ -67,7 +67,7 @@ class GuardedWrites(Translated):
             self.translate(inst(*code) + inst(*EXIT))
 
     def test_a_computed_handle_reads_the_pools(self):
-        # R16 = c4[0] & 0x7fff | 0x10800000, a heap index clamped and ORed with sampler 0x108 (PRAGMATA's RE Engine materials), then TLD4 through R16: a handle no table holds, which
+        # R16 = c4[0] & 0x7fff | 0x10800000, a heap index clamped and ORed with sampler 0x108 (another game's RE Engine materials), then TLD4 through R16: a handle no table holds, which
         # BindlessElimination deleted (its result read 0); a sampled texture's ID indexes the texture pool whatever made it
         mov, mask, sampler = (0x000fe20000000f00, 0x0100000000107a02), (0x000fe400078ec0ff, 0x00007fff10107812), (0x000fe400078efcff, 0x1080000010107812)
         tld4 = (0x00014200001e0f12, 0x3800001002101364)   # write barrier 5, which the SUATOM after it waits on (it adds what the TLD4 read)
@@ -75,11 +75,11 @@ class GuardedWrites(Translated):
         self.assertIn('cb0_40000000', msl)   # the pool arrays (dmsh_build.py pool_arrays makes them pointers)
         self.assertIn('gather(', msl)
 
-    def test_size_query_through_a_uniform_register_translates(self):   # TXQ R10, UR6, R10 (0xf6f; PRAGMATA, as encoded there): the size of a texture the pools hold
+    def test_size_query_through_a_uniform_register_translates(self):   # TXQ R10, UR6, R10 (0xf6f; another game, as encoded there): the size of a texture the pools hold
         msl = self.translate(inst(0x000f4200080001ff, 0x000006000a0a7f6f) + inst(SUATOM[0], 0x00000c0a030c7593) + inst(*EXIT))   # the size added by an image atomic, so it stays
         self.assertIn('get_width(', msl)
 
-    def test_lod_query_handle_forms_translate(self):   # TMML through a uniform register and a register (Kirby Air Riders' 4,776 pixel shaders, as encoded there)
+    def test_lod_query_handle_forms_translate(self):   # TMML through a uniform register and a register (another game' 4,776 pixel shaders, as encoded there)
         for code in ((0x000f4200080002ff, 0x600004ff20277f69), (0x000f4200000002ff, 0x68000018141d736a)):
             self.translate(inst(*code) + inst(*EXIT))
 
@@ -90,7 +90,7 @@ class GuardedWrites(Translated):
         self.assertIn('gradient', msl)
 
     # A handle built under a guard from two words of the game's uniform buffer, read under a guard the translator cannot tie to it, so that a phi reaches the read with the first word and what the
-    # register held before: Unreal Engine 5.4's single-layer water and a global pixel shader in Yoshi and the Mysterious Book. The read was deleted. Each ends in the result's atomic add, so it stays
+    # register held before: Unreal Engine 5.4's single-layer water and a global pixel shader in another game. The read was deleted. Each ends in the result's atomic add, so it stays
     def test_handle_under_a_uniform_vote_of_the_reads_guard(self):
         # P0 = c4[0x14] test; UR8 = c3[0x60]; UR4 = c3[0x50]; UP0 = vote.all(P0); if (!UP0) UR4 |= UR8; TEX.!P0 through UR4
         code = [(0x000fe20003f05070, 0x01000500ff007a0c), (0x000fe20000000800, 0x00c0180000087ab9), (0x000fe20000000800, 0x00c0140000047ab9), (0x000fe40000000000, 0x00000000003f7886),
@@ -159,7 +159,7 @@ class Suatom(Translated):
         self.assertIn('cp_i_cb3_C_r32ui', msl)
         self.assertIn('atomic_fetch_add', msl)
 
-    # The register forms (0x394, 0x396, 0x3a0; SULD / SUST 0x998..0x99e): the handle in Rc (64..72), read here from c[3][0] by a MOV as Orbitals' (Unreal Engine 5.6) global
+    # The register forms (0x394, 0x396, 0x3a0; SULD / SUST 0x998..0x99e): the handle in Rc (64..72), read here from c[3][0] by a MOV as another game' (Unreal Engine 5.6) global
     # compute shaders read their ShaderPrint counter's (45389d82b79dbf0c +0x1850, its handle register R20 there). The handle names the binding as the bound form's word would
     MOV_R12_C3 = (0x003fde0000000f00, 0x00c00000000c7a02)   # MOV R12, c[3][0]
 
@@ -173,7 +173,7 @@ class Suatom(Translated):
         self.assertIn('atomic_fetch_or', msl)
         self.assertIn('cp_i_cb3_', msl)
 
-    def test_sured_takes_its_operation(self):   # SURED.OR.U32 as Yoshi and the Mysterious Book's compute shaders encode it, in bank 3
+    def test_sured_takes_its_operation(self):   # SURED.OR.U32 as another game's compute shaders encode it, in bank 3
         self.assertIn('atomic_fetch_or', self.translate(inst(0x000fe2000310e000, 0xa0c002010800759f) + inst(*EXIT)))
 
     def test_add_u32_on_a_1d_image(self):
@@ -227,7 +227,7 @@ class DynamicImages(Translated):
         self.assertEqual(b['cp_i3d_cb0_40000000_']['kind'], abi.KIND_IMG_POOL)
         self.assertIn('cp_i_tcb_4A_r32ui', msl)   # image slot 1 (c2 0x128), a 32-bit unsigned image
 
-    def test_images_come_after_the_separate_handles(self):   # 1 texture, 1 separate texture, 1 separate sampler from 0x10: word 12 (0x30) is image slot 1 still, past both tables (Star Fox's 1002069a331ceded)
+    def test_images_come_after_the_separate_handles(self):   # 1 texture, 1 separate texture, 1 separate sampler from 0x10: word 12 (0x30) is image slot 1 still, past both tables (another game's 1002069a331ceded)
         msl = self.translate(inst(*SUATOM) + inst(*EXIT), nvn2_cs=[0, 0, 1, 0x40, 0, 1, 1])
         self.assertIn('cp_i_tcb_4A_r32ui', msl)
 
@@ -237,7 +237,7 @@ class DynamicImages(Translated):
 
 
 class MufuTurns(Translated):
-    """MUFU.SIN / COS take turns and use their fraction: the lowering takes t - rint(t) before the 2pi multiply (Donkey Kong Bananza's SSAO a6f04605183d9915 rotates its kernel by up to
+    """MUFU.SIN / COS take turns and use their fraction: the lowering takes t - rint(t) before the 2pi multiply (another game's SSAO a6f04605183d9915 rotates its kernel by up to
     2.5e6 turns at its full-size effects; t * 2pi lost the fraction and Metal's fast sin / cos returned 0 past 2^20 turns, a screen corner with no ambient occlusion). The values are checked on
     the GPU by dm/gfx/tests/t_mufu_turns.m"""
     COS = (0x000fe60000000000, 0x0000000c000c7308)   # MUFU.COS R12, R12 (op 0, bits 74..80), the F16 form's encoding above without .F16 and the half select
@@ -255,7 +255,7 @@ class MufuTurns(Translated):
 
 
 class Bmsk(Translated):
-    """BMSK (Star Fox's 58046f286de779e1 +0x5a0, on registers the atomic reads): a mask of b bits from bit a. The form with c[4] sources keeps it from folding"""
+    """BMSK (another game's 58046f286de779e1 +0x5a0, on registers the atomic reads): a mask of b bits from bit a. The form with c[4] sources keeps it from folding"""
     MOVS = inst(0x000fe20000000f00, 0x0100000000037a02) + inst(0x000fe20000000f00, 0x0100010000047a02)   # R3 = c4[0], R4 = c4[4]
     BMSK = (0x000fe40000000000, 0x000000040303721b)   # BMSK R3, R3, R4: clamping
     WRAP = (0x000fe40000000800, 0x000000040303721b)   # the same, .W
@@ -272,7 +272,7 @@ class Bmsk(Translated):
 
 @unittest.skipUnless(os.environ.get('DMSH_TEST_XLATE'), 'set DMSH_TEST_XLATE to the offline translator')
 class PixelCovered(unittest.TestCase):
-    """0x925 as Star Fox's quad efficiency views encode it (826168691af2e211 +0x0): 1 for a covered pixel, 0 for a helper invocation"""
+    """0x925 as another game's quad efficiency views encode it (826168691af2e211 +0x0): 1 for a covered pixel, 0 for a helper invocation"""
     COVERED = (0x040e0200000e4000, 0x0000000000007925)
     OTHER = (0x040e0200000e8000, 0x0000000000007925)   # bits 78..80 = 2, not seen
     SAMPLE = (0x040e0200000ec000, 0x0000000000007925)   # bits 78..80 = 3: the sample index
@@ -301,7 +301,7 @@ class PixelCovered(unittest.TestCase):
         self.assertIsNone(msl)
         self.assertIn('0x925 form 2', log)
 
-    def test_form_3_reads_the_sample_index(self):   # PRAGMATA's a689530d00090ebf +0x0 (into R2 there, R0 here: colour 0's x, so it stays)
+    def test_form_3_reads_the_sample_index(self):   # Another game's a689530d00090ebf +0x0 (into R2 there, R0 here: colour 0's x, so it stays)
         msl, log = self.run_job(self.SAMPLE)
         self.assertIsNotNone(msl, log)
         self.assertIn('[[sample_id]]', msl)
@@ -309,7 +309,7 @@ class PixelCovered(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get('DMSH_TEST_XLATE'), 'set DMSH_TEST_XLATE to the offline translator')
 class IpaAtOffset(unittest.TestCase):
-    """IPA at an offset from the pixel centre (location 2, the offset word in the second source register) and the barycentric coordinates a[0x3b4], as PRAGMATA's pixel
+    """IPA at an offset from the pixel centre (location 2, the offset word in the second source register) and the barycentric coordinates a[0x3b4], as another game's pixel
     shader 4a9d4507eea6c837 reads them at the sample's position (+0x130: IPA R3, a[0x3b4], R5; R0 here, colour 0's x). The offset is the sample index here, which no
     pass folds. What IPA.PASS reads is linear over the screen, so the value at the offset is the centre's plus the offset times its screen derivatives"""
     run_job = PixelCovered.run_job
@@ -337,7 +337,7 @@ class IpaAtOffset(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get('DMSH_TEST_XLATE'), 'set DMSH_TEST_XLATE to the offline translator')
 class ShadingRate(unittest.TestCase):
-    """S2UR of system register 0x84, the fragment's size in pixels (X in bits 8..15, Y in 16..23), as Nintendo Switch Sports Resort's sea shaders encode it (2271b2e0293b3c55 +0x2600):
+    """S2UR of system register 0x84, the fragment's size in pixels (X in bits 8..15, Y in 16..23), as another game's sea shaders encode it (2271b2e0293b3c55 +0x2600):
     the host shades every pixel, so 1 x 1. It read 0 as an unknown register, and the sea's colour, divided by the fragment's area, was NaN"""
     run_job = PixelCovered.run_job
     SPH = PixelCovered.SPH
@@ -367,7 +367,7 @@ class DepthRegister(unittest.TestCase):
 
 
 class MufuF16(Translated):
-    """MUFU.F16 (Splatoon Raiders' upscaler network): the source is the half bits 60..61 select (bit 62 its abs, as in every B slot), the result the low half"""
+    """MUFU.F16 (another game' upscaler network): the source is the half bits 60..61 select (bit 62 its abs, as in every B slot), the result the low half"""
     LOG2_HIGH = (0x000fe60000000e00, 0x5000000c000c7308)   # MUFU.F16.LOG2 R12, |R12.H1|: the game's encoding (c1b8edc09e3313b1 +0x5970) on the register the atomic reads
     LOG2_LOW = (0x0002a20000000e00, 0x4000000c000c7308)    # MUFU.F16.LOG2 R12, |R12.H0| (+0x59a0)
 
@@ -387,7 +387,7 @@ class MufuF16(Translated):
 
 
 class Sured(Translated):
-    """SURED.ADD.U32 [R4], R0 (0x59f) on a 2D image, Mario Kart World's ab77eaee44cfef88: SUATOM's layout with no result"""
+    """SURED.ADD.U32 [R4], R0 (0x59f) on a 2D image, another game's ab77eaee44cfef88: SUATOM's layout with no result"""
     FORM = (0x000fe2000010e000, 0x60000c000400759f)
 
     def test_adds_at_the_coordinates(self):
@@ -437,7 +437,7 @@ class StageMemory(Translated):
                 self.assertIn(f'& {(1 << bits) - 1};', src)
 
     def test_subword_inputs_are_unsigned_and_keep_the_byte_offset(self):
-        # Fast Fusion reads packed U16 entries with mode 0x34. The high half of word 12 must stay unsigned, as must an U8 input at its own byte within the word.
+        # Another game reads packed U16 entries with mode 0x34. The high half of word 12 must stay unsigned, as must an U8 input at its own byte within the word.
         for mode, offset, bits in ((0x34, 0x22, 16), (0x30, 0x23, 8)):
             read = (self.INPUT[0] & ~0xff00 | mode << 8, self.INPUT[1] & ~(0xffffff << 40) | offset << 40)
             src = self.msl(read, self.KEEP_R19)
@@ -461,7 +461,7 @@ class StageMemory(Translated):
     def test_word_store_goes_to_the_outputs(self):   # 0x120 + 0x80
         self.assertIn('0 + 416', self.msl(self.ATTRIBUTE))
 
-    READBACK = (0x000fe6000000f800, 0x00018000ff087923)   # ISBERD R8, [RZ + 0x180], mode 0xf8 (PRAGMATA 5aab38bb5ba67ef7 +0x1680, its base register made RZ): a position word read back
+    READBACK = (0x000fe6000000f800, 0x00018000ff087923)   # ISBERD R8, [RZ + 0x180], mode 0xf8 (another game 5aab38bb5ba67ef7 +0x1680, its base register made RZ): a position word read back
     KEEP_R8 = (0x0041e8000000b800, 0x00001008ff007927)    # 0x927 [RZ + 0x10], R8, mode 0xb8
 
     def test_an_attribute_word_is_read_back_from_the_outputs(self):   # 0x120 + 0x180 = word 168
@@ -475,7 +475,7 @@ class StageMemory(Translated):
     def test_a_byte_goes_through_its_word_atomically(self):   # neighbouring threads write neighbouring bytes; the shader build makes the helper's loop one byte store (test_dmsh_shared_store.py)
         self.assertIn('atomic_compare_exchange', self.msl(self.INDEX))
 
-    def test_vertex_records_go_to_their_soa_word(self):   # a mesh shader's mode 0xb8 (PRAGMATA 6adf14e9a4100082): records of 6 words from 0x200, 128 vertices
+    def test_vertex_records_go_to_their_soa_word(self):   # a mesh shader's mode 0xb8 (another game 6adf14e9a4100082): records of 6 words from 0x200, 128 vertices
         mesh = self.translate(inst(*self.PAYLOAD) + inst(*EXIT), stage_memory=[0, 0x10, 0x120, 0x400, 0x200, 6, 128 * 24], shared=0x800)
         self.assertRegex(mesh, r'< 3072u')       # inside the 128 * 24 bytes of records only
         self.assertRegex(mesh, r'\* 43691u?\b')   # v = w * ceil(2^18 / 6) >> 18
@@ -494,7 +494,7 @@ class StageMemory(Translated):
 
 
 class BarrierMoves(Translated):
-    """BMOV around warp shuffles (Hyrule Warriors: Age of Imprisonment's pixel shaders 02e49c189b769074 and 49241cf469c76830): convergence barrier B15 to and
+    """BMOV around warp shuffles (another game's pixel shaders 02e49c189b769074 and 49241cf469c76830): convergence barrier B15 to and
     from R26, in the game's encodings. Per thread they do nothing, as the barriers they save do"""
     SAVE = (0x000fe20000000000, 0x000000001a0f7f55)      # +0x25c0
     RESTORE = (0x000fe40000100000, 0x000000001a0f7f56)   # +0x25d0
@@ -507,7 +507,7 @@ class BarrierMoves(Translated):
 
 
 class Yield(Translated):
-    """YIELD (0x946) in Resident Evil 4's encoding, as its 21 compute shaders with it have it (after MEMBAR; ERRBAR, before a branch): per thread it does nothing"""
+    """YIELD (0x946) in another game's encoding, as its 21 compute shaders with it have it (after MEMBAR; ERRBAR, before a branch): per thread it does nothing"""
     YIELD = (0x000fde0003800000, 0x0000000000007946)
 
     def test_no_effect_on_the_shader(self):
@@ -517,7 +517,7 @@ class Yield(Translated):
 
 
 class LdcIndexedBank(Translated):
-    """LDC.64 .IS (address mode 2): the bank is the instruction's plus Ra's upper half, the offset Ra's lower half (Hyrule Warriors: Age of Imprisonment's
+    """LDC.64 .IS (address mode 2): the bank is the instruction's plus Ra's upper half, the offset Ra's lower half (another game's
     vertex shader cc679c7b4d3e703c reads its c1 quad corners at (vertex index % 5) * 8 + 0x10000 this way). Here LDC.64.IS R12, c[0][R3] feeds the atomic"""
     LDC_IS = (0x000e620000008a00, 0x00000000030c7b82)   # the game's control bits, size and mode; Rd R12, Ra R3
 
@@ -539,7 +539,7 @@ def sts(offset, rb):   # STS.U32 [RZ + offset], Rb: keeps its result
 
 
 class Shared(Translated):
-    """Fire Emblem Fortune's Weave's Lighting compute shaders: the exposure histogram and its 64-bit average, in the game's own encodings"""
+    """another game's Lighting compute shaders: the exposure histogram and its 64-bit average, in the game's own encodings"""
     STS_SCALED_4 = 0x000fe80000004800, 0x0000000302027388   # STS.U32 [R2 * 4], R3 (6d0f6db3f0d396a3 +0x80 with a value): R2 counts words. Read unscaled, bin b came back at about 4b
     STS_SCALED_8 = 0x000fe80000008a00, 0x0000000302027388   # STS.U64 [R2 * 8], R3:R4 (d5bc99ffd183fa20 +0xa0)
     STS_BYTES = 0x000fe80000000800, 0x0000000302027388      # STS.U32 [R2], R3: a byte address
@@ -588,17 +588,17 @@ class Shared(Translated):
         self.assertRegex(msl, r'= 5u;')
         self.assertRegex(msl, r', 9u,')
 
-    # 3,312 of Pokemon Pokopia's shared accesses have stride 3, on 4, 8 and 16 bytes alike (cs_rdb 990's STS.U32 [R2 * 16]): the field is a scale, not the access size
+    # 3,312 of another game's shared accesses have stride 3, on 4, 8 and 16 bytes alike (cs_rdb 990's STS.U32 [R2 * 16]): the field is a scale, not the access size
     STS_SCALED_16 = 0x0001e4000000c800, 0x0000000302027388
 
     def test_stride_3_scales_its_register_by_16(self):   # Element 3 of 16 bytes, word 12
         self.assertIn('[12] = 77u', self.msl(mov(2, 3), mov(3, 77), inst(*self.STS_SCALED_16)))
 
     # The same field on other sizes, with an offset: the stride decides the scale, whatever the access size
-    STS64_SCALED_4 = 0x0009ee0000004a00, 0x000900182c007388     # STS.U64 [R44 * 4 + 0x900], R24:R25 (Donkey Kong Bananza's upscaler 7629d857a0a93833)
-    STS_SCALED_16_AT_8 = 0x000fe8000000c800, 0x0000080609008388   # STS.U32 [R9 * 16 + 8], R6 (agl_common: Mario Kart World f94552a2a2bff505, Donkey Kong Bananza c5c746915e9a3265)
+    STS64_SCALED_4 = 0x0009ee0000004a00, 0x000900182c007388     # STS.U64 [R44 * 4 + 0x900], R24:R25 (another game's upscaler 7629d857a0a93833)
+    STS_SCALED_16_AT_8 = 0x000fe8000000c800, 0x0000080609008388   # STS.U32 [R9 * 16 + 8], R6 (agl_common: another game f94552a2a2bff505, another game c5c746915e9a3265)
     STS64_SCALED_16 = 0x000fe8000000ca00, 0x0000000209008388    # STS.U64 [R9 * 16], R2:R3 (the same shaders)
-    STS128_SCALED_16 = 0x0001e2000000cc00, 0x000000ff26007388   # STS.128 [R38 * 16], RZ (Pokemon Pokopia 8987796cd5718078)
+    STS128_SCALED_16 = 0x0001e2000000cc00, 0x000000ff26007388   # STS.128 [R38 * 16], RZ (another game 8987796cd5718078)
 
     def test_a_64_bit_access_with_stride_1_scales_its_register_by_4(self):   # Byte 3 * 4 + 0x900, word 579
         msl = self.msl(mov(44, 3), mov(24, 77), mov(25, 88), inst(*self.STS64_SCALED_4), shared=0x1000)
@@ -618,7 +618,7 @@ class Shared(Translated):
         self.assertIn('[12] = 0u', msl)
         self.assertIn('[15] = 0u', msl)
 
-    # LDSM keeps its mode at 78..79, where LDS has its stride: 1 is a transposed read (MT88), not a scale. Donkey Kong Bananza's upscaler 7629d857a0a93833 +0x1ce0, on R3: scaled, its picture was garbage
+    # LDSM keeps its mode at 78..79, where LDS has its stride: 1 is a transposed read (MT88), not a scale. Another game's upscaler 7629d857a0a93833 +0x1ce0, on R3: scaled, its picture was garbage
     LDSM_MT88 = 0x000fe20000004200, 0x000000000314783b   # LDSM.16.MT88.4 R20, [R3], with no write barrier for the store to wait on
 
     def test_ldsm_mode_is_not_a_scale(self):
@@ -637,7 +637,7 @@ class Shared(Translated):
 
 
 class Pokopia(Translated):
-    """Pokemon Pokopia's encodings, on the register the atomic reads: F2FP.MERGE_C (22,886 shaders), F2I from a half (1,067), MEMBAR with ERRBAR (144)"""
+    """another game's encodings, on the register the atomic reads: F2FP.MERGE_C (22,886 shaders), F2I from a half (1,067), MEMBAR with ERRBAR (144)"""
     MERGE_FIRST = (0x000fe200000040ff, 0x00c00600ff0c7a3e)   # F2FP.MERGE_C R12, RZ, c[3][word 6], RZ
     MERGE_SECOND = (0x000fe4000000400c, 0x00c00500ff0c7a3e)   # F2FP.MERGE_C R12, RZ, c[3][word 5], R12
     F2I_LOW = (0x000fe2000010f100, 0x0000000c000c7305)   # F2I.S32.F16.TRUNC R12, R12.H0
@@ -732,7 +732,7 @@ class Pokopia(Translated):
         msl = self.msl(self.MERGE_FIRST, self.MERGE_SECOND, self.FSEL_NEG_B)
         self.assertRegex(msl, r'float _\d+ = -')
 
-    def test_up2ur_takes_any_predicate_by_its_mask_bit(self):   # Mario Kart World's pixel shaders save UP6 or UP3 and test the register against URZ later
+    def test_up2ur_takes_any_predicate_by_its_mask_bit(self):   # Another game's pixel shaders save UP6 or UP3 and test the register against URZ later
         for mask in (0x40, 0x08): self.msl((0x000fe20008000000, mask << 32 | 0x3f067883))
 
     def test_up2ur_with_a_merge_source_is_refused(self):
@@ -764,7 +764,7 @@ class Pokopia(Translated):
         self.assertRegex(self.msl(self.MEMBAR, self.ERRBAR), r'threadgroup_barrier|atomic_thread_fence')
 
 
-# SURED.D.2D.MAX.U64.STRONG.GPU.IGN [R0], R2 (PRAGMATA's visibility buffer, 336 shaders: 002292c6b1542bce +0x3510 has 0001e2000110e400600034020000059f, handle 0x34 and
+# SURED.D.2D.MAX.U64.STRONG.GPU.IGN [R0], R2 (another game's visibility buffer, 336 shaders: 002292c6b1542bce +0x3510 has 0001e2000110e400600034020000059f, handle 0x34 and
 # predicated on P0), here unpredicated on the image whose handle is word 12 of c0 (image slot 1): coordinate R0, R1; value R2 (low word), R3 (high word). After uncraftablexd's PR #1801
 SURED_MAX_U64 = (0x0001e2000110e400, 0x60000c020000759f)
 SURED_MIN_U64 = (SURED_MAX_U64[0] & ~(0x1f << 23) | 1 << 23, SURED_MAX_U64[1])   # operation 87..91: 1 = MIN

@@ -1,5 +1,5 @@
 // An image slot takes a view of the type its shader declares (img_fit): a one-layer view of a 2D array in a slot declared 2D gets a writable 2D view of that layer and level, and the
-// shader's stores land there. Bound as is, Metal dropped them: Mario Kart World's blob-shadow mips stayed zero (GitHub issue #1648). A type no view bridges is bound as is, logged red
+// shader's stores land there. Bound as is, Metal dropped them: another game's blob-shadow mips stayed zero (GitHub issue #1648). A type no view bridges is bound as is, logged red
 #include "../nvn/nvn_mtl.m"
 uint64_t g_t0_ns;
 int dm_guest_as_contains(uintptr_t address) { (void)address; return 0; }

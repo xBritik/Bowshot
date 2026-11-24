@@ -135,7 +135,7 @@ static inline void motion_phone_to_switch(int orient, const float in[3], float o
     default: out[0] = in[0]; out[1] = in[1]; out[2] = in[2]; break;
     }
 }
-// Gyro rest offset of a controller the host receives raw rotation from (GameController: a DualSense at rest read 0.34, 0.20, -0.66 deg/s in Nintendo Switch Sports Resort's
+// Gyro rest offset of a controller the host receives raw rotation from (GameController: a DualSense at rest read 0.34, 0.20, -0.66 deg/s in another game's
 // session): a window of about MOTION_REST_S of samples in which the gyro varies by under MOTION_REST_GYRO_SPAN rad/s and the acceleration by under MOTION_REST_ACC_SPAN G per
 // axis is a controller lying or held still, and its mean rotation an offset candidate. A slow steady turn about gravity passes those spans too, so: a first offset needs two
 // windows in a row that agree within MOTION_REST_AGREE and is at most MOTION_REST_FIRST_MAX (real offsets are under 1 deg/s); later ones must lie within MOTION_REST_AGREE of the

@@ -1,5 +1,5 @@
 """mod_layout: any NSO or NRO whose writable data shares the code's 16 KB page gets data moved up in patch_nso.py, with references to and from the moved part following it
-(FINAL FANTASY VIII Remastered's Math.nro: text, ro and data of 4 KB each). Images here are built by hand."""
+(another game's Math.nro: text, ro and data of 4 KB each). Images here are built by hand."""
 import os
 from pathlib import Path
 import struct

@@ -29,7 +29,7 @@ HLE_FORCE_ALIAS("_ZN2nn5codec19HardwareOpusDecoder5ResetEv", "_ZN2nn5codec11Opus
 HLE_FORCE_ALIAS("_ZN2nn5codec19HardwareOpusDecoder17DecodeInterleavedEPmPiPsmPKvm", "_ZN2nn5codec11OpusDecoder17DecodeInterleavedEPmPiPsmPKvm", OPUS_WHY);
 HLE_FORCE_ALIAS("_ZN2nn5codec19HardwareOpusDecoder6DecodeEPmPiPPsimPKvm", "_ZN2nn5codec11OpusDecoder6DecodeEPmPiPPsimPKvm", OPUS_WHY);
 HLE_FORCE_ALIAS("_ZN2nn5codec19HardwareOpusDecoder10SetContextEPKvm", "_ZN2nn5codec11OpusDecoder10SetContextEPKvm", OPUS_WHY);
-// The multi-stream class (Hyrule Warriors: Age of Calamity, SDK 9.6.0: its sound streams are multi-stream Opus; without the constructor's the game's KIDS resource loader never
+// The multi-stream class (another game, SDK 9.6.0: its sound streams are multi-stream Opus; without the constructor's the game's KIDS resource loader never
 // finished the first sound stream, asset/data/0x272c6efb.file, and the main thread waited for it forever at main+0x8d9bc8)
 #define OPUS_MS_WHY "hwopus service; the SDK software OpusMultiStreamDecoder's member of the same signature"
 HLE_FORCE_ALIAS("_ZN2nn5codec30HardwareOpusMultiStreamDecoderC1Ei", "_ZN2nn5codec22OpusMultiStreamDecoderC1Ev", OPUS_MS_WHY);
@@ -56,7 +56,7 @@ HLE_FORCE_ALIAS("_ZN2nn5codec30HardwareOpusMultiStreamDecoder10SetContextEPKvm",
 #define SOFT_OPUS_STATE 0x200   // bytes for the software OpusDecoderType (larger than the SDK's)
 static void *opus_fn(const char *name) { void *f = guest_sym(name); if (!f) die("sdk lacks %s", name); return f; }
 // A decoder of a manager (SDK 21's form, below) is kept in objmap under gd + 1, the older interface's software state under gd: one key for both made the manager's calls read a software state as an opus_dec
-// whenever its +0x10 (the work buffer's size in Kirby Air Riders, SDK 20) was not 0, and FinalizeHardwareOpusDecoder crashed on a null decoder list
+// whenever its +0x10 (the work buffer's size in another game, SDK 20) was not 0, and FinalizeHardwareOpusDecoder crashed on a null decoder list
 #define OPUS_MGR_KEY(gd) ((const char *)(gd) + 1)
 #define OPUS_VTBL "_ZTVN2nn5codec11OpusDecoderE"
 #define OPUS_MS_VTBL "_ZTVN2nn5codec22OpusMultiStreamDecoderE"
@@ -90,7 +90,7 @@ static void opus_fini_for(void *hw, const char *fini_sym, const char *vtbl_sym) 
 HLE_FORCE("_ZN2nn5codec36GetHardwareOpusDecoderWorkBufferSizeEiii", "hwopus service; work buffer computed for the software decoder", size_t, h_codec_HwOpusWorkSize, int rate, int ch, int option) {
     (void)option; size_t (*f)(int, int) = opus_fn("_ZN2nn5codec28GetOpusDecoderWorkBufferSizeEii"); return f(rate, ch);
 }
-// SDK 11's form without the option (Big Brain Academy: Brain vs. Brain sizes its decoders with it early in nnMain, main+0x31f8e8; the SDK's own opens hwopus and aborts resolving the service)
+// SDK 11's form without the option (another game sizes its decoders with it early in nnMain, main+0x31f8e8; the SDK's own opens hwopus and aborts resolving the service)
 HLE_FORCE("_ZN2nn5codec36GetHardwareOpusDecoderWorkBufferSizeEii", "hwopus service; work buffer computed for the software decoder (SDK 11 two-argument version)", size_t, h_codec_HwOpusWorkSize2,
           int rate, int ch) {
     size_t (*f)(int, int) = opus_fn("_ZN2nn5codec28GetOpusDecoderWorkBufferSizeEii"); return f(rate, ch);
@@ -122,13 +122,13 @@ HLE_FORCE("_ZN2nn5codec33DecodeOpusInterleavedWithHardwareEPNS0_23HardwareOpusDe
     return f(opus_soft(hw), consumed, samples, out, out_size, in, in_size);
 }
 
-// The multi-stream work buffer size (the class above, Hyrule Warriors: Age of Calamity)
+// The multi-stream work buffer size (the class above, another game)
 HLE_FORCE("_ZN2nn5codec47GetHardwareOpusMultiStreamDecoderWorkBufferSizeEiiii", "hwopus service; work buffer computed for the software decoder", size_t, h_codec_HwOpusMsWorkSize,
           int rate, int ch, int streams, int stereo) {
     size_t (*f)(int, int, int, int) = opus_fn("_ZN2nn5codec39GetOpusMultiStreamDecoderWorkBufferSizeEiiii"); return f(rate, ch, streams, stereo);
 }
 
-// The C interface to the hardware multi-stream decoder (Unicorn Overlord, SDK 16.2.4: CRI's Opus streams; GetHardwareOpusMultiStreamDecoderWorkBufferSize opened hwopus and the
+// The C interface to the hardware multi-stream decoder (another game, SDK 16.2.4: CRI's Opus streams; GetHardwareOpusMultiStreamDecoderWorkBufferSize opened hwopus and the
 // game aborted in sm::Initialize at nnMain). The same swap as the single-stream C interface above: software state per game decoder object, the work buffer sized for the software decoder.
 // The software OpusMultiStreamDecoderType is 0x28 bytes (InitializeOpusMultiStreamDecoder writes up to +0x24), well inside SOFT_OPUS_STATE.
 HLE_FORCE("_ZN2nn5codec47GetHardwareOpusMultiStreamDecoderWorkBufferSizeEiiiii", "hwopus service; work buffer computed for the software decoder", size_t, h_codec_HwOpusMsWorkSize5,
@@ -169,7 +169,7 @@ HLE_FORCE("_ZN2nn5codec47GetHardwareOpusMultiStreamDecoderProcessingTimeEPKNS0_3
     (void)hw; return 0;
 }
 
-// ---------- SDK 21's hardware Opus decoder manager (Xenoblade Chronicles 2's Switch 2 Edition, SDK 21.4.4) ----------
+// ---------- SDK 21's hardware Opus decoder manager (another game's Switch 2 Edition, SDK 21.4.4) ----------
 // The asynchronous interface over hwopus: a manager (the game's 0x18-byte HardwareOpusDecoderManagerType, with a system event) owns decoders (0x30-byte HardwareOpusDecoderType each)
 // and a pool of I/O buffers. The game enqueues one packet per call (Nintendo's 8-byte header, big-endian size and final range, then the packet: what DecodeOpusInterleaved takes),
 // calls ExecuteHardwareOpusDecoderDecoding on each manager once per audio frame, then dequeues each finished frame (960 samples a channel at 48 kHz) and reads the request counts

@@ -77,7 +77,7 @@ _nvn_prof_entry:
 
 // Big-stack entry: when the thunk comes in, x16 = this function's slot address. Load nvn_big_real[i] into x16 and hand over to dm_bigstack_enter (dm/host/hle_bigstack.c):
 // on a guest thread stack it switches to this thread's big host stack before calling the implementation. The host's NVN implementations do Metal work when submitting, presenting and creating textures, and the Metal driver compiles internal programs (the fast-clear blit program, ...) on a deep stack,
-// which The Legend of Zelda: Breath of the Wild's render thread stack cannot hold (SIGBUS in the AGX compiler, at an address in the guest stack region). NVN functions pass no arguments on the stack (verified by the generator); x0-x8 / d0-d7 are enough
+// which another game's render thread stack cannot hold (SIGBUS in the AGX compiler, at an address in the guest stack region). NVN functions pass no arguments on the stack (verified by the generator); x0-x8 / d0-d7 are enough
     .globl _nvn_big_entry
     .p2align 2
 _nvn_big_entry:

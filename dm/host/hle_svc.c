@@ -65,7 +65,7 @@ static size_t env_size(const char *name, size_t min, size_t align) {
 // The guest's memory in files (DM_GUEST_FILE): sparse files, unlinked at once, mapped shared over the reservation at the same addresses. File pages do not count in phys_footprint, the figure iOS
 // ends an app at, which otherwise charges every page the game has touched; they take the same memory while they stay in it, and the kernel can write them to the files when it needs the room, which it
 // cannot do with an iPhone app's anonymous pages. A page never written reads 0, and mprotect (dirty tracking), vm_remap (virtual pools) and Metal's no-copy buffers work on them as on anonymous pages.
-// The cost is disk: the files take up to what the game has touched, and the kernel writes them back as it does any file (Mario Kart World on a 16 GB Mac: 5.6 GB on disk and 8-10 GB of logical writes
+// The cost is disk: the files take up to what the game has touched, and the kernel writes them back as it does any file (another game on a 16 GB Mac: 5.6 GB on disk and 8-10 GB of logical writes
 // in 5.5 minutes). So a game that fits stays anonymous: on iOS the files are on when the game's memory pool and the host's margin are larger than the room to the memory limit at start (guest_file_wanted), and on the Mac,
 // which can swap, only when asked. DM_GUEST_FILE=1 forces them on and 0 off.
 // DM_GUEST_FILE_CHUNK=<size> sets each file's size (default 1G, at least 64M, raised to make at most GF_MAX files; one file when it is not under the block's size). The stall at the system's periodic
@@ -203,9 +203,9 @@ static void *guest_file_thread(void *arg) {
 // copies of the game's textures (Metal cannot sample the guest's block-linear storage), render targets and upload staging, then malloc. It follows what the game keeps in its pool, from
 // a tenth of the pool to all of it, while the guest touches only part of its pool; what has to fit is the two together. Their peak against the pool, measured with the guest in files (which
 // leaves its pages out of phys_footprint; the host's own memory is the footprint less DM_MEMSTAT's guest class, the guest's its resident pages) on a 16 GB M6 Mac, 2026-11-15, about 5 minutes
-// of play each: The Binding of Isaac 0.67 GB of a 3.21 GB pool (0.21: host 0.41), Mario Golf: Super Rush 3.93 GB (1.23: host 3.22, as much as its pool, 21,514 textures; guest 0.72),
-// Fast Fusion at least 6.95 GB of 9 (0.77: host 4.90; guest 2.05), Ocarina of Time host 5.39 GB at an area load and 4.3-4.8 walking, with 6.4 GB of guest memory on that walk (about 1.24;
-// its game note), and Mario Kart World at least 11.94 GB of 9 (1.33), where iOS ended it on an iPad with 11.97 GB of room after 28 minutes, the guest anonymous because its pool alone fitted
+// of play each: The Binding of Isaac 0.67 GB of a 3.21 GB pool (0.21: host 0.41), another game 3.93 GB (1.23: host 3.22, as much as its pool, 21,514 textures; guest 0.72),
+// Another game at least 6.95 GB of 9 (0.77: host 4.90; guest 2.05), Ocarina of Time host 5.39 GB at an area load and 4.3-4.8 walking, with 6.4 GB of guest memory on that walk (about 1.24;
+// its game note), and another game at least 11.94 GB of 9 (1.33), where iOS ended it on an iPad with 11.97 GB of room after 28 minutes, the guest anonymous because its pool alone fitted
 // (GitHub issue #1184). Half the pool covers them all, and with it a Switch game's 3.21 GB pool stays anonymous with 6 and 8 GB limits while every 9 GB pool goes in files on iOS.
 // DM_GUEST_FILE_HOST=<size> sets the margin instead (0 for none, the rule before it)
 #define GUEST_HOST_PCT 50
@@ -320,7 +320,7 @@ static void mem_init_once(void) {
         ((RESERVE | DM_GAME_MEM_ALIAS | DM_GAME_MEM_STACK) & (pg - 1)))
         die("guest address-space profile has invalid native boundaries");
     // The alias region is the console's on the Mac (64 GB for Switch 1, 128 GB for Switch 2; or the profile's, when larger): games lay their regions out for that much, and what the
-    // profile can give an iPhone (one reservation of at most 6 GB) crashed Trails in the Sky 1st Chapter at launch, Just Dance within a minute, and Xenoblade Chronicles 2 Switch 2
+    // profile can give an iPhone (one reservation of at most 6 GB) crashed Trails in the Sky 1st Chapter at launch, Just Dance within a minute, and another game Switch 2
     // Edition (two 60 GB reservations) at start. It is address space, not memory: the application pool bounds what is mapped. DM_ALIAS_SIZE=<bytes> sets another size, the heap and
     // stacks as they are; the profile's value reproduces an iPhone's address space on the Mac (the NSP script's heap check)
     size_t alias = dm_alias_size_for(dm_sdk_ounce());
@@ -373,19 +373,19 @@ static void mem_init(void) {
 // which the guest writes to without a null check (CRASH main+0x1b36138, re-verified after merge with inv_tap).
 #define APP_POOL DM_GAME_APP_POOL   // game profile app_pool (Mario 0xCD500000)
 // Giant bss (modules with the patch area before the base, patch_nso.py FAR): the image bytes beyond the file part. Used memory was reported as "heap + 64 MB", where the 64 MB covers ordinary modules' code and data (Mario's two modules are about 74 MB together,
-// and the heap it opens = pool − 64 MB − 1.75 GB virtual address memory − 1 MB = 0x5be00000, as on hardware); Metroid Dread's main has about 1.8 GB of bss, the engine's static heap, which the Switch counts as used;
+// and the heap it opens = pool − 64 MB − 1.75 GB virtual address memory − 1 MB = 0x5be00000, as on hardware); another game's main has about 1.8 GB of bss, the engine's static heap, which the Switch counts as used;
 // without it the game asks for pool − 64 MB = 3.15 GB of heap
 // NROs are left out: their buffers already belong to the game's heap. Counting every offline-mapped NRO's bss made FFX/X-2's used memory exceed its pool before any LoadModule.
 static size_t big_bss_bytes(void) { size_t n = 0; for (int i = 0; i < g_nmod; i++) if (!g_mod[i].nro && g_mod[i].patch_off < 0) n += g_mod[i].size - g_mod[i].back_len - g_mod[i].file_image_len; return n; }
 static _Atomic int64_t g_alias_mapped;   // bytes mapped in the alias region (page bitmap)
 // The used memory beside the heap, one figure: GetInfo's UsedMemorySize is the heap plus this, and SetHeapSize and MapPhysicalMemory charge this against the pool, as Horizon charges a
-// request against the pool less the used memory it reports. A game that asks for total − used (the SDK's nninitStartup, Age of Calamity, Monster Hunter Rise) therefore always gets it.
+// request against the pool less the used memory it reports. A game that asks for total − used (the SDK's nninitStartup, Age of Calamity, another game) therefore always gets it.
 // SetHeapSize charged the rewritten modules' size instead (their patch areas and key pages included), which GetInfo never reported: a game whose modules were larger than mem_used was
 // refused the heap the host had just offered (ResultLimitReached; MIO: Memories in Orbit, 68 MB of modules against the default 64 MB, aborted in nninitStartup, GitHub issue #941).
 // mem_used only sets what the game sees (its heap size, as on hardware); the host's own module copies (patch areas, key pages) are not the Switch's to count
 // Whether MapPhysicalMemory and GetInfo(UsedMemorySize) enforce the application pool limit:
 // explicit mem_map_limit on/off (1/0) wins; unset (-1) enforces Horizon's limit for Switch 2 (spec: Ounce),
-// while keeping Switch 1 off by default for legacy profiles with an artificially reduced app_pool (Ace Attorney Investigations Collection).
+// while keeping Switch 1 off by default for legacy profiles with an artificially reduced app_pool (another game).
 static int mem_map_limit_on(void) {
     int cfg = DM_GAME_MEM_MAP_LIMIT;
     return cfg < 0 ? dm_sdk_ounce() : cfg != 0;
@@ -813,10 +813,10 @@ static void region_free(uint64_t *r, int param) {
 }
 // ---- StandardAllocator's address space ----
 // With virtual address memory, StandardAllocator::Initialize(nullptr, size) takes a region of size from the alias region and lays its heap out over all of it (CentralHeap), and
-// games pass sizes made for the Switch's 64 GB alias region: Pokémon Legends: Z-A 12 GB, Pokémon Scarlet 12 GB, Paper Mario: The Thousand-Year Door 62 GB, Absolum 40 GB. Where the
+// games pass sizes made for the Switch's 64 GB alias region: another game 12 GB, another game 12 GB, another game 62 GB, another game 40 GB. Where the
 // size is more than the alias region has room for, the request would fail (an nn::diag abort in nninitStartup), so the gate at the function's entry (patch_nso.py) gives it the room
 // instead: the alias region less the regions already made (at least the SDK's 62 MB node area) and 256 MB for regions made later, in 32 MB steps; the profile key stdalloc_cap sets
-// it instead (Absolum's .NET garbage collector takes 1.5 GB after it). The SDK lays the region out from that size, so it holds; the pool, not the region, bounds what the heap
+// it instead (another game's .NET garbage collector takes 1.5 GB after it). The SDK lays the region out from that size, so it holds; the pool, not the region, bounds what the heap
 // can map. A workaround for the iPhone's address space, not the game: with room for the request (the Mac's 64 GB) nothing changes. Found by symbol in every sdk
 #define STDALLOC_LATER 0x10000000ull
 // What the alias region has room for in one more region: past the end of the regions made so far, less STDALLOC_LATER for those made later, in 32 MB steps (0 = none)
@@ -842,7 +842,7 @@ static void stdalloc_init(uint64_t *r, int param) {
 // Unreal Engine 4 / 5's nninitStartup reserves one address region for the engine, which the engine hands out itself: 62 GB by default (16 GB in Unreal Engine 4.18), made for the
 // Switch's 64 GB alias region. The rewriter's gate on the store of its size right before the reservation (dm/tools/ue_region.py, in any Unreal main) gives it what the alias region
 // has room for, as StandardAllocator's gate above: the size variable (the register the gate number names) and the request (x1) both take it, so the engine lays the region out from
-// the size it got. -SwitchVirtualAddressSpaceSize= gives a size too, but UE 4.26 then skips the reservation (Pikmin 4); a smaller size given that way stays. A workaround for the
+// the size it got. -SwitchVirtualAddressSpaceSize= gives a size too, but UE 4.26 then skips the reservation (another game); a smaller size given that way stays. A workaround for the
 // iPhone's address space, not the game: with room for the request (the Mac's 64 GB) nothing changes
 static void ue_region(uint64_t *r, int param) {
     if (param < 1 || param > 28 || param == 18) return;
@@ -913,7 +913,7 @@ uint64_t svc_dispatch(int num, uint64_t *regs, uint64_t orig_addr) {
     case 0x01: {  // SetHeapSize(out_addr*, size)  → x1 = heap base
         size_t size = regs[1];
         // Larger than the heap region: ResultOutOfMemory (0xD001), as Horizon's KPageTable::SetHeapSize returns. nn::os::SetMemoryHeapSize turns only that, 103 and LimitReached into
-        // os::ResultOutOfMemory and aborts on anything else; Donkey Kong Country: Tropical Freeze finds its heap size by a binary search between 3 and 6 GB, which needs the error back
+        // os::ResultOutOfMemory and aborts on anything else; another game finds its heap size by a binary search between 3 and 6 GB, which needs the error back
         if (size > g_heap_cap) { LOG("SetHeapSize OOM: req %#zx > cap %#zx", size, g_heap_cap); regs[0] = 0xD001; return 0; }
         pthread_mutex_lock(&g_map_lock);
         size_t previous = g_heap_cur;
@@ -1175,16 +1175,16 @@ uint64_t svc_dispatch(int num, uint64_t *regs, uint64_t orig_addr) {
         pthread_mutex_lock(&g_map_lock);
         if (g_shared_maps && map_find(a, size)) { pthread_mutex_unlock(&g_map_lock); regs[0] = 0xd401u; return 0; }
         // The SDK extends committed windows across borrowed stack sources
-        // (Raging Loop, StandardAllocator). Recommit preserves every live byte;
+        // (another game, StandardAllocator). Recommit preserves every live byte;
         // only decommit can invalidate backing required for eventual copyback.
         if (num == 0x2D && (map_source_busy(a, size) || device_shared(a, size, "UnmapPhysicalMemory"))) { pthread_mutex_unlock(&g_map_lock); regs[0] = 0xD401; return 0; }
         uint64_t off = a - (uintptr_t)g_alias;
         int64_t need = alias_unmapped(off, size) * 4096;
         // Profile mem_map_limit (default on for Switch 2, off for Switch 1): a map that would take the process past the application pool fails with ResultLimitReached, as on Horizon (the pool less the used memory GetInfo reports).
-        // Pokémon Legends: Z-A's nninitStartup allocates and frees everything allocatable (pool − 64 MB, mapped at the top of its StandardAllocator region: 12 GB, 4 GB after the cut in its patches.py); the SDK keeps the freed pages mapped
+        // Another game's nninitStartup allocates and frees everything allocatable (pool − 64 MB, mapped at the top of its StandardAllocator region: 12 GB, 4 GB after the cut in its patches.py); the SDK keeps the freed pages mapped
         // and maps new ones for later allocations, until a map fails: then it unmaps the cached block and retries (measured on the Mac: the refused 4 MB map at +0x43e2c000 was followed by
         // UnmapPhysicalMemory of the 3.15 GB block and the same map again). Without the limit the mapped total went past the pool in the first minute and the freed block stayed mapped.
-        // Off by default on Switch 1: Ace Attorney Investigations Collection maps a little more than the 1 GB pool its profile reports
+        // Off by default on Switch 1: another game maps a little more than the 1 GB pool its profile reports
         if (mem_map_limit_on() && num == 0x2C) {
             int64_t room = (int64_t)APP_POOL - (int64_t)(g_heap_cur + used_beside_heap());   // used_beside_heap holds the mapped pages with mem_map_limit
             if (need && need > room) {
@@ -1279,19 +1279,19 @@ uint64_t svc_dispatch(int num, uint64_t *regs, uint64_t orig_addr) {
         case I_ProgramId: { static uint64_t pid; if (!pid) { const char *e = getenv("DM_PROGRAM_ID"); pid = e ? strtoull(e, NULL, 16) : DM_GAME_PROGRAM_ID; } v = pid; break; }   // default from the game profile's program_id; DM_PROGRAM_ID=hex overrides
         case I_IsApplication: v = 1; break;
         // nn::os::GetFreeThreadCount (SDK 11+): the thread resource limit less the threads alive, as the kernel answers it (Atmosphère kern_svc_info.cpp). pm gives an application a limit of
-        // 96 threads (pm_spec.cpp BaseApplicationThreads; a boost raises it to 256). Monster Train 2's Unity 2022.3 player creates a thread only when this is at least 1: the 0 it got here
+        // 96 threads (pm_spec.cpp BaseApplicationThreads; a boost raises it to 256). Another game's Unity 2022.3 player creates a thread only when this is at least 1: the 0 it got here
         // left its main thread waiting at boot for a thread it never created (main+0x3e1ac4)
         case I_FreeThreadCount: { int thr_limit_used(void); int u = thr_limit_used(); v = u < 96 ? 96 - u : 0; break; }
         case I_UserExcAddr: { static _Alignas(0x1000) uint8_t ctx[0x1000]; v = (uint64_t)ctx; break; }   // user exception context area: newer SDKs' SetDyingMessageRegion writes to +0x1c0 (0 would write through a null pointer)
         // The kernel's page size (Switch 2 SDKs): nn::ro::ProtectRelro takes it as the alignment of the RELRO bounds (value − 1 as a mask, 0 aborts), the VammManager maps that much up front.
-        // Horizon's pages are 4 KB, the alignment of every module's segments (Donkey Kong Bananza)
+        // Horizon's pages are 4 KB, the alignment of every module's segments (another game)
         case I_PageSize: v = 0x1000; break;
         // Horizon's other types (Atmosphère kern_svc_info.cpp), answered 0 as before they were named: no thread tick count, no SVC permission bits, no I/O region, and no extra alias
         // region size (SDK 18 and later ask for it; only a process created with the extra-size flag has one)
         case I_ThreadTickCount: case I_IsSvcPermitted: case I_IoRegionHint: case I_AliasExtraSize: v = 0; break;
         // The Switch 2's remote region: nnosInitialize builds nn::os::detail::RemoteRegionManager's address space allocator over [type 29, type 29 + type 30), and
         // nn::os::GetRemoteMemoryUsage returns types 31 and 32. The SDK's only user is the GPU driver's boot (nv::InitializeGraphics → nn::gs::sdk::BootGraphicsSystem →
-        // BootWithRemoteMemory), which the host's own nv::InitializeGraphics replaces (dm/gfx/hle_nv.c), so the process has no remote region and no remote memory (Donkey Kong Bananza)
+        // BootWithRemoteMemory), which the host's own nv::InitializeGraphics replaces (dm/gfx/hle_nv.c), so the process has no remote region and no remote memory (another game)
         case I_RemoteAddr: case I_RemoteSize: case I_RemoteUsage0: case I_RemoteUsage1: v = 0; break;
         // Mesosphere's InfoType_MesosphereCurrentProcess (Atmosphère): a handle to the current process. An exlaunch plugin asks for it before falling back to an IPC trick
         // (cur_proc_handle.cpp) and passes it to MapProcessMemory (hle_exl.c)

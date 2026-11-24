@@ -4,7 +4,7 @@
 # 512x512 ASTC 6x6 textures map their 64 KB mip tail (levels 1-9) at once, fill levels 3-9 first, and sampled from level 1 read all-zero blocks, ASTC's error colour (GitHub issue #2350).
 # Reads the packages shader_split.py writes (records 'BTCDBTCD' + the key at +0x08, control length +0x28, code length +0x2c, header padded to 0x38, then code area + control section), as dmsh_build.py does:
 # a graphics stage's instructions follow its 0x30-byte header and 0x50-byte SPH (+0x80), a compute shader's start at +0x100 behind the 0x12345679 header, else at +0. Every fourth 64-bit word from the
-# start is a scheduling control word; a program ends at its branch to itself, or where its constant data c1 starts (control +0x700): read as instructions, Mario Golf: Super Rush's c1 floats
+# start is a scheduling control word; a program ends at its branch to itself, or where its constant data c1 starts (control +0x700): read as instructions, another game's c1 floats
 # made 1,444 false residency predicates. NVN2 (Ampere) shaders are counted and skipped: their translator refuses a residency predicate and any LOD mode it does not know.
 # Opcode patterns and field bits are the translator's own (Decoders/InstTable.cs, InstDecoders.cs). Not part of the translation chain: it decides no output.
 # Usage: tex_census.py <package dir or package .bin>... [--keys N]   (N: how many shader keys to list per finding, default 10)

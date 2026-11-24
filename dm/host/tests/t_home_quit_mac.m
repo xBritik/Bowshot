@@ -54,20 +54,20 @@ int main(void) {
     @autoreleasepool {
         [NSApplication sharedApplication];
         NSRect small = NSMakeRect(0, 0, 1280, 720), tv = NSMakeRect(0, 0, 1920, 1080);
-        NSView *p = hq_prompt_view(small, @"Quit Super Mario Odyssey?", @"Unsaved progress will be lost.", @"Quit", @"Cancel", @"xmark.circle", @"circle.circle");
+        NSView *p = hq_prompt_view(small, @"Quit another game?", @"Unsaved progress will be lost.", @"Quit", @"Cancel", @"xmark.circle", @"circle.circle");
         [p layoutSubtreeIfNeeded];
         NSMutableArray<NSString *> *t = [NSMutableArray new]; texts(p, t);
-        CHECK([t containsObject:@"Quit Super Mario Odyssey?"] && [t containsObject:@"Unsaved progress will be lost."] && [t containsObject:@"Quit"] && [t containsObject:@"Cancel"], "the prompt shows its four texts");
+        CHECK([t containsObject:@"Quit another game?"] && [t containsObject:@"Unsaved progress will be lost."] && [t containsObject:@"Quit"] && [t containsObject:@"Cancel"], "the prompt shows its four texts");
         CHECK(NSContainsRect(p.bounds, card_of(p).frame), "the card is inside a 1280x720 window");
         CHECK(NSEqualPoints(NSMakePoint(NSMidX(card_of(p).frame), NSMidY(card_of(p).frame)), NSMakePoint(640, 360)), "the card is in the middle");
         CGFloat w720 = card_of(p).frame.size.width;
 
-        NSView *ptv = hq_prompt_view(tv, @"Quit Super Mario Odyssey?", @"Unsaved progress will be lost.", @"Quit", @"Cancel", nil, nil);
+        NSView *ptv = hq_prompt_view(tv, @"Quit another game?", @"Unsaved progress will be lost.", @"Quit", @"Cancel", nil, nil);
         [ptv layoutSubtreeIfNeeded];
         CHECK(NSContainsRect(ptv.bounds, card_of(ptv).frame) && card_of(ptv).frame.size.width > w720 * 1.4, "on a 1080p screen the card is larger and still inside");
         CHECK(first_image(ptv).image.size.width > 0, "no symbol from the controller: the plain letter glyph");
 
-        NSView *plong = hq_prompt_view(small, @"Quit The Legend of Zelda: Tears of the Kingdom and every other very long name?", @"n", @"Quit", @"Cancel", @"no.such.symbol", nil);
+        NSView *plong = hq_prompt_view(small, @"Quit another game and every other very long name?", @"n", @"Quit", @"Cancel", @"no.such.symbol", nil);
         [plong layoutSubtreeIfNeeded];
         CHECK(card_of(plong).frame.size.width == w720 && NSContainsRect(plong.bounds, card_of(plong).frame), "a long title wraps, the card keeps its width");
         CHECK(first_image(plong).image.size.width > 0, "a symbol the system does not have falls back to the letter");
@@ -79,7 +79,7 @@ int main(void) {
         for (NSValue *size in @[[NSValue valueWithRect:small], [NSValue valueWithRect:tv]]) {
             NSRect r = size.rectValue; CGFloat want = HQ_ACTION_W * hq_scale(r.size);
             for (NSArray<NSString *> *l in labels) {
-                NSView *pv = hq_prompt_view(r, @"Quit Hades?", @"n", l[0], l[1], nil, nil);
+                NSView *pv = hq_prompt_view(r, @"Quit another game?", @"n", l[0], l[1], nil, nil);
                 [pv layoutSubtreeIfNeeded];
                 NSStackView *actions = (NSStackView *)((NSStackView *)card_of(pv)).arrangedSubviews.lastObject;
                 CHECK(actions.arrangedSubviews.count == 2, "two actions");
@@ -92,7 +92,7 @@ int main(void) {
         }
 
         // A click on the open prompt stays there: the game's view behind it (here a stand-in that counts clicks) gets none, so it makes no touch
-        Clicks *game = [[Clicks alloc] initWithFrame:small]; NSView *pc = hq_prompt_view(small, @"Quit Hades?", @"n", @"Quit", @"Cancel", nil, nil);
+        Clicks *game = [[Clicks alloc] initWithFrame:small]; NSView *pc = hq_prompt_view(small, @"Quit another game?", @"n", @"Quit", @"Cancel", nil, nil);
         [game addSubview:pc]; [pc layoutSubtreeIfNeeded];
         for (int at = 0; at < 2; at++) {   // the dim edge, then the card's middle (the card, a label)
             NSView *hit = [pc hitTest:at ? NSMakePoint(640, 360) : NSMakePoint(10, 10)] ?: pc;
@@ -115,13 +115,13 @@ int main(void) {
 
         const char *dir = getenv("DM_HOME_QUIT_CAPTURE");
         if (dir && *dir) {
-            capture(hq_prompt_view(tv, @"Quit Super Mario Odyssey?", @"Unsaved progress will be lost.", @"Quit", @"Cancel", @"a.circle", @"b.circle"), tv.size, dir, "home-quit-prompt.png");
+            capture(hq_prompt_view(tv, @"Quit another game?", @"Unsaved progress will be lost.", @"Quit", @"Cancel", @"a.circle", @"b.circle"), tv.size, dir, "home-quit-prompt.png");
             // The controller applet's prompt on the same card (front_mac.m, ctrl_prompt.h): Done drawn plain below the minimum, cream once it is met
             capture(hq_card_view(tv, @"2 players wanted", @"Press a button on each controller to join.\nPlayers: 1 of 2", @"Done", @"Cancel", @"a.circle", @"b.circle", 0), tv.size, dir, "ctrl-prompt-waiting.png");
             capture(hq_card_view(tv, @"2 players wanted", @"Press a button on each controller to join.\nPlayers: 2 of 2", @"Done", @"Cancel", @"a.circle", @"b.circle", 1), tv.size, dir, "ctrl-prompt-ready.png");
             CAShapeLayer *r = nil; NSView *hv = hq_hold_view(tv, @"Keep holding to quit", &r); hq_hold_set(r, 0.6);
             capture(hv, tv.size, dir, "home-quit-hold.png");
-            capture(hq_prompt_view(tv, @"Quit Super Mario Odyssey?", @"Unsaved progress will be lost.", @"Quit", @"Cancel", @"xmark.circle", @"circle.circle"), tv.size, dir, "home-quit-prompt-ps.png");
+            capture(hq_prompt_view(tv, @"Quit another game?", @"Unsaved progress will be lost.", @"Quit", @"Cancel", @"xmark.circle", @"circle.circle"), tv.size, dir, "home-quit-prompt-ps.png");
         }
     }
     printf("t_home_quit_mac: %d checks, %d failed\n", checks, fails);

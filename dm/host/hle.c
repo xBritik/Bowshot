@@ -13,7 +13,7 @@ static uint8_t g_stub_seen[MAX_STUB];
 extern uint64_t unimpl_stubs[MAX_STUB];   // 8 bytes per stub
 
 uint64_t unimpl_c(unsigned idx, uint64_t *regs) {
-    if (!g_stub_seen[idx]) {   // once per stub (a counter in the byte wrapped every 256 calls: Ace Attorney Investigations Collection calls nnProfilerRecordHeartbeat every frame)
+    if (!g_stub_seen[idx]) {   // once per stub (a counter in the byte wrapped every 256 calls: another game calls nnProfilerRecordHeartbeat every frame)
         g_stub_seen[idx] = 1;
         LOG("UNIMPL %s (x0=%#llx x1=%#llx x2=%#llx)", g_stub_name[idx], regs[0], regs[1], regs[2]);
     }
