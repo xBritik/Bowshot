@@ -132,10 +132,27 @@ static void pad_layout_env(void) {
     }
     if (ov[0] && (!cur || strcmp(ov, cur))) setenv("DM_ROMFS_OVERLAY", ov, 1);
 }
+// The amiibo's daily limit off (DM_AMIIBO set, the profile's amiibo_overlay): the app's dm/overlay_amiibo (scripts/oot_amiibo_overlay.py) and a run's $DM_ROOT/overlay_amiibo go into DM_ROMFS_OVERLAY.
+// DM_AMIIBO_LIMIT=1 keeps the game's own limit
+static void amiibo_overlay_env(void) {
+    const char *am = getenv("DM_AMIIBO"), *keep = getenv("DM_AMIIBO_LIMIT");
+    if (!am || !*am || (keep && atoi(keep))) return;
+    const char *cur = getenv("DM_ROMFS_OVERLAY"), *fd = getenv("DM_FONT_DIR"), *root = getenv("DM_ROOT");
+    char p[PATH_MAX], ov[2048];
+    snprintf(ov, sizeof ov, "%s", cur ? cur : "");
+    if (root && *root) { snprintf(p, sizeof p, "%s/overlay_amiibo", root); pad_overlay_add(ov, sizeof ov, p); }
+    if (fd && *fd) {
+        char dir[PATH_MAX]; snprintf(dir, sizeof dir, "%s", fd);
+        char *s = strrchr(dir, '/');
+        if (s) { *s = 0; snprintf(p, sizeof p, "%s/overlay_amiibo", dir); pad_overlay_add(ov, sizeof ov, p); }
+    }
+    if (ov[0] && (!cur || strcmp(ov, cur))) setenv("DM_ROMFS_OVERLAY", ov, 1);
+}
 static void host_preload(int argc, char **argv) {
     g_t0_ns = proc_start_mono_ns();
     flags_init();
     pad_layout_env();
+    amiibo_overlay_env();
     { void dm_diag_samplers_start(void); dm_diag_samplers_start(); }   // DM_MEMSTAT / DM_THRCPU (memstat.m): after the iOS front end has set the env files' switches
     if (argc < 2) die("usage: dmhost <dir> [mod...] [-- game arguments...]");
     // Time zone: a game gets local time from nn::time (ToCalendarTime / ToPosixTime, hle_time.c), which converts with the host's zone, so its screens show this machine's time.

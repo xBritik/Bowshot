@@ -121,7 +121,7 @@ $(B)/t_audren_layout: t_audren_layout.c ../hle_audren.c ../hle.h ../dm.h $(GAME_
 .PHONY: audren-layout
 audren-layout: $(B)/t_audren_layout
 	$(B)/t_audren_layout
-$(B)/t_system_event: t_system_event.c ../hle_thread.c ../hle_sdk16.c ../hle_misc.c ../hle_bigstack.c ../hle.h ../dm.h $(GAME_H) | $(B)
+$(B)/t_system_event: t_system_event.c ../hle_thread.c ../hle_sdk16.c ../amiibo.h ../hle_misc.c ../hle_bigstack.c ../hle.h ../dm.h $(GAME_H) | $(B)
 	$(CLANG) -O1 -g -Wall -Werror -Wno-unused-function -Wno-frame-address -I.. $(GINC) -o $@ t_system_event.c ../hle_misc.c ../hle_bigstack.c
 .PHONY: system-event
 system-event: $(B)/t_system_event
@@ -256,7 +256,7 @@ $(B)/t_sf: t_sf.c ../hle_sf.c ../hle_irs.c ../hle.h ../dm.h $(GAME_H) | $(B)
 	$(CLANG) -O1 -Wall -Werror -Wno-unused-function -I.. $(GINC) -o $@ t_sf.c
 $(B)/t_audren_sv: t_audren_sv.c ../hle_sf.c ../hle_audren_sv.c ../hle.h ../dm.h $(GAME_H) | $(B)
 	$(CLANG) -O1 -g -Wall -Werror -Wno-unused-function -fsanitize=address,undefined -I.. $(GINC) -o $@ t_audren_sv.c
-$(B)/t_shared_font: t_shared_font.c ../hle_sdk16.c ../hle.h ../dm.h $(GAME_H) | $(B)
+$(B)/t_shared_font: t_shared_font.c ../hle_sdk16.c ../amiibo.h ../hle.h ../dm.h $(GAME_H) | $(B)
 	$(CLANG) -O1 -Wall -Werror -Wno-unused-function -Wno-frame-address -I.. $(GINC) -o $@ t_shared_font.c
 # nn::vi::ListFrameHistory: the SDK's FrameInfo, newest first, from the present queue's progress
 run: $(B)/t_vi_history
@@ -271,12 +271,19 @@ $(B)/t_objmap: t_objmap.c ../hle_os.c ../hle.h ../dm.h $(GAME_H) | $(B)
 	$(CLANG) -O1 -g -Wall -Werror -Wno-unused-function -I.. $(GINC) -o $@ t_objmap.c
 # nn::nfc answered without nfc:user (NFC disabled), beside the nfp no-tag answers
 run: $(B)/t_nfc
-$(B)/t_nfc: t_nfc.c ../hle_sdk16.c ../hle.h ../dm.h $(GAME_H) | $(B)
+$(B)/t_nfc: t_nfc.c ../hle_sdk16.c ../amiibo.h ../hle.h ../dm.h $(GAME_H) | $(B)
 	$(CLANG) -O1 -g -Wall -Werror -Wno-unused-function -Wno-frame-address -I.. $(GINC) -o $@ t_nfc.c
 .PHONY: nfc
 nfc: $(B)/t_nfc
 	$(B)/t_nfc
-$(B)/t_language: t_language.c ../hle_sdk16.c ../hle.h ../dm.h $(GAME_H) | $(B)
+
+# The virtual amiibo (amiibo.h): its structures, device states and stored application area, without a game
+run: $(B)/t_amiibo
+$(B)/t_amiibo: t_amiibo.c ../amiibo.h | $(B)
+	$(CLANG) -O1 -g -Wall -Wextra -Werror -I.. -o $@ t_amiibo.c
+amiibo: $(B)/t_amiibo
+	$(B)/t_amiibo
+$(B)/t_language: t_language.c ../hle_sdk16.c ../amiibo.h ../hle.h ../dm.h $(GAME_H) | $(B)
 	$(CLANG) -O1 -g -Wall -Werror -Wno-unused-function -Wno-frame-address -fsanitize=address,undefined -I.. $(GINC) -o $@ t_language.c
 $(B)/t_motion: t_motion.c ../motion_fusion.h | $(B)
 	$(CLANG) -O1 -Wall -Werror -Wno-unused-function -o $@ t_motion.c -lm
