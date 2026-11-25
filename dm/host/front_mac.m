@@ -1082,6 +1082,55 @@ static DmCheatsPanel *g_cheats_panel;   // created on the first Show Cheats Wind
 @end
 static DmCheatsMenuDelegate *g_cheats_menu;   // NSMenu keeps its delegate unretained
 
+// Amiibo: the figures the game lists (DM_AMIIBO_LIST, amiibo.tsv: id, name, group). A pick writes its ID into the file DM_AMIIBO names; the host reads that file again at every scan
+// (hle_sdk16.c StartDetection), so the figure changes while the game runs, and None empties it (no amiibo). The rows rebuild on every open, with a check on the figure now in the file
+@interface DmAmiiboMenu : NSObject <NSMenuDelegate>
+@end
+@implementation DmAmiiboMenu
+static NSString *amiibo_file(void) { const char *f = getenv("DM_AMIIBO"); return f && f[0] == '/' ? @(f) : nil; }
+static NSString *amiibo_now(void) {
+    NSString *t = [NSString stringWithContentsOfFile:amiibo_file() encoding:NSUTF8StringEncoding error:nil] ?: @"";
+    return [[t stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] lowercaseString];
+}
+static NSArray<NSArray<NSString *> *> *amiibo_rows(void) {
+    const char *l = getenv("DM_AMIIBO_LIST"); if (!l || !*l) return @[];
+    NSString *txt = [NSString stringWithContentsOfFile:@(l) encoding:NSUTF8StringEncoding error:nil]; if (!txt) return @[];
+    NSMutableArray *rows = [NSMutableArray new];
+    for (NSString *line in [txt componentsSeparatedByString:@"\n"]) {
+        if (!line.length || [line hasPrefix:@"#"]) continue;
+        NSArray *c = [line componentsSeparatedByString:@"\t"]; if (c.count >= 2) [rows addObject:c];
+    }
+    return rows;
+}
+- (void)menuNeedsUpdate:(NSMenu *)menu {
+    [menu removeAllItems];
+    NSString *now = amiibo_now(); NSArray *rows = amiibo_rows();
+    NSMenuItem *none = [menu addItemWithTitle:@"None" action:@selector(pick:) keyEquivalent:@""];
+    none.target = self; none.representedObject = @""; none.state = now.length ? NSControlStateValueOff : NSControlStateValueOn;
+    [menu addItem:NSMenuItem.separatorItem];
+    NSMutableArray<NSString *> *order = [NSMutableArray new]; NSMutableDictionary<NSString *, NSMenu *> *groups = [NSMutableDictionary new];
+    for (NSArray<NSString *> *r in rows) {
+        NSString *g = r.count > 2 ? r[2] : @"";
+        if (!groups[g]) { groups[g] = [[NSMenu alloc] initWithTitle:g]; [order addObject:g]; }
+        NSMenuItem *it = [groups[g] addItemWithTitle:r[1] action:@selector(pick:) keyEquivalent:@""];
+        it.target = self; it.representedObject = r[0]; it.state = [r[0].lowercaseString isEqualToString:now] ? NSControlStateValueOn : NSControlStateValueOff;
+    }
+    for (NSString *g in order) {
+        if (!g.length) { for (NSMenuItem *it in [groups[g].itemArray copy]) { [groups[g] removeItem:it]; [menu addItem:it]; } continue; }
+        BOOL has = NO; for (NSMenuItem *it in groups[g].itemArray) has |= it.state == NSControlStateValueOn;
+        NSMenuItem *sub = [menu addItemWithTitle:g action:nil keyEquivalent:@""]; sub.submenu = groups[g]; sub.state = has ? NSControlStateValueMixed : NSControlStateValueOff;
+    }
+}
+- (void)pick:(NSMenuItem *)it {
+    NSString *id_ = it.representedObject, *f = amiibo_file(); if (!f) return;
+    NSError *e = nil;
+    if (![(id_.length ? [id_ stringByAppendingString:@"\n"] : @"") writeToFile:f atomically:YES encoding:NSUTF8StringEncoding error:&e]) { LOG("[RED] amiibo: cannot write %s: %s", f.UTF8String, e.localizedDescription.UTF8String); return; }
+    LOG("amiibo: %s (%s)", id_.length ? id_.UTF8String : "none", it.title.UTF8String);
+}
+@end
+static DmAmiiboMenu *g_amiibo_menu;   // NSMenu keeps its delegate unretained
+
+
 @implementation DmCheatsPanel {
     NSPanel *_panel;              // created once in show, kept for the process's lifetime
     NSTextField *_header;         // the one-line status line above the rows
@@ -1775,6 +1824,13 @@ void front_run(void (*guest)(void)) {
         [[bar addItemWithTitle:@"Cheats" action:nil keyEquivalent:@""] setSubmenu:cm];
         if (getenv("DM_CHEATS_WINDOW") && atoi(getenv("DM_CHEATS_WINDOW")))   // the Cheats panel open from the start (beside the game, not key)
             dispatch_async(dispatch_get_main_queue(), ^{ [g_cheats_menu showPanel:nil]; });
+        // Amiibo (a game that lists its figures): the menu's rows rebuild on every open; the figure goes into the file the host reads at every scan
+        if (amiibo_file() && amiibo_rows().count) {
+            g_amiibo_menu = [DmAmiiboMenu new];
+            NSMenu *am = [[NSMenu alloc] initWithTitle:@"Amiibo"]; am.delegate = g_amiibo_menu; am.autoenablesItems = NO;
+            [g_amiibo_menu menuNeedsUpdate:am];
+            [[bar addItemWithTitle:@"Amiibo" action:nil keyEquivalent:@""] setSubmenu:am];
+        }
         // Bowshot: View: the Performance HUD (Apple's Metal HUD, ⌥⌘P) and the render scale while the game runs (⌘= / ⌘-; DmViewMenu above)
         g_view = [DmViewMenu new];
         NSMenu *vm = [[NSMenu alloc] initWithTitle:@"View"];

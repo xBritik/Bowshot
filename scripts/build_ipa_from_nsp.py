@@ -2860,6 +2860,22 @@ def mac_pad_overlays(py, repo, work, game, env, logs, g):
     return ovs
 
 
+def mac_amiibo_overlay(py, repo, work, game, env, logs, g):
+    """The RomFS overlay that turns the daily limit on amiibo off (scripts/oot_amiibo_overlay.py) into <id>_build/overlay_amiibo, from the player's own RomFS, when the profile asks for it
+    (amiibo_overlay on). Made again when the generator or the RomFS changes. Returns the folder (None: the profile has none)"""
+    gen = repo / 'scripts/oot_amiibo_overlay.py'
+    if g.get('amiibo_overlay', 'off') != 'on' or not gen.is_file(): return None
+    PROG.set(step='amiibo overlay')
+    kf, ov = work / 'amiibo_overlay.key', work / 'overlay_amiibo'
+    src = rfs.source(game)
+    key = fingerprint(('files', [gen]), ('tree', src) if src.is_dir() else (src.name, src.stat().st_size, src.stat().st_mtime_ns))
+    if not (ov.is_dir() and reused(kf, key) is not None):
+        rmtree(kf); rmtree(ov)
+        run([py, gen, src, ov], logs / 'amiibo_overlay.log', env=env)
+        kf.write_text(f'{key}\n')
+    return ov
+
+
 def mac_run(work, game, patched, host, font, msl, aoc, gfx, lang, env, logs, g, env_file='', partial=False, parts=None, jit=False, run_prebuild=True):
     """The command that runs the game in a window with sound after a Mac-only build (PLATFORM 'mac'; docs/development.md, Build by hand (Mac), step 5): its save and temporary storage in
     <id>_build/run (kept from run to run), the extracted RomFS, the Mac shader libraries (msl), the DLC, the profile's shader map (a host outside dm/host does not find it beside itself;
@@ -3109,7 +3125,7 @@ def mac_app(py, repo, out, app, work, game, patched, host, font, msl, aoc, gfx, 
                    ('--control-nacp', next((p for p in (control, game / 'control.nacp') if p and Path(p).is_file()), None))):
         if v: cmd += [opt, v]
     for n, r in (programs or {}).items(): cmd += ['--program', f'{n}\t{r["patched"]}\t{r["romfs"]}\t{r["msl"]}\t{r["tables"]}\t{r["html"]}']
-    for ov in (work / 'overlay_playstation', work / 'overlay_xbox'):   # mac_pad_overlays
+    for ov in (work / 'overlay_playstation', work / 'overlay_xbox', work / 'overlay_amiibo'):   # mac_pad_overlays, mac_amiibo_overlay
         if ov.is_dir(): cmd += ['--overlay', ov]
     if (game / 'html').is_dir(): cmd += ['--html', game / 'html']
     unchanged = False
@@ -3535,6 +3551,7 @@ def main(args=None):
             rmtree(work / 'tmp'); return {'patched': patched, 'romfs': rfs.source(game), 'msl': ios / (f'b-{chain_of(repo)}' if gfx == 'nvn' else 'vk' if gfx == 'vulkan' else 'gl'), 'tables': g.table('shader_map.tsv').parent, 'html': game / 'html', 'gfx': gfx}
         host, font = mac_host(py, repo, work, env, logs, g)
         mac_pad_overlays(py, repo, work, game, env, logs, g)
+        mac_amiibo_overlay(py, repo, work, game, env, logs, g)
         programs = other_programs(args, g)
         if not icon: say(('no game icon: the NUP carries none' if nup else 'no game icon: a dump folder has no control data') + '; the app\'s icon will be blank; --icon / ICON or --fallback-icon / FALLBACK_ICON gives it one' if dump else '[RED] no game icon in the extraction (an older extraction did not save it: delete extract/ and run again); the app\'s icon will be blank')
         mac_app(py, repo, out_ipa, app, work, game, patched, host, font, ios, aoc, gfx, lang, g, app_name, app_version, bundle_id, icon, args.mac_sign or MAC_SIGN, env, logs, env_file,
@@ -3549,6 +3566,7 @@ def main(args=None):
         first = getattr(args, 'in_programs', None)   # a program packed with the application's first: its host, built over all of them, and its fonts
         host, font = (first['host'], first['font']) if first else mac_host(py, repo, work, env, logs, g)
         mac_pad_overlays(py, repo, work, game, env, logs, g)
+        mac_amiibo_overlay(py, repo, work, game, env, logs, g)
         parts = {'font': font}
         cmd = mac_run(work, game, patched, host, font, ios, aoc, gfx, lang, env, logs, g, env_file, partial=seen_shaders, parts=parts, jit=jit, run_prebuild=not args.no_run_prebuild)
         rmtree(work / 'tmp')
