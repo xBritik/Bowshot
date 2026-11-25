@@ -2,7 +2,7 @@
 
 ## 0.2.0 (24 Nov 2026)
 
-Support for Xbox and PlayStation controllers.
+Xbox and PlayStation controller layouts, and amiibo.
 
 - **Controller layout.** A new Controller layout setting (`DM_PAD_LAYOUT`: Nintendo Switch, Xbox, PlayStation). An Xbox or PlayStation pad then uses its own face-button labels (the bottom button is A), and the button icons in the game match it. `DM_PAD_MAP` remaps single buttons, for example `A=B,B=A`. On the Mac, Automatic picks the layout from the connected controller (PlayStation, Xbox or Switch) when the game starts; the first controller found decides for the whole session.
 - **Amiibo.** The game finds a virtual amiibo: the new Amiibo menu in the menu bar lists the figures Ocarina of Time accepts (Young Link and Young Zelda masks, the Zelda series), and the one picked is found at the next scan, so it changes while you play. No amiibo file or key is used. Made from the host work of kid-with-sword-remake (MIT); tested by the host tests, not yet used in a game. The daily limit on the drops is lifted by default (`DM_AMIIBO_LIMIT=1` keeps it): the build makes a RomFS overlay from your own copy of the game, so Bowshot carries no Nintendo files.
