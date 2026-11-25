@@ -34,7 +34,7 @@ Bowshot is a Mac app that builds the game **on your Mac, from your own game file
 >
 > 0.1.2 was **never released**. Its engine makes the game's GPU hang after a few minutes ([seedds/nxnative#3274](https://github.com/seedds/nxnative/issues/3274)). 0.1.3 keeps 0.1.1's engine, which plays. See the [changelog](CHANGELOG.md).
 
-**[Download the latest Bowshot](https://github.com/xBritik/Bowshot/releases/latest)** (currently 0.1.4)
+**[Download the latest Bowshot](https://github.com/xBritik/Bowshot/releases/latest)** (currently 0.2.0)
 
 ## Features
 
@@ -45,18 +45,23 @@ Bowshot is a Mac app that builds the game **on your Mac, from your own game file
 | 🔎 **In-game resolution change** | **⌘=** and **⌘-** change the Render scale from 50 % to 100 % while you play |
 | 📐 **Dynamic resolution** | Works at 100 % Render scale |
 | ✨ **MetalFX upscaling** | Apple's MetalFX upscaler sharpens edges and text when the game renders below the screen's resolution |
-| 🎮 **Controller layout** | Nintendo Switch, Xbox or PlayStation face buttons, with matching button icons in the game (0.2.0, not yet released) |
+| 🎮 **Controller layout** | Nintendo Switch, Xbox or PlayStation face buttons, with matching button icons in the game |
 | 📊 **Performance HUD** | **⌥⌘P** shows or hides it; **⌥⌘I** shows the memory the game uses |
 | 🔄 **Update check** | The builder and the game's settings window ask GitHub once a day at most; nothing about you is sent |
 | 💾 **Light on disk** | Each build frees what it will not use; the builder is about 60 MB |
 
-## What's new in 0.1.4
+## What's new in 0.2.0
+
+- **Controller layout.** A new setting picks Nintendo Switch, Xbox or PlayStation face buttons. On the Mac, Automatic reads the connected controller when the game starts. The button icons in the game match the pad.
+- **Ocarina of Time on a PlayStation or Xbox pad.** The controller screens, the callout banners and the ocarina and key prompts are redrawn for the pad. The builder makes them from your own copy of the game. Made on the Mac, not yet checked in play.
+
+Earlier highlights, from 0.1.4:
 
 - **Build tools install again** on a Mac without Homebrew. The setup screen's Install button failed on glslang and the build could not start.
 - **A broken tool is replaced.** The setup screen now runs each tool instead of trusting that its file exists, and installs its own copy of one that does not start.
 - **A failed install says so** on the Build tools line, with a pointer to the log.
 
-Nothing in the engine or the game changes since 0.1.3. Earlier highlights, from 0.1.3:
+Earlier highlights, from 0.1.3:
 
 - **Forecast** before a build, with a time estimate.
 - **Dynamic resolution** works at 100 % render scale. It was read from the code, not yet measured in play.
@@ -72,7 +77,7 @@ Everything from [0.1.1](CHANGELOG.md#011-20-nov-2026) and [0.1.0](CHANGELOG.md#0
 ## Contents
 
 - [Features](#features)
-- [What's new in 0.1.4](#whats-new-in-014)
+- [What's new in 0.2.0](#whats-new-in-020)
 - [What you need](#what-you-need)
 - [Install](#install)
 - [Play](#play)
