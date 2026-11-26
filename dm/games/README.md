@@ -1,6 +1,6 @@
 # Game profiles
 
-Each game the port knows has a folder `dm/games/<id>/`, named after the base game's title ID: Mario's is `<title ID>`, Engage's `<title ID>`. The folder holds:
+Bowshot handles one game, The Legend of Zelda: Ocarina of Time. Its profile is the folder `dm/games/<id>/`, named after the base game's title ID: `0400486024DEC000`. The folder holds:
 
 - **`game.tsv`**: the game's constants, one `key<TAB>value` row each, with comments on their own lines.
 - **The shader tables** that `shader_split.py` writes: `shader_map.tsv` (+ `.conflicts.tsv`), `shader_facts.tsv`, `shader_pairs.tsv`, and `pso_pairs.tsv` (supplemental agl BAHS program variations and legacy Unity pass-input covers). Both pair tables feed vertex output padding and the pipeline prebuild; for a profile without `pso_pairs.tsv`, the NSP script keeps the generated table beside the shader package.
@@ -37,9 +37,13 @@ None of them has a default game: without one they stop and list the profiles. To
 
 Defaults may use `<ios>|<mac>` to select the platform's value before resolving a profile macro or build variable. For example, `DM_GAME_PSO_MTL4|1` follows the profile on iOS and the Mac host's always-on default on Mac; `1|0` matches the encode thread's iOS-on, Mac-off defaults. `SETTINGS_PLATFORM` accepts `ios` (the default) or `mac`; other values are rejected.
 
-## Game
+## Games
 
-Bowshot carries one profile: [The Legend of Zelda: Ocarina of Time](0400486024DEC000/README.md), `0400486024DEC000`, update v131072 on the Switch 2. Its `README.md` holds the notes (what its profile needs and why, what was found on it, what is still open).
+Bowshot carries one profile. Its `README.md` holds the notes (what its profile needs and why, what was found on it, what is still open).
+
+| Game | Title ID | Update |
+|---|---|---|
+| [The Legend of Zelda: Ocarina of Time](0400486024DEC000/README.md) | `0400486024DEC000` | v131072, Switch 2 |
 
 ## Keys
 
