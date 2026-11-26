@@ -55,6 +55,7 @@ Bowshot is a Mac app that builds the game **on your Mac, from your own game file
 - **Controller layout.** A new setting picks Nintendo Switch, Xbox or PlayStation face buttons. On the Mac, Automatic reads the connected controller when the game starts. The button icons in the game match the pad.
 - **Ocarina of Time on a PlayStation or Xbox pad.** The controller screens, the callout banners and the ocarina and key prompts are redrawn for the pad. The builder makes them from your own copy of the game. Made on the Mac, not yet checked in play.
 - **Amiibo.** An **Amiibo** menu in the menu bar lists the figures Ocarina of Time accepts. Turn on **System, Options, Use amiibo** in the game once, pick a figure, then scan it as usual; it changes while you play. The daily limit on the drops is lifted: the build makes that from your own copy of the game. Checked in play on the Mac.
+- **Cheats for Ocarina of Time.** A ready cheat set for this game: rupees, Deku Nuts, Bombchus, Bombs and Arrows that do not run out, and **No Damage** or **Refill Hearts** for the hearts. Copy it from [the game's note](dm/games/0400486024DEC000/README.md#cheats) into the cheats folder, then switch each on in the **Cheats** menu. Checked in play on the Mac; Deku Sticks and Deku Seeds were not tried.
 
 Earlier highlights, from 0.1.4:
 
