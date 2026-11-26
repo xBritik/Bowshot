@@ -652,6 +652,21 @@ int main(void) {
     load_all();
     CHECK(strstr(dm_cheats_report(), "1 cheats over 0x100 words") != NULL, "the report names a cheat over Atmosphère's 0x100 words");
 
+    // ---- the memory scan (DM_CHEATS_SCAN): a word in the guest block and one in main's data are found, then narrowed ----
+    memset(gas, 0, 0x10000);   // resident pages: the scan reads only those
+    { uint16_t k = 0x5A3C; memcpy(gas + 0x100, &k, 2); memcpy(gas + 0x2002, &k, 2); memcpy(img + 0x5000, &k, 2); }
+    FILE *so = tmpfile(); char sc[64];
+    snprintf(sc, sizeof sc, "first 2 0x5A3C\n"); CHECK(scan_command(sc, so) == 0 && g_scn == 3, "scan: first finds the 2-byte value in the guest block (twice) and in main's data");
+    { uint16_t k = 0x5A3D; memcpy(gas + 0x100, &k, 2); memcpy(img + 0x5000, &k, 2); }
+    snprintf(sc, sizeof sc, "next 0x5A3D,0x7777\n"); CHECK(scan_command(sc, so) == 0 && g_scn == 2, "scan: next keeps the two words that now hold one of the values");
+    CHECK(g_sc[0] == (uint64_t)(uintptr_t)(gas + 0x100), "scan: the candidates are in address order, the guest block's word first");
+    rewind(so); ftruncate(fileno(so), 0);
+    snprintf(sc, sizeof sc, "show 5\n"); scan_command(sc, so); fflush(so); rewind(so);
+    char sl[2048]; size_t sn = fread(sl, 1, sizeof sl - 1, so); sl[sn] = 0;
+    CHECK(strstr(sl, "main+0x5000 = 23101 (0x5A3D)") != NULL && strstr(sl, "2 candidates, width 2") != NULL, "scan: show names a main word as the cheat file does, with its value");
+    snprintf(sc, sizeof sc, "first 3 1\n"); CHECK(scan_command(sc, so) != 0, "scan: a width other than 1, 2, 4 or 8 is refused");
+    fclose(so);
+
     char rmcmd[1100]; snprintf(rmcmd, sizeof rmcmd, "rm -rf '%s'", root);   // the test's cheats folders
     if (system(rmcmd)) fprintf(stderr, "cannot remove %s\n", root);   // NOLINT(bugprone-command-processor): a fixed rm of the folder mkdtemp made above, no outside input
     printf("%d / %d checks passed\n", checks - fails, checks);
