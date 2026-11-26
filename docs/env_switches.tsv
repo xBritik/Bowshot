@@ -29,6 +29,7 @@ DM_CHEATS	path	Folder of Atmosphère cheat files: `<folder>/<build ID>.txt` or a
 DM_CHEATS_ANY_BUILD	switch	`1` loads a cheat file written for another build of the game when it is the only one (its addresses may not fit: for `cheat_anchor.py` checks)
 DM_CHEATS_DEBUG	diagnostic	Logs every memory write a cheat makes and the cheat file context the menu's "another version" rows come from
 DM_CHEATS_ON	switch	Comma-separated cheat names turned on at launch, besides the saved per-build enabled states
+DM_CHEATS_SCAN	diagnostic	Folder (must exist) for a memory search that finds the addresses of a cheat without stopping the game: write `first <width> <value>[,<value>…]`, `next <value>[,…]` or `show [n]` to `<folder>/scan.cmd`; the answer, with candidates named `main+0x…` / `heap+0x…` / `alias+0x…` as a cheat file reads them, is `<folder>/scan.out`
 DM_CHEATS_WINDOW	switch	`1` opens the Mac Cheats panel beside the game from the start
 DM_CONTROL_NACP	path	The game's control data, `control.nacp` (default: `control.nacp` beside the RomFS, as in the NSP script's extraction folder and the Mac app's Resources); the iOS app sets it to its `dm/control.nacp`. The host answers `fs::GetCacheStorageMax` from it
 DM_COPY_GAME_RESOURCES	switch	`NO` skips the Xcode build phase that copies the game's resources into the app (`stage_resources.sh`, on by default); `build_ipa.sh` sets it for its unsigned build, which packs them itself

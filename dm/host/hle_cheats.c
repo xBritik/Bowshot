@@ -51,6 +51,7 @@
 //   DM_CHEATS_ANY_BUILD=1   with no file of this build, load the folder's single .txt of another build, with a warning
 //   DM_CHEATS_ON=<n>,…      cheats turned on by name at launch (the menu's own toggle states stay what they were)
 //   DM_CHEATS_DEBUG=1       log every applied write (cheat name, where, value)
+//   DM_CHEATS_SCAN=<folder> a memory search for finding a cheat's addresses (commands in <folder>/scan.cmd; see its section below)
 #include "dm.h"
 #include "dm_input.h"   // dm_cheats_keys, the key mask the type-8 conditional reads
 #include <libkern/OSCacheControl.h>
@@ -1845,6 +1846,155 @@ static void folder_flags(void) {
     if (g_safe) LOG("[RED] cheats: the last run ended without a clean exit while cheats were on: every cheat starts off (the Cheats panel restores them)");
 }
 
+// ---------- a memory scan to find the addresses for a cheat (DM_CHEATS_SCAN) ----------
+// A player or an agent writing a cheat has to know where the game keeps a value (rupees, hearts). On a Switch an overlay
+// (EdiZon) searches the game's memory through dmnt:cht; this is the host's own: the value is searched on a thread of the
+// host, which only reads, so the game is never stopped (a debugger attached for the same job pauses the game for as long as
+// the search takes, long enough for the host's watchdogs and timers to end it).
+//   DM_CHEATS_SCAN=<folder>   the folder must exist. The thread looks every 250 ms for <folder>/scan.cmd, runs its first
+//                             line, deletes it and writes the answer to <folder>/scan.out
+//   first <width> <v>[,<v>…]  every <width>-aligned (1, 2, 4 or 8 bytes) word of the game's writable memory that holds any
+//                             of the values (decimal or 0x…): the candidates. Several values are for a quantity stored in
+//                             a unit the player does not know (hearts: 6, or 96 in sixteenths)
+//   next <v>[,<v>…]           keeps the candidates that now hold one of the values: the game was changed in between
+//   show [<n>]                lists the first n (default 50) candidates and their values
+// Candidates are named as the cheat file reads them: main+0x…, heap+0x…, alias+0x… (the cheat's memory types 0, 1 and 2).
+// The pages read are the resident ones of the game's address block and of main's image (mincore), so the search never
+// faults an untouched page in; each read goes through the kernel's copy (guest_page_read), which fails instead of faulting
+// on a page the game unmapped in the meantime
+#define SCAN_MAX (8u << 20)        // candidates kept (64 MB); more are counted and dropped
+#define SCAN_CHUNK (8u << 20)      // bytes read at once
+static uint64_t *g_sc; static size_t g_scn; static unsigned g_scw; static uint64_t g_sc_seen;
+
+static int scan_vals(const char *s, uint64_t *v, int max) {
+    int n = 0;
+    while (*s && n < max) {
+        char *e; uint64_t x = strtoull(s, &e, 0);
+        if (e == s) return -1;
+        v[n++] = x; s = e;
+        if (*s == ',') s++; else if (*s && !isspace((unsigned char)*s)) return -1;
+        while (isspace((unsigned char)*s)) s++;
+    }
+    return n;
+}
+
+static void scan_buf(uint64_t base, const uint8_t *buf, size_t len, unsigned w, const uint64_t *v, int nv) {
+    for (size_t o = 0; o + w <= len; o += w) {
+        uint64_t x = 0; memcpy(&x, buf + o, w);
+        for (int i = 0; i < nv; i++) if (x == v[i]) {
+            g_sc_seen++;
+            if (g_scn < SCAN_MAX) g_sc[g_scn++] = base + o;
+            break;
+        }
+    }
+}
+
+static void scan_region(uint64_t s, uint64_t e, unsigned w, const uint64_t *v, int nv, uint8_t *buf) {
+    const uint64_t ps = (uint64_t)getpagesize();
+    char vec[SCAN_CHUNK / 4096 + 1];
+    for (uint64_t c = s; c < e; c += SCAN_CHUNK) {
+        uint64_t len = e - c < SCAN_CHUNK ? e - c : SCAN_CHUNK;
+        if (c % ps || mincore((void *)(uintptr_t)c, (size_t)len, vec) != 0) continue;   // not page-aligned or gone: skipped
+        uint64_t np = (len + ps - 1) / ps;
+        for (uint64_t i = 0; i < np;) {
+            if (!(vec[i] & MINCORE_INCORE)) { i++; continue; }
+            uint64_t j = i; while (j < np && (vec[j] & MINCORE_INCORE)) j++;
+            uint64_t from = c + i * ps, n = (j - i) * ps; if (from + n > e) n = e - from;
+            if (!guest_page_read(from, buf, n)) scan_buf(from, buf, (size_t)n, w, v, nv);
+            i = j;
+        }
+    }
+}
+
+// The writable regions inside [lo, hi): vm_region_64 (also on iOS, which has no mach_vm.h) skips the unmapped gaps
+static void scan_span(uint64_t lo, uint64_t hi, unsigned w, const uint64_t *v, int nv, uint8_t *buf) {
+    vm_address_t a = (vm_address_t)lo;
+    while (a < hi) {
+        vm_size_t sz = 0; vm_region_basic_info_data_64_t bi; mach_msg_type_number_t cnt = VM_REGION_BASIC_INFO_COUNT_64; mach_port_t obj = 0;
+        if (vm_region_64(mach_task_self(), &a, &sz, VM_REGION_BASIC_INFO_64, (vm_region_info_t)&bi, &cnt, &obj) != KERN_SUCCESS) break;
+        uint64_t s = a < lo ? lo : a, e = (uint64_t)a + sz; if (e > hi) e = hi;
+        if (s < e && (bi.protection & (VM_PROT_READ | VM_PROT_WRITE)) == (VM_PROT_READ | VM_PROT_WRITE)) scan_region(s, e, w, v, nv, buf);
+        a += sz;
+    }
+}
+
+static void scan_first(unsigned w, const uint64_t *v, int nv) {
+    if (!g_sc) g_sc = malloc(SCAN_MAX * sizeof *g_sc);
+    uint8_t *buf = malloc(SCAN_CHUNK);
+    g_scn = 0; g_sc_seen = 0; g_scw = w;
+    if (!g_sc || !buf) { free(buf); return; }
+    uint8_t *gb = NULL; size_t gn = 0; svc_guest_range(&gb, &gn);
+    if (gb && gn) scan_span((uint64_t)(uintptr_t)gb, (uint64_t)(uintptr_t)gb + gn, w, v, nv, buf);
+    if (g_main_mod) scan_span((uint64_t)(uintptr_t)g_main_mod->base, (uint64_t)(uintptr_t)g_main_mod->base + g_main_mod->size, w, v, nv, buf);
+    free(buf);
+}
+
+static void scan_next(const uint64_t *v, int nv) {
+    size_t k = 0;
+    for (size_t i = 0; i < g_scn; i++) {
+        uint64_t x = 0;
+        if (guest_page_read(g_sc[i], &x, g_scw)) continue;
+        for (int j = 0; j < nv; j++) if (x == v[j]) { g_sc[k++] = g_sc[i]; break; }
+    }
+    g_scn = k;
+}
+
+static void scan_show(FILE *o, size_t n) {
+    for (size_t i = 0; i < g_scn && i < n; i++) {
+        char nm[64]; uint64_t x = 0; addr_name(g_sc[i], nm, sizeof nm);
+        if (guest_page_read(g_sc[i], &x, g_scw)) fprintf(o, "%s = ?\n", nm);
+        else fprintf(o, "%s = %llu (0x%llX)\n", nm, (unsigned long long)x, (unsigned long long)x);
+    }
+}
+
+// One command line (see above); the answer goes to o. 0 when it was understood
+static int scan_command(char *line, FILE *o) {
+    uint64_t v[16]; int nv; char *t = line + strlen(line);
+    while (t > line && isspace((unsigned char)t[-1])) *--t = 0;
+    while (isspace((unsigned char)*line)) line++;
+    if (!strncmp(line, "first ", 6)) {
+        char *e; unsigned long w = strtoul(line + 6, &e, 10);
+        if ((w != 1 && w != 2 && w != 4 && w != 8) || (nv = scan_vals(e, v, 16)) < 1) { fprintf(o, "usage: first <1|2|4|8> <value>[,<value>...]\n"); return -1; }
+        scan_first((unsigned)w, v, nv);
+        fprintf(o, "%llu matches (%zu kept)\n", (unsigned long long)g_sc_seen, g_scn);
+        scan_show(o, 50);
+    } else if (!strncmp(line, "next ", 5)) {
+        if (!g_scw || (nv = scan_vals(line + 5, v, 16)) < 1) { fprintf(o, "usage: next <value>[,<value>...] (after a first)\n"); return -1; }
+        scan_next(v, nv);
+        fprintf(o, "%zu candidates left\n", g_scn);
+        scan_show(o, 50);
+    } else if (!strncmp(line, "show", 4)) {
+        fprintf(o, "%zu candidates, width %u\n", g_scn, g_scw);
+        scan_show(o, line[4] ? (size_t)strtoul(line + 4, NULL, 10) : 50);
+    } else { fprintf(o, "unknown command; first, next or show\n"); return -1; }
+    return 0;
+}
+
+static char g_scan_dir[1024];
+static void *scan_thread(void *arg) {
+    (void)arg;
+    char cmd[1100], out[1100]; snprintf(cmd, sizeof cmd, "%s/scan.cmd", g_scan_dir); snprintf(out, sizeof out, "%s/scan.out", g_scan_dir);
+    for (;;) {
+        usleep(250000);
+        FILE *f = fopen(cmd, "r"); if (!f) continue;
+        char line[512]; line[0] = 0; (void)!fgets(line, sizeof line, f); fclose(f); unlink(cmd);
+        FILE *o = fopen(out, "w"); if (!o) continue;
+        fprintf(o, "> %s", line); if (!strchr(line, '\n')) fputc('\n', o);
+        int r = scan_command(line, o);
+        fclose(o);
+        LOG("cheats scan: %s%s", line, r ? " (refused)" : "");
+    }
+    return NULL;
+}
+
+static void scan_start(const char *dir) {
+    snprintf(g_scan_dir, sizeof g_scan_dir, "%s", dir);
+    pthread_t th; pthread_attr_t a; pthread_attr_init(&a); pthread_attr_setdetachstate(&a, PTHREAD_CREATE_DETACHED);
+    if (pthread_create(&th, &a, scan_thread, NULL)) LOG("[RED] cheats: cannot start the scan thread (errno %d)", errno);
+    else LOG("cheats scan: waiting for commands in %s/scan.cmd", dir);
+    pthread_attr_destroy(&a);
+}
+
 // Read the switches, find the game's file and load it (load_all starts the idle apply thread when it has cheats). Called after load_modules
 // (main.c host_preload): the build ID to pick the file by comes from the modules them
 void dm_cheats_init(void) {
@@ -1861,6 +2011,8 @@ void dm_cheats_init(void) {
         for (int k = 0; k < 16; k++) g_build[k] = (char)toupper((unsigned char)bid[k]);
         g_build[16] = 0;
     }
+    e = getenv("DM_CHEATS_SCAN");
+    if (e && *e) scan_start(e);
     e = getenv("DM_CHEATS_ON");
     if (e && *e) {   // one-off names turned on at launch, split on ','; the saves' own <build>.enabled states stay too
         char *dup = strdup(e), *s = dup;
