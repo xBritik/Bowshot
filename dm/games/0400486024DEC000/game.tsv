@@ -62,3 +62,5 @@ render_scale_default	0.5
 render_scale_marks	0.5=Potato,0.6666667=Normal,1.0=Native
 # Bowshot: MetalFX draws the game's own upscaler networks unless the player picks Game's own (the launcher's Game's upscaler): about 1.4 ms less GPU a frame upstream on an M4 Pro, 3.4 ms on an M1
 upscaler_default	metalfx
+# amiibo: the game's Game/AmiiboSetting with every amiibo's daily limit off, as a RomFS overlay the packer makes from the player's own RomFS (scripts/oot_amiibo_overlay.py, the app's dm/overlay_amiibo)
+amiibo_overlay	on

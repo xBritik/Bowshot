@@ -233,6 +233,14 @@ int main(int argc, char **argv) {
     snprintf(p, sizeof p, "%s/msl", res); setenv("DM_MSL_DIR", p, 0);
     snprintf(p, sizeof p, "%s/font", dm); setenv("DM_FONT_DIR", p, 0);
     snprintf(p, sizeof p, "%s/shader_map.tsv", dm); if (!stat(p, &st)) setenv("DM_NVN_SHMAP", p, 0);
+    // Amiibo: a game that lists its figures (Resources/dm/amiibo.tsv) gets the Amiibo menu (front_mac.m), which writes the chosen ID into <app folder>/amiibo.txt, the file DM_AMIIBO names:
+    // the host reads it again at every scan (hle_sdk16.c StartDetection), so the figure changes while the game runs, and an empty file is no amiibo. A DM_AMIIBO set before wins
+    snprintf(p, sizeof p, "%s/amiibo.tsv", dm);
+    if (!stat(p, &st)) {
+        setenv("DM_AMIIBO_LIST", p, 0);
+        char af[PATH_MAX]; snprintf(af, sizeof af, "%s/amiibo.txt", sup);
+        if (!getenv("DM_AMIIBO")) { if (stat(af, &st)) { FILE *f = fopen(af, "w"); if (f) fclose(f); } setenv("DM_AMIIBO", af, 0); }
+    }
     snprintf(p, sizeof p, "%s/aoc", res); if (!stat(p, &st)) setenv("DM_AOC_DIR", p, 0);
     snprintf(p, sizeof p, "%s/pso", res); if (!stat(p, &st)) setenv("DM_PSO_BUNDLE", p, 0);   // the bases of every shader pair: the first start builds none
     if (*lang) setenv("DM_LANG", lang, 0);

@@ -1,6 +1,6 @@
 # Game profiles
 
-Each game the port knows has a folder `dm/games/<id>/`, named after the base game's title ID: Mario's is `<title ID>`, Engage's `<title ID>`. The folder holds:
+Bowshot handles one game, The Legend of Zelda: Ocarina of Time. Its profile is the folder `dm/games/<id>/`, named after the base game's title ID: `0400486024DEC000`. The folder holds:
 
 - **`game.tsv`**: the game's constants, one `key<TAB>value` row each, with comments on their own lines.
 - **The shader tables** that `shader_split.py` writes: `shader_map.tsv` (+ `.conflicts.tsv`), `shader_facts.tsv`, `shader_pairs.tsv`, and `pso_pairs.tsv` (supplemental agl BAHS program variations and legacy Unity pass-input covers). Both pair tables feed vertex output padding and the pipeline prebuild; for a profile without `pso_pairs.tsv`, the NSP script keeps the generated table beside the shader package.
@@ -37,9 +37,13 @@ None of them has a default game: without one they stop and list the profiles. To
 
 Defaults may use `<ios>|<mac>` to select the platform's value before resolving a profile macro or build variable. For example, `DM_GAME_PSO_MTL4|1` follows the profile on iOS and the Mac host's always-on default on Mac; `1|0` matches the encode thread's iOS-on, Mac-off defaults. `SETTINGS_PLATFORM` accepts `ios` (the default) or `mac`; other values are rejected.
 
-## Game
+## Games
 
-Bowshot carries one profile: [The Legend of Zelda: Ocarina of Time](0400486024DEC000/README.md), `0400486024DEC000`, update v131072 on the Switch 2. Its `README.md` holds the notes (what its profile needs and why, what was found on it, what is still open).
+Bowshot carries one profile. Its `README.md` holds the notes (what its profile needs and why, what was found on it, what is still open).
+
+| Game | Title ID | Update |
+|---|---|---|
+| [The Legend of Zelda: Ocarina of Time](0400486024DEC000/README.md) | `0400486024DEC000` | v131072, Switch 2 |
 
 ## Keys
 
@@ -53,6 +57,7 @@ Bowshot carries one profile: [The Legend of Zelda: Ocarina of Time](0400486024DE
 | `shader_versions` | Versions whose union the shader tables are (base game first). A registered version is built from the profile as it is only when all of them are in the folder; otherwise from a derived profile, with tables from the packed version alone |
 | `modules` | Code modules rewritten and loaded, in load order. `rtld` is replaced by the host. A game whose versions differ in modules lists them all (another game: `main subsdk0 subsdk1 sdk`, the base game has no `subsdk1`): each `build` row names its own, the host loads the modules of the row of `main`'s build (`main.c` `profile_modules`; all of `modules` for a build with no row), `build_ipa.sh` packs the same (`game.py modules`), and the NSP script rewrites the ones the packed version's ExeFS holds. A module a row names that `modules` does not list stays unloaded (another game' `subsdk0` and `subsdk1`) |
 | `romfs_marker` | A path that must exist in the RomFS; empty checks the directory itself for a program without a data section (another game) |
+| `amiibo_overlay` | `on` makes a RomFS overlay from the player's own RomFS that turns the game's daily limit on amiibo off (`scripts/oot_amiibo_overlay.py`, only for a game with an `amiibo.tsv` whose `Game/AmiiboSetting` file it knows: Ocarina of Time). Default `off` |
 | `zip_store` | Extensions the IPA stores without compressing |
 | `mem_reserve`, `mem_alias`, `mem_stack`, `app_pool` | Guest address-space partition and application pool (`hle_svc.c`); `mem_alias` is the iPhone's alias region, and [the Mac's is at least the Switch's 64 GB](../../docs/reference/memory.md#the-macs-alias-region-is-the-switchs-64-gb) |
 | `snowdrop_pools` | Snowdrop games: the address ranges of the large, 512 KB and 64 KB page pools in MB, under 4 GB in all (`dm/tools/snowdrop_pools.py`, which finds the allocator in any build; [Separate virtual ranges in Snowdrop's page allocator](../../docs/reference/memory.md#separate-virtual-ranges-in-snowdrops-page-allocator)). Without it, 2048 512 1280. Each pool's peak must fit: one that outgrows its range aborts the game |

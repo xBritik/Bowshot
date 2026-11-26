@@ -245,8 +245,77 @@ The prewarm built the 551 specialized bases of that scene in 11 s at the start, 
 
 Its 37 kernels that correct samples, NDSR's network among them, gave about 0.25 ms more (GPU per frame 25.09 and 25.24 ms with their corrections, 24.97 and 24.86 ms without, interleaved runs; their compute encoders 0.3 ms faster in the profiled frames). Chain `da29694f3f98` contains the change for every stage; a full shader conversion with it is pending, and so is the target of at least 55 fps at these settings.
 
+## Cheats
+
+Current (2026-11-25, Mac, game v131072, build `E0F3CCFAF50065AE`, the first 16 hex digits of main's build ID). No cheat file for this build was found online; the one below was made on the Mac with the host's memory search ([`DM_CHEATS_SCAN`](../../../docs/development.md#cheats)) and the layout of the save context that a post of the community's cheats for the Lichii emulator gave (rupees, current and maximum hearts and the ammunition are 4-byte words at fixed distances from one another). Each of the cheats below was switched on in the running game and held its value while the game used it: rupees (999), Deku Nuts, Bombchus and Bombs (40; the count goes down again once the cheat is off) and Arrows (50). Deku Sticks and Deku Seeds use the same distances and were not tried one by one.
+
+All of them are `heap+X` writes of 4 bytes (memory type 1: `04100000 <offset> <value>`). The distances from the rupee word `R`: current hearts `R+0x28` and `R+0x2C` (a third word, `R+0x24`, and the maximum at `R+0x4C` hold 12 and were left alone), bombs `R+0x708`, arrows `R+0x6E0`, bombchus `R+0x7A8`, Deku Nuts `R+0x8E8`, Deku Seeds `R+0x910`, Deku Sticks `R+0x938`. Hearts count 4 per heart, so a cheat that fills the bar writes four times the container count.
+
+```
+[Infinite Rupees]
+04100000 7F37E134 000003E7
+[Infinite Bombs]
+04100000 7F37E83C 00000028
+[Infinite Arrows]
+04100000 7F37E814 00000032
+[Infinite Bombchus]
+04100000 7F37E8DC 00000028
+[Infinite Deku Nuts]
+04100000 7F37EA1C 00000028
+[Infinite Deku Sticks]
+04100000 7F37EA6C 00000028
+[Infinite Deku Seeds]
+04100000 7F37EA44 00000032
+[No Damage - on]
+04000000 03C46A00 1A8B13EC
+04000000 03C46A04 A9BF3FEE
+04000000 03C46A08 B00092CE
+04000000 03C46A0C B94F89CE
+04000000 03C46A10 340000EE
+04000000 03C46A14 B9400D0E
+04000000 03C46A18 528AB00F
+04000000 03C46A1C 72A6356F
+04000000 03C46A20 6B0F01DF
+04000000 03C46A24 54000041
+04000000 03C46A28 2A0A03EC
+04000000 03C46A2C A8C13FEE
+04000000 03C46A30 17215CB1
+04000000 0049DCF0 14DEA344
+04000000 04E9FF88 00000001
+[No Damage - off]
+04000000 04E9FF88 00000000
+[Refill Hearts - on]
+04000000 03C46A40 1A8B13EC
+04000000 03C46A44 A9BF3FEE
+04000000 03C46A48 B00092CE
+04000000 03C46A4C B94F8DCE
+04000000 03C46A50 3400014E
+04000000 03C46A54 B9400D0E
+04000000 03C46A58 528AB00F
+04000000 03C46A5C 72A6356F
+04000000 03C46A60 6B0F01DF
+04000000 03C46A64 540000A1
+04000000 03C46A68 D283830E
+04000000 03C46A6C F86E6A6E
+04000000 03C46A70 B400004E
+04000000 03C46A74 B94009CC
+04000000 03C46A78 A8C13FEE
+04000000 03C46A7C 17215C9E
+04000000 0049DCF0 14DEA354
+04000000 04E9FF8C 00000001
+[Refill Hearts - off]
+04000000 04E9FF8C 00000000
+```
+
+- **Open:** `R` is a heap offset, `0x7F37E134` on this build. It was the same after one restart of the game (the cheats applied again at the same address), but it is the game's allocation order, not an address the build fixes: another start with another save, or another build, may move it. A pointer chain from `main` (`scripts/cheat_anchor.py`) would not depend on it. Not done.
+- **Open:** the hearts cheat sets what the game shows, not the game's own hearts. `R+0x28` and `R+0x2C` are the words the HUD reads (writing 4 per heart there fills the bar, the player saw it); with the cheat off the game puts the real value back, so the hearts the cheat filled are lost. The real value was not found: with five hearts (20, 10 in halves) the same value is also at `R+0x190` / `R+0x194` and `R+0x208` / `R+0x20C`, and as a capacity / current pair of 2-byte words at `heap+0x22EEC32C`, `0x22F041A4`, `0x22F08118`, `0x22F0F078` and `0x22F1083C` (and a table of identical copies from `0xA4C05A8`), and writing to each of those changed nothing on screen. Whether damage still lowers the real hearts under the cheat (and can kill the player at a full bar) was not checked. What a next try needs: a search that compares each address with its earlier value (went down, went up, unchanged), which `DM_CHEATS_SCAN` does not have yet.
+- **Code cheats (current):** three more cheats from the same post, for this exact build, write a short ARM routine into the zero padding between the text and the read-only data (`main+0x3C46A00`, `0x3C46A40`, `0x3C46A80`; `TEXT_END` is `0x3C461D0` and `RO_OFF` `0x3C47000`), replace one instruction of the game with a branch to it, and read an on / off word in main's last bytes before the host's key page (`main+0x4E9FF88`, `…8C`, `…90`; the cheat writes 1, its off half writes 0, and with the word at 0 the routine runs the displaced instruction and returns). They were disassembled before use: compares, one store into the player object's field, a push and pop of two registers, no system call. On this build the displaced words are what the routines start with (`main+0x49DCF0` holds `csel w12, wzr, w11, ne`, `main+0x163B20` holds `ldr w2, [x0, #0xc]`), none of the sites is in `main.changed.tsv`, and the padding is zeros. **No Damage** (hook `main+0x49DCF0`: when the object is the player's, `0x31AB5580` at `+0xC`, the new hearts stay the old ones) was switched on in the game and takes no hearts away; it is the one that keeps the real hearts, which the writes above do not. **Refill Hearts** (same hook, new hearts read from a field at `+8` of an object, probably the capacity) was switched on too and refills the hearts as it should. **Max Hearts 20** (hook `main+0x163B20`, writes `0x50` into the player object's `+8`) was switched on and changed nothing the player could see (open: the routine may never run on this path, or its field is not the one the HUD and the save read; not examined further). Refill Hearts and No Damage share the hook: only one at a time.
+- **Open:** the post's moon jump cheat (code, with button conditions) was not tried, nor was the post's `subsdk9` module, which was not downloaded or run here.
+- **How it was found:** a value is searched twice with the game changed in between (`first 4 339`, spend rupees, `next 340`), and the candidates are told apart by their distances to the others. Searching with a debugger attached did not work: it stopped the game for the length of the search and the game died twice. A candidate that the game rewrites at once (`heap+0xA4C0C88`, a copy of the hearts) is not the source.
+
 ## Found on this game
 
+- [A virtual amiibo on the NFC device](../../../docs/reference/services.md#a-virtual-amiibo-on-the-nfc-device). The game's `amiibo.tsv` lists the figures its `Game/AmiiboSetting` accepts: the model number 1277 and 1279 give one N64-style mask each (Young Link and Young Zelda, Ocarina of Time series), the Legend of Zelda series and Link, Zelda and Ganon of any series give 3-5 random drops. The Mac app's Amiibo menu picks one. Current (2026-11-25, Mac): the game finds the figure the menu picks (`ListDevices`, `StartDetection`, "amiibo ... found" in the log) once **System, Options, Use amiibo** is on; with it off the game never starts its amiibo manager (main+0x3b63940, state 4 idle) and the Items slot answers with the empty-slot sound, with no NFC call in the log. The mask, the drops and the lifted daily limit are not checked in play yet. The daily limit on the drops is off by default through the RomFS overlay `oot_amiibo_overlay.py` makes (the file's repacked BYML reads back byte for byte on this game's v131072 RomFS); `DM_AMIIBO_LIMIT=1` keeps it. Not yet seen in play.
 - [Inlining mesh helpers with subgroup inputs can crash the Metal compiler](../../../docs/reference/shaders.md#inlining-mesh-helpers-with-subgroup-inputs-can-crash-the-metal-compiler). The subgroup helper workaround clears the isolated foliage pipeline and the 164-row offline matrix at the supported deployment minimums.
 - [Missing required functions at the render pipeline API](../../../docs/reference/rendering.md#missing-required-functions-at-the-render-pipeline-api). The device API now returns an error for missing functions. The abort inside a bundled archive lookup remains open.
 

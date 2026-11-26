@@ -97,6 +97,8 @@ Shows the frames per second at the top left.
 
 ## Controls
 
+**Amiibo (Mac).** A game whose profile lists its amiibo (`amiibo.tsv`, for now Ocarina of Time) has an **Amiibo** menu in the menu bar while it runs. Turn on **System, Options, Use amiibo** in the game once (without it the game never starts a scan), pick a figure, then use amiibo in the game as usual (Ocarina of Time: Items, the amiibo icon, ZR): the game finds the figure the next time it scans, so it changes while you play. **None** takes the amiibo away. The figure's ID goes into `amiibo.txt` in the game's folder under `~/Library/Application Support/nxnative/<title ID>`, which `DM_AMIIBO` names. No amiibo file or key is read: the game sees the figure's ID, an owner and a nickname, and the application area it creates, which the host keeps in an `amiibo` folder beside the save.
+
 **Microphone (Mac).** Apps that support microphone input have this switch off by default. Turn it on and press Play to grant macOS access. The first enabled launch can ask even if the settings window is hidden. Choose an input device while the switch is on. Microphone gain is under Advanced settings.
 
 
